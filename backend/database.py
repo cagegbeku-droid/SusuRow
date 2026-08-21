@@ -16,12 +16,18 @@ if DATABASE_URL.startswith("sqlite"):
         echo=False
     )
 else:
-    # PostgreSQL / Supabase pool configuration
+    # Ensure SSL for Supabase / Cloud PostgreSQL
+    connect_args = {}
+    if "supabase.co" in DATABASE_URL or "pooler.supabase.com" in DATABASE_URL:
+        connect_args["sslmode"] = "require"
+
     engine = create_engine(
         DATABASE_URL,
+        connect_args=connect_args,
         pool_size=10,
         max_overflow=20,
         pool_pre_ping=True,
+        pool_recycle=300,
         echo=False
     )
 

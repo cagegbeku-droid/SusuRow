@@ -13,8 +13,12 @@ from routes.stats import router as stats_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB schema cleanly on startup (clean tables, no mock data)
-    Base.metadata.create_all(bind=engine)
+    # Initialize DB schema cleanly on startup
+    try:
+        Base.metadata.create_all(bind=engine)
+        print("[Database]: Tables verified / created successfully.")
+    except Exception as e:
+        print(f"[Database Startup Notice]: {e}")
     yield
 
 app = FastAPI(
