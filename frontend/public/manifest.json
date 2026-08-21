@@ -1,0 +1,25 @@
+{
+  "short_name": "SusuRow",
+  "name": "SusuRow - Digital Ghanaian ROSCA & Rotational Savings",
+  "description": "Digitized West African communal Susu savings with automated Ghana Mobile Money settlement.",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><circle cx='96' cy='96' r='92' fill='%23005B52'/><circle cx='96' cy='96' r='70' fill='none' stroke='%23D99B26' stroke-width='14' stroke-dasharray='30 15'/><circle cx='96' cy='96' r='36' fill='%23D99B26'/><text x='96' y='110' font-size='44' font-weight='bold' fill='%23005B52' text-anchor='middle' font-family='sans-serif'>₵</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><circle cx='256' cy='256' r='245' fill='%23005B52'/><circle cx='256' cy='256' r='180' fill='none' stroke='%23D99B26' stroke-width='36' stroke-dasharray='80 40'/><circle cx='256' cy='256' r='95' fill='%23D99B26'/><text x='256' y='292' font-size='120' font-weight='bold' fill='%23005B52' text-anchor='middle' font-family='sans-serif'>₵</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#F8FAFC",
+  "theme_color": "#005B52",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["finance", "productivity", "utilities"]
+}

@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: susurow-backend
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 4
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: ARKESEL_API_KEY
+        sync: false
+      - key: ARKESEL_SENDER_ID
+        value: SusuRow
