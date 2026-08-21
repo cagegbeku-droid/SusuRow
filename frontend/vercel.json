@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://susurow-backend.onrender.com/api/:path*"
+      "destination": "https://susurow.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
