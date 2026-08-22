@@ -15,7 +15,6 @@ export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
     setLoading(true);
     setError(null);
     try {
-      // Simulate visual spinning excitement
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const res = await executeBallotDraw({
@@ -30,7 +29,7 @@ export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
         particleCount: 120,
         spread: 90,
         origin: { y: 0.5 },
-        colors: ['#005B52', '#D99B26', '#8B5CF6', '#10B981']
+        colors: ['#3B82F6', '#F59E0B', '#8B5CF6', '#10B981']
       });
 
       if (onDrawComplete) {
@@ -45,55 +44,55 @@ export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#04060A]/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="dark-card w-full max-w-md rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white p-6 relative">
+        <div className="bg-gradient-to-br from-indigo-700 via-purple-700 to-violet-800 text-white p-6 relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1 rounded-full hover:bg-white/10 transition-colors"
+            className="absolute top-4 right-4 p-1.5 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X size={18} />
           </button>
           
-          <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-amber-400 mb-1">
-            <Sparkles className="w-4 h-4" />
-            <span>Cryptographic Fairness Draw</span>
+          <div className="flex items-center space-x-1.5 text-[10px] font-black uppercase tracking-wider text-amber-300 mb-1">
+            <Sparkles size={13} />
+            <span>Fair Cryptographic Draw</span>
           </div>
 
-          <h2 className="text-xl font-black font-display tracking-tight">
+          <h2 className="text-xl font-black text-white">
             Random Ballot Shuffle
           </h2>
           <p className="text-xs text-purple-200 mt-0.5">
-            Circle: <strong>{group.name}</strong> ({group.members?.length} savers)
+            Group: <strong>{group.name}</strong> ({group.members?.length} savers)
           </p>
         </div>
 
         {/* Body */}
-        <div className="p-6">
+        <div className="p-5 sm:p-6">
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-700 text-xs border border-red-200">
+            <div className="mb-4 p-3 rounded-2xl bg-red-500/10 text-red-300 text-xs border border-red-500/30">
               {error}
             </div>
           )}
 
           {!shuffled ? (
-            <div className="text-center space-y-5 py-4">
-              <div className="w-20 h-20 rounded-3xl bg-purple-100 text-purple-700 flex items-center justify-center mx-auto shadow-lg shadow-purple-500/15 animate-bounce">
-                <Shuffle className="w-10 h-10" />
+            <div className="text-center space-y-5 py-2">
+              <div className="w-18 h-18 rounded-3xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center mx-auto shadow-lg">
+                <Shuffle size={32} />
               </div>
 
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Ready to Shuffle Payout Turns?</h3>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1 leading-relaxed">
-                  All {group.members?.length} slots will be randomly assigned a payout round (1 to {group.members_count}) using a cryptographically seeded random engine.
+                <h3 className="text-base font-black text-white">Ready to Shuffle Payout Turns?</h3>
+                <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1 leading-relaxed">
+                  All {group.members?.length} slots will be randomly assigned a payout round (1 to {group.members_count}) using a fair seeded random engine.
                 </p>
               </div>
 
-              <div className="bg-slate-50 p-3.5 rounded-xl text-xs text-slate-600 border border-slate-200/80 text-left space-y-1">
-                <div className="font-bold text-slate-800">Participating Savers:</div>
-                <div className="text-[11px] text-slate-500">
+              <div className="bg-[#0E1322] p-3.5 rounded-2xl text-xs text-slate-300 border border-white/5 text-left space-y-1">
+                <div className="font-bold text-white text-[11px]">Participating Savers:</div>
+                <div className="text-[10px] text-slate-400 font-mono">
                   {group.members?.map(m => m.full_name).join(' • ')}
                 </div>
               </div>
@@ -101,16 +100,16 @@ export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
               <button
                 onClick={handleDraw}
                 disabled={loading}
-                className="w-full py-3.5 bg-gradient-to-r from-purple-700 to-indigo-800 hover:from-purple-800 hover:to-indigo-900 text-white font-bold rounded-2xl shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
+                className="w-full py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-black text-xs rounded-2xl shadow-[0_0_20px_rgba(139,92,246,0.4)] transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Executing Cryptographic Draw...</span>
+                    <span>Executing Draw...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4 text-amber-400" />
+                    <Sparkles className="w-4 h-4 text-amber-300" />
                     <span>Spin & Assign Ballot Positions</span>
                   </>
                 )}
@@ -118,9 +117,9 @@ export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
             </div>
           ) : (
             <div className="space-y-4 animate-in zoom-in-95 duration-200">
-              <div className="text-center pb-2">
-                <span className="text-xs font-bold text-purple-800 bg-purple-100 px-3 py-1 rounded-full inline-flex items-center gap-1">
-                  <Trophy className="w-3.5 h-3.5 text-amber-600" />
+              <div className="text-center pb-1">
+                <span className="text-xs font-black text-amber-300 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full inline-flex items-center gap-1.5">
+                  <Trophy size={14} className="text-amber-400" />
                   <span>Ballot Order Assigned!</span>
                 </span>
               </div>
@@ -129,19 +128,19 @@ export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
                 {drawResults.map((m) => (
                   <div
                     key={m.id}
-                    className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between"
+                    className="p-3 rounded-2xl bg-[#0E1322] border border-white/5 flex items-center justify-between"
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-7 h-7 rounded-full bg-purple-700 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                      <div className="w-7 h-7 rounded-xl bg-purple-600 text-white font-black text-xs flex items-center justify-center shadow-xs">
                         #{m.payout_position}
                       </div>
                       <div>
-                        <div className="font-bold text-xs text-slate-900">{m.full_name}</div>
-                        <div className="text-[10px] font-mono text-slate-500">{m.phone_number}</div>
+                        <div className="font-bold text-xs text-white">{m.full_name}</div>
+                        <div className="text-[10px] font-mono text-slate-400">{m.phone_number}</div>
                       </div>
                     </div>
-                    <div className="text-right text-[11px] font-bold text-amber-800">
-                      Round #{m.payout_position} Recipient
+                    <div className="text-right text-[11px] font-bold text-amber-400">
+                      Round #{m.payout_position}
                     </div>
                   </div>
                 ))}
@@ -149,9 +148,9 @@ export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
 
               <button
                 onClick={onClose}
-                className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-2xl transition-all"
+                className="w-full py-3 bg-[#1C233A] hover:bg-[#252E4B] text-white font-bold text-xs rounded-2xl transition-all cursor-pointer border border-white/10"
               >
-                Apply & Return to Circle
+                Apply & Return to Group
               </button>
             </div>
           )}

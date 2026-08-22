@@ -1,22 +1,39 @@
 import React, { useState } from 'react';
-import { X, Gift, Share2, Copy, Check, MessageCircle, Users, Award, ShieldCheck, Sparkles } from 'lucide-react';
+import { 
+  X, 
+  Gift, 
+  Copy, 
+  Check, 
+  Share2, 
+  MessageCircle, 
+  Users, 
+  Coins, 
+  Sparkles,
+  ArrowRight
+} from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import confetti from 'canvas-confetti';
 
 export const ReferralModal = ({ isOpen, onClose }) => {
-  const { user, referralCode } = useUser();
+  const { referralCode, user } = useUser();
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
   const shareUrl = `${window.location.origin}?ref=${referralCode}`;
 
-  const handleCopyLink = () => {
+  const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
+    confetti({
+      particleCount: 50,
+      spread: 60,
+      origin: { y: 0.6 }
+    });
     setTimeout(() => setCopied(false), 2500);
   };
 
-  const handleWhatsAppShare = () => {
+  const handleWhatsApp = () => {
     const text = encodeURIComponent(
       `Hello! Join me on SusuRow to save and rotate money together with zero loan interest.\n\nUse my invite code: ${referralCode}\nOr join directly here: ${shareUrl}`
     );
@@ -24,126 +41,93 @@ export const ReferralModal = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#04060A]/85 backdrop-blur-md">
+      <div className="dark-card w-full max-w-md rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary-900 via-primary-800 to-teal-900 text-white p-6 relative">
+        <div className="bg-gradient-to-br from-amber-500 via-gold-600 to-amber-700 text-slate-950 p-6 relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="absolute top-4 right-4 p-1.5 rounded-full text-slate-950/70 hover:text-slate-950 hover:bg-black/10 transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
-
-          <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-gold-400 mb-1">
-            <Gift className="w-4 h-4" />
-            <span>Community Rewards Program</span>
+          
+          <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider mb-1">
+            <Gift size={14} />
+            <span>Community Rewards</span>
           </div>
 
-          <h2 className="text-2xl font-black font-display tracking-tight">
-            Refer & Earn with Friends
+          <h2 className="text-xl sm:text-2xl font-black text-slate-950">
+            Refer Friends & Earn
           </h2>
-          <p className="text-xs text-primary-200 mt-1">
-            Invite family, peers, and church/market members to form trusted Susu circles.
+          <p className="text-xs text-slate-900/80 mt-0.5 font-medium">
+            Invite family, colleagues, and savers to create or join Susu circles.
           </p>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5">
+        <div className="p-5 sm:p-6 space-y-4">
           
-          {/* Invite Code & Link Card */}
-          <div className="bg-gradient-to-br from-amber-50 to-gold-50/50 border-2 border-gold-300 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  Your Unique Referral Code
-                </span>
-                <div className="font-mono text-xl font-black text-slate-900 tracking-wider">
-                  {referralCode}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={handleCopyLink}
-                  className="px-3 py-2 bg-white hover:bg-slate-50 border border-gold-400 text-slate-900 font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  {copied ? (
-                    <>
-                      <Check size={14} className="text-emerald-600" />
-                      <span className="text-emerald-700">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={14} />
-                      <span>Copy Link</span>
-                    </>
-                  )}
-                </button>
-              </div>
+          {/* Code Box */}
+          <div className="bg-[#0E1322] rounded-3xl p-4 border border-white/10 space-y-2">
+            <span className="text-[10px] uppercase font-bold text-slate-400">Your Exclusive Invite Code</span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-2xl font-black font-mono text-amber-400 tracking-wider">
+                {referralCode}
+              </span>
+              <button
+                onClick={handleCopy}
+                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow cursor-pointer active:scale-95"
+              >
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copied ? 'Copied' : 'Copy Link'}</span>
+              </button>
             </div>
+          </div>
 
-            {/* Direct WhatsApp Share Button */}
+          {/* Social Channels */}
+          <div className="grid grid-cols-2 gap-2.5">
             <button
-              onClick={handleWhatsAppShare}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              onClick={handleWhatsApp}
+              className="py-3 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_12px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
             >
               <MessageCircle size={16} />
-              <span>Share Directly to WhatsApp Contacts & Groups</span>
+              <span>Share on WhatsApp</span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: 'Join me on SusuRow',
+                    text: 'Save and rotate money together with 0% interest.',
+                    url: shareUrl
+                  }).catch(() => {});
+                } else {
+                  handleCopy();
+                }
+              }}
+              className="py-3 px-3 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_12px_rgba(59,130,246,0.3)] transition-all cursor-pointer"
+            >
+              <Share2 size={16} />
+              <span>More Options</span>
             </button>
           </div>
 
-          {/* How It Works Tiers */}
-          <div className="space-y-2.5">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-              How You Benefit
-            </h4>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-center">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary-800 flex items-center justify-center mx-auto mb-1.5 font-black text-sm">
-                  1
-                </div>
-                <div className="text-xs font-bold text-slate-900">Share Link</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">Send your code via WhatsApp</div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div className="w-8 h-8 rounded-lg bg-gold-100 text-gold-800 flex items-center justify-center mx-auto mb-1.5 font-black text-sm">
-                  2
-                </div>
-                <div className="text-xs font-bold text-slate-900">Friend Joins</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">They enter circle and save</div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto mb-1.5 font-black text-sm">
-                  3
-                </div>
-                <div className="text-xs font-bold text-slate-900">Earn Rewards</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">50 Susu Points per active peer</div>
-              </div>
+          {/* Benefits Info */}
+          <div className="p-3.5 bg-[#0E1322] rounded-2xl border border-white/5 space-y-1 text-xs text-slate-300">
+            <div className="font-bold text-white flex items-center gap-1.5">
+              <Sparkles size={13} className="text-amber-400" />
+              <span>How It Works</span>
             </div>
+            <p className="text-[11px] text-slate-400">
+              When peers register with your code, they gain immediate verified saver access, and your trust reputation score increases!
+            </p>
           </div>
-
-          {/* Trust Guarantee */}
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center gap-2.5 text-xs text-slate-600">
-            <ShieldCheck size={18} className="text-primary-700 shrink-0" />
-            <span>
-              All transactions are secured with Ghana Mobile Money auto-settlement and commitment escrow vaults.
-            </span>
-          </div>
-
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition-colors cursor-pointer"
-          >
-            Done
-          </button>
 
         </div>
+
       </div>
     </div>
   );

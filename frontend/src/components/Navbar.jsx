@@ -8,7 +8,9 @@ import {
   ChevronDown,
   KeyRound,
   Calculator,
-  Gift
+  Gift,
+  Bell,
+  Sparkles
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
@@ -27,52 +29,52 @@ export default function Navbar({
   const getProviderBadge = (provider) => {
     switch (provider) {
       case 'MTN':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/20 text-yellow-300 font-bold border border-yellow-400/40">MTN</span>;
+        return <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-300 font-black border border-yellow-400/30">MTN</span>;
       case 'TELECEL':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-400/20 text-red-200 font-bold border border-red-400/40">Telecel</span>;
+        return <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 font-black border border-red-500/30">Telecel</span>;
       case 'AT':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-400/20 text-blue-200 font-bold border border-blue-400/40">AT</span>;
+        return <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-black border border-blue-500/30">AT</span>;
       default:
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/20 text-white font-bold">MoMo</span>;
+        return <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white font-bold">MoMo</span>;
     }
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-primary-900 text-white shadow border-b border-primary-800">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="sticky top-0 z-40 bg-[#080B11]/85 backdrop-blur-xl border-b border-white/[0.07] text-white">
+      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-18">
           
           {/* Left: Sidebar Toggle + Brand Logo */}
           <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={onToggleSidebar}
-              className="p-2 -ml-1 rounded-xl text-primary-100 hover:text-white hover:bg-primary-800 transition-colors cursor-pointer flex items-center justify-center"
+              className="p-2 -ml-1 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/5 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-sm"
               aria-label="Open App Menu"
             >
-              <Menu size={22} />
+              <Menu size={20} />
             </button>
 
             {/* Logo */}
             <div
               onClick={() => setActiveView('marketplace')}
-              className="flex items-center gap-2 cursor-pointer select-none"
+              className="flex items-center gap-2.5 cursor-pointer select-none group"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gold-500 flex items-center justify-center text-primary-950 font-black text-lg shadow">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-[0_0_15px_rgba(59,130,246,0.5)] group-hover:scale-105 transition-transform">
                 ₵
               </div>
               <div className="font-black text-lg sm:text-xl tracking-tight text-white">
-                Susu<span className="text-gold-400">Row</span>
+                Susu<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-amber-400">Row</span>
               </div>
             </div>
 
             {/* Desktop Navigation Links */}
-            <nav className="hidden lg:flex items-center space-x-1 text-xs font-bold ml-4">
+            <nav className="hidden lg:flex items-center space-x-1 text-xs font-bold ml-6 bg-[#141A2D]/80 p-1 rounded-2xl border border-white/5">
               <button
                 onClick={() => setActiveView('marketplace')}
-                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                className={`px-4 py-2 rounded-xl transition-all cursor-pointer ${
                   activeView === 'marketplace'
-                    ? 'bg-primary-800 text-gold-300 font-bold'
-                    : 'text-primary-200 hover:text-white hover:bg-primary-800/50'
+                    ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/25'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
                 All Groups
@@ -86,10 +88,10 @@ export default function Navbar({
                     setActiveView('my-circles');
                   }
                 }}
-                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                className={`px-4 py-2 rounded-xl transition-all cursor-pointer ${
                   activeView === 'my-circles'
-                    ? 'bg-primary-800 text-gold-300 font-bold'
-                    : 'text-primary-200 hover:text-white hover:bg-primary-800/50'
+                    ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/25'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
                 My Groups
@@ -97,96 +99,96 @@ export default function Navbar({
 
               <button
                 onClick={onOpenCalculator}
-                className="px-3 py-1.5 rounded-lg text-primary-200 hover:text-white hover:bg-primary-800/50 transition-colors flex items-center gap-1 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <Calculator size={13} className="text-gold-400" />
-                <span>Cycle Calculator</span>
+                <Calculator size={14} className="text-amber-400" />
+                <span>Calculator</span>
               </button>
             </nav>
           </div>
 
-          {/* Right: Actions & User Profile */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Right: Referral, Create & User Profile */}
+          <div className="flex items-center gap-2 sm:gap-3">
             
-            {/* Refer Button */}
+            {/* Refer & Earn Button */}
             <button
               onClick={onOpenReferralModal}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500/20 to-gold-500/30 text-gold-300 border border-gold-400/40 hover:bg-gold-500/30 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-gradient-to-r from-amber-500/15 to-gold-500/20 text-amber-300 border border-amber-500/30 hover:border-amber-400/60 transition-all cursor-pointer shadow-xs"
             >
-              <Gift size={14} className="text-gold-400" />
+              <Gift size={14} className="text-amber-400" />
               <span className="hidden sm:inline">Refer & Earn</span>
               <span className="sm:hidden font-black">Refer</span>
             </button>
 
-            {/* Enter Code */}
+            {/* Code Join */}
             <button
               onClick={onOpenJoinCodeModal}
-              className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-primary-800 hover:bg-primary-700 text-primary-100 border border-primary-700 transition-colors cursor-pointer"
+              className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold bg-[#141A2D] hover:bg-[#1C233A] text-slate-300 border border-white/5 transition-all cursor-pointer"
             >
-              <KeyRound size={13} className="text-gold-400" />
+              <KeyRound size={13} className="text-blue-400" />
               <span>Group Code</span>
             </button>
 
-            {/* Create Group */}
+            {/* Create Group Button */}
             <button
               onClick={onOpenCreateModal}
-              className="flex items-center gap-1 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-black bg-gold-500 hover:bg-gold-400 text-slate-950 shadow transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all cursor-pointer active:scale-95"
             >
-              <PlusCircle size={14} />
+              <PlusCircle size={15} />
               <span className="hidden sm:inline">New Group</span>
               <span className="sm:hidden">New</span>
             </button>
 
-            {/* User Profile */}
+            {/* User Profile / Sign In */}
             {isAuthenticated ? (
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1 rounded-xl bg-primary-800 hover:bg-primary-700 border border-primary-700 text-left transition-all cursor-pointer"
+                  className="flex items-center gap-2 p-1 sm:px-3 sm:py-1.5 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-left transition-all cursor-pointer shadow-xs"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-gold-400 text-primary-950 font-bold flex items-center justify-center text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-black flex items-center justify-center text-xs shadow">
                     {user?.full_name ? user.full_name.charAt(0).toUpperCase() : '₵'}
                   </div>
                   <div className="hidden sm:block text-left">
-                    <div className="text-xs font-bold text-white truncate max-w-[100px]">
+                    <div className="text-xs font-bold text-white truncate max-w-[110px]">
                       {user?.full_name || 'Saver'}
                     </div>
                   </div>
-                  <ChevronDown size={13} className="text-primary-300 hidden sm:block" />
+                  <ChevronDown size={13} className="text-slate-400 hidden sm:block" />
                 </button>
 
                 {dropdownOpen && (
                   <div
-                    className="absolute right-0 mt-2 w-56 rounded-2xl bg-white text-slate-800 shadow-2xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150"
+                    className="absolute right-0 mt-2 w-60 rounded-3xl bg-[#141A2D] text-slate-200 shadow-2xl border border-white/10 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-2xl"
                     onClick={() => setDropdownOpen(false)}
                   >
-                    <div className="px-3.5 py-2.5 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
-                      <p className="text-xs font-bold text-slate-900">{user?.full_name}</p>
-                      <p className="text-[11px] font-mono text-slate-500 mt-0.5">{user?.phone_number}</p>
-                      <div className="mt-1">{getProviderBadge(user?.momo_provider)}</div>
+                    <div className="px-4 py-3 border-b border-white/5 bg-[#0E1322] rounded-t-3xl">
+                      <p className="text-xs font-black text-white">{user?.full_name}</p>
+                      <p className="text-[11px] font-mono text-slate-400 mt-0.5">{user?.phone_number}</p>
+                      <div className="mt-1.5">{getProviderBadge(user?.momo_provider)}</div>
                     </div>
 
                     <button
                       onClick={() => setActiveView('my-circles')}
-                      className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2.5 cursor-pointer transition-colors"
                     >
-                      <Users size={14} className="text-primary-700" />
-                      <span>My Groups</span>
+                      <Users size={15} className="text-blue-400" />
+                      <span>My Susu Groups</span>
                     </button>
 
                     <button
                       onClick={onOpenReferralModal}
-                      className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2.5 cursor-pointer transition-colors"
                     >
-                      <Gift size={14} className="text-gold-600" />
+                      <Gift size={15} className="text-amber-400" />
                       <span>Referral Hub</span>
                     </button>
 
                     <button
                       onClick={logout}
-                      className="w-full px-3.5 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 border-t border-slate-100 cursor-pointer"
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-red-400 hover:bg-red-500/10 flex items-center gap-2.5 border-t border-white/5 cursor-pointer transition-colors"
                     >
-                      <LogOut size={14} />
+                      <LogOut size={15} />
                       <span>Sign Out</span>
                     </button>
                   </div>
@@ -195,9 +197,9 @@ export default function Navbar({
             ) : (
               <button
                 onClick={openAuthModal}
-                className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-2xl text-xs font-bold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition-all cursor-pointer"
               >
-                <LogIn size={13} className="text-gold-400" />
+                <LogIn size={14} className="text-amber-400" />
                 <span>Sign In</span>
               </button>
             )}

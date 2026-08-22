@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { X, KeyRound, Loader2, ArrowRight } from 'lucide-react';
 import { getGroupByCode } from '../api/client';
 
 export const JoinCodeModal = ({ isOpen, onClose, onCircleFound }) => {
@@ -16,72 +16,72 @@ export const JoinCodeModal = ({ isOpen, onClose, onCircleFound }) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getGroupByCode(code.trim());
-      onCircleFound(data);
+      const group = await getGroupByCode(code.trim().toUpperCase());
       onClose();
-      setCode('');
+      if (onCircleFound) onCircleFound(group);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Circle not found. Please verify the code.');
+      setError(err.response?.data?.detail || 'No group found with this invite code.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#04060A]/85 backdrop-blur-md">
+      <div className="dark-card w-full max-w-sm rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden">
         
         {/* Header */}
-        <div className="bg-primary-900 text-white p-5 relative">
+        <div className="bg-[#0E1322] p-5 border-b border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center">
+              <KeyRound size={16} />
+            </div>
+            <div>
+              <h3 className="text-xs font-black text-white">Join with Group Code</h3>
+              <p className="text-[10px] text-slate-400">Enter your 6-character code</p>
+            </div>
+          </div>
+
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1 rounded-full text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+            className="w-8 h-8 rounded-full bg-[#141A2D] text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/5"
           >
-            <X className="w-4 h-4" />
+            <X size={16} />
           </button>
-
-          <h2 className="text-base font-bold text-white">
-            Join Circle with Code
-          </h2>
-          <p className="text-xs text-primary-200 mt-0.5">
-            Enter the circle's invite code to view or join
-          </p>
         </div>
 
-        {/* Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-3 rounded-lg bg-red-50 text-red-700 text-xs border border-red-200 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
-              <span>{error}</span>
+            <div className="p-3 bg-red-500/10 rounded-2xl border border-red-500/30 text-red-300 text-xs">
+              {error}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-bold text-slate-300 mb-1 text-center">
               Invite Code
             </label>
             <input
               type="text"
               required
-              placeholder="e.g. SUSU-1234"
+              placeholder="e.g. ACCRA5"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary-600 font-mono text-sm font-bold uppercase tracking-wider text-slate-900"
+              className="w-full py-3 text-center tracking-[0.25em] text-xl font-black font-mono rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-amber-400 uppercase placeholder-slate-600"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading || !code.trim()}
-            className="w-full py-2.5 bg-primary-700 hover:bg-primary-800 text-white font-semibold text-xs rounded-lg shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.4)] transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
           >
             {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
             ) : (
               <>
-                <span>Open Circle</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <span>Find & Join Group</span>
+                <ArrowRight size={14} />
               </>
             )}
           </button>

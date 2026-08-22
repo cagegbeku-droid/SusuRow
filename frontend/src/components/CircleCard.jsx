@@ -1,194 +1,152 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Users, 
-  Coins, 
+  ArrowRight, 
+  ShieldCheck, 
+  RotateCw, 
   Shuffle, 
-  ListOrdered, 
   Gavel, 
-  Copy, 
-  Check, 
-  Lock, 
-  Globe, 
-  ArrowRight,
-  ShieldCheck,
-  RefreshCw
+  Lock,
+  Sparkles,
+  ChevronRight
 } from 'lucide-react';
 
 export const CircleCard = ({ circle, onSelect }) => {
-  const [copied, setCopied] = useState(false);
-
+  const isCompleted = circle.status === 'COMPLETED';
+  const isActive = circle.status === 'ACTIVE';
+  const isRecruiting = circle.status === 'RECRUITING';
   const isFull = circle.enrolled_count >= circle.members_count;
 
-  const copyInviteCode = (e) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(circle.invite_code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  // Percentage of enrolled members
+  const memberProgress = Math.min(
+    Math.round((circle.enrolled_count / circle.members_count) * 100),
+    100
+  );
 
-  const getRotationBadge = (type) => {
-    switch (type) {
-      case 'SEQUENTIAL':
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 border border-emerald-200">
-            <ListOrdered className="w-2.5 h-2.5" />
-            <span>Turn by Turn</span>
-          </span>
-        );
+  const getRotationIcon = () => {
+    switch (circle.rotation_type) {
       case 'BALLOT':
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-900 border border-purple-200">
-            <Shuffle className="w-2.5 h-2.5" />
-            <span>Ballot Draw</span>
-          </span>
-        );
+        return <Shuffle className="w-3.5 h-3.5 text-amber-400" />;
       case 'BIDDING':
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 text-amber-950 border border-amber-200">
-            <Gavel className="w-2.5 h-2.5" />
-            <span>Bids</span>
-          </span>
-        );
+        return <Gavel className="w-3.5 h-3.5 text-indigo-400" />;
       default:
-        return null;
+        return <RotateCw className="w-3.5 h-3.5 text-blue-400" />;
     }
   };
-
-  const getFrequencyBadge = (freq) => {
-    switch (freq) {
-      case 'DAILY':
-        return <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-blue-100 text-blue-900">Daily Cycle</span>;
-      case 'WEEKLY':
-        return <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-900">Weekly Cycle</span>;
-      case 'MONTHLY':
-        return <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-purple-100 text-purple-900">Monthly Cycle</span>;
-      default:
-        return <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-800">{freq}</span>;
-    }
-  };
-
-  const fillPercentage = Math.min(100, Math.round((circle.enrolled_count / circle.members_count) * 100));
 
   return (
-    <div 
+    <div
       onClick={() => onSelect(circle)}
-      className="bg-white rounded-3xl border border-slate-200 hover:border-primary-600 hover:shadow-lg transition-all flex flex-col justify-between overflow-hidden group cursor-pointer"
+      className="dark-card dark-card-hover rounded-3xl p-5 sm:p-6 text-white cursor-pointer relative overflow-hidden flex flex-col justify-between space-y-4 group"
     >
-      {/* Top Banner */}
-      <div className="p-5 pb-3 space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            {getFrequencyBadge(circle.frequency)}
-            {getRotationBadge(circle.rotation_type)}
-            {circle.is_private && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
-                <Lock className="w-2.5 h-2.5" />
-                <span>Private</span>
-              </span>
-            )}
+      {/* Top Header & Status Badges */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+              isCompleted
+                ? 'bg-slate-800 text-slate-400 border border-white/5'
+                : isActive
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                : 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
+            }`}>
+              {isCompleted ? 'Completed' : isActive ? `Active • Round ${circle.current_round}` : 'Recruiting'}
+            </span>
+
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 text-slate-300 border border-white/5">
+              {circle.frequency}
+            </span>
           </div>
 
-          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-            circle.status === 'COMPLETED'
-              ? 'bg-slate-100 text-slate-700'
-              : circle.status === 'ACTIVE'
-              ? 'bg-amber-100 text-amber-900 border border-amber-300'
-              : 'bg-primary-50 text-primary-900 border border-primary-200'
-          }`}>
-            {circle.status === 'COMPLETED' ? 'Completed' : circle.status === 'ACTIVE' ? `Cycle ${circle.current_round}` : 'Recruiting'}
+          <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400">
+            {getRotationIcon()}
+            <span className="capitalize">{circle.rotation_type.toLowerCase()}</span>
+          </div>
+
+        </div>
+
+        {/* Group Name & Description */}
+        <div>
+          <h3 className="text-base sm:text-lg font-black text-white group-hover:text-blue-400 transition-colors line-clamp-1">
+            {circle.name}
+          </h3>
+          <p className="text-xs text-slate-400 line-clamp-2 mt-0.5 leading-relaxed">
+            {circle.description || 'Save and rotate payouts on schedule with 0% interest.'}
+          </p>
+        </div>
+      </div>
+
+      {/* Center Pot & Contribution Metrics (Image 1 style) */}
+      <div className="bg-[#0E1322] rounded-2xl p-3.5 border border-white/5 grid grid-cols-2 gap-3 items-center">
+        <div>
+          <div className="text-[10px] uppercase font-bold text-slate-400">Total Pot per Turn</div>
+          <div className="text-xl font-black text-amber-400 font-mono">
+            GH₵{circle.total_pool?.toLocaleString()}
+          </div>
+        </div>
+
+        <div className="text-right">
+          <div className="text-[10px] uppercase font-bold text-slate-400">Contribution</div>
+          <div className="text-sm font-bold text-white font-mono">
+            GH₵{circle.contribution_amount}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Members Avatar Stack & Progress (Image 1 style) */}
+      <div className="space-y-2 pt-1 border-t border-white/5">
+        
+        <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+          <div className="flex items-center gap-2">
+            {/* Circular Avatar Stack */}
+            <div className="flex -space-x-2 overflow-hidden">
+              {[...Array(Math.min(circle.enrolled_count, 4))].map((_, i) => (
+                <div
+                  key={i}
+                  className="inline-block h-6 w-6 rounded-full ring-2 ring-[#141A2D] bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-[9px] font-black text-white"
+                >
+                  {String.fromCharCode(65 + i)}
+                </div>
+              ))}
+            </div>
+            <span className="text-[11px] text-slate-400 font-bold">
+              {circle.enrolled_count} of {circle.members_count} Savers
+            </span>
+          </div>
+
+          <span className="text-[11px] font-mono font-bold text-blue-400">
+            {memberProgress}%
           </span>
         </div>
 
-        {/* Title */}
-        <div>
-          <h3 className="text-base sm:text-lg font-bold text-slate-900 group-hover:text-primary-800 transition-colors line-clamp-1">
-            {circle.name}
-          </h3>
-          {circle.description && (
-            <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
-              {circle.description}
-            </p>
-          )}
+        {/* Multi-colored Progress Bar */}
+        <div className="w-full bg-[#0E1322] rounded-full h-1.5 overflow-hidden border border-white/5">
+          <div
+            className="bg-gradient-to-r from-blue-500 via-indigo-500 to-amber-400 h-full rounded-full transition-all duration-500"
+            style={{ width: `${memberProgress}%` }}
+          />
         </div>
 
-        {/* Pot & Contribution Metric Box */}
-        <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 rounded-2xl border border-slate-100">
-          <div>
-            <div className="text-[10px] font-semibold text-slate-500 uppercase">Total Pot</div>
-            <div className="text-base sm:text-lg font-black text-gold-600 font-mono">
-              GH₵{circle.total_pool?.toLocaleString()}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] font-semibold text-slate-500 uppercase">Contribution</div>
-            <div className="text-sm font-bold text-slate-900 font-mono">
-              GH₵{circle.contribution_amount}
-            </div>
-          </div>
-        </div>
+      </div>
 
-        {/* Members Count */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-slate-600 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-primary-700" />
-              <span>Group Members</span>
-            </span>
-            <span className="font-bold text-slate-900">
-              {circle.enrolled_count} of {circle.members_count}
-            </span>
-          </div>
-
-          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div 
-              className={`h-full rounded-full transition-all duration-500 ${
-                isFull ? 'bg-amber-500' : 'bg-primary-700'
-              }`}
-              style={{ width: `${fillPercentage}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Escrow Deposit if set */}
-        {circle.commitment_deposit > 0 && (
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-700 bg-slate-100/80 px-2 py-0.5 rounded-lg">
-            <ShieldCheck className="w-3 h-3 text-primary-700 shrink-0" />
-            <span>Deposit: <strong>GH₵{circle.commitment_deposit}</strong></span>
-          </div>
+      {/* Card Action Row */}
+      <div className="flex items-center justify-between pt-1">
+        {circle.commitment_deposit > 0 ? (
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+            <ShieldCheck size={11} />
+            <span>GH₵{circle.commitment_deposit} Deposit</span>
+          </span>
+        ) : (
+          <span className="text-[10px] text-slate-500 font-bold">0% Escrow Fee</span>
         )}
-      </div>
 
-      {/* Footer Actions */}
-      <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
-        <button
-          onClick={copyInviteCode}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-white text-slate-700 border border-slate-300 hover:border-primary-600 transition-all shadow-xs cursor-pointer"
-          title="Copy invite code"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3 h-3 text-primary-700" />
-              <span className="text-primary-700">Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy className="w-3 h-3 text-slate-400" />
-              <span>{circle.invite_code}</span>
-            </>
-          )}
-        </button>
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(circle);
-          }}
-          className="px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-primary-800 hover:bg-primary-900 transition-all flex items-center gap-1 cursor-pointer shadow"
-        >
+        <div className="inline-flex items-center gap-1 text-xs font-bold text-blue-400 group-hover:text-blue-300 transition-colors">
           <span>View Group</span>
-          <ArrowRight className="w-3 h-3" />
-        </button>
+          <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+        </div>
       </div>
+
     </div>
   );
 };
