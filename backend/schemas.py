@@ -101,6 +101,8 @@ class UserProfile(BaseModel):
     momo_provider: str
     is_verified: bool
     ghana_card_number: Optional[str] = None
+    trust_score: int = 100
+    on_time_payments_count: int = 0
     created_at: datetime
 
 
@@ -156,7 +158,29 @@ class MemberResponse(BaseModel):
     has_received_payout: bool
     deposit_paid: bool
     bid_amount: float
+    trust_score: int = 100
     joined_at: datetime
+
+
+# Chat & Messages Schemas
+class GroupMessageCreate(BaseModel):
+    group_id: str
+    sender_phone: str
+    sender_name: str
+    message_text: str = Field(..., min_length=1, max_length=1000)
+    is_announcement: bool = False
+
+
+class GroupMessageResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    group_id: str
+    sender_phone: str
+    sender_name: str
+    message_text: str
+    is_announcement: bool
+    created_at: datetime
 
 
 # Payment & Payout Schemas
@@ -172,7 +196,7 @@ class PaymentWebhookPayload(BaseModel):
     momo_provider: str
     phone_number: str
     amount: float
-    status: str = "SUCCESS" # SUCCESS or FAILED
+    status: str = "SUCCESS"
     network_transaction_id: Optional[str] = None
 
 
@@ -248,6 +272,7 @@ class GroupDetailResponse(GroupSummaryResponse):
     members: List[MemberResponse] = []
     payments: List[PaymentResponse] = []
     payouts: List[PayoutResponse] = []
+    messages: List[GroupMessageResponse] = []
     current_recipient: Optional[MemberResponse] = None
     all_current_round_paid: bool = False
     progress_percentage: float = 0.0

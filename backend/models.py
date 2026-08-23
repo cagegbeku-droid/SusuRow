@@ -50,6 +50,8 @@ class User(Base):
     hashed_pin = Column(String(128), nullable=True)
     is_verified = Column(Boolean, default=False, nullable=False)
     ghana_card_number = Column(String(30), nullable=True) # Optional Ghana Card (GHA-XXXXXXXXX-X)
+    trust_score = Column(Integer, default=100, nullable=False) # 0 to 100 Saver Reliability Score
+    on_time_payments_count = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -88,6 +90,7 @@ class SusuGroup(Base):
     members = relationship("GroupMember", back_populates="group", cascade="all, delete-orphan", order_by="GroupMember.payout_position")
     payments = relationship("ContributionPayment", back_populates="group", cascade="all, delete-orphan")
     payouts = relationship("PayoutDisbursement", back_populates="group", cascade="all, delete-orphan")
+    messages = relationship("GroupMessage", back_populates="group", cascade="all, delete-orphan", order_by="GroupMessage.created_at")
 
 
 class GroupMember(Base):
@@ -103,12 +106,28 @@ class GroupMember(Base):
     has_received_payout = Column(Boolean, default=False, nullable=False)
     deposit_paid = Column(Boolean, default=False, nullable=False)
     bid_amount = Column(Float, default=0.0, nullable=False) # For bidding scheme
+    trust_score = Column(Integer, default=100, nullable=False)
     joined_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
     group = relationship("SusuGroup", back_populates="members")
     payments = relationship("ContributionPayment", back_populates="member", cascade="all, delete-orphan")
     payouts = relationship("PayoutDisbursement", back_populates="member", cascade="all, delete-orphan")
+
+
+class GroupMessage(Base):
+    __tablename__ = "group_messages"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    group_id = Column(String(36), ForeignKey("susu_groups.id"), nullable=False)
+    sender_phone = Column(String(20), nullable=False)
+    sender_name = Column(String(100), nullable=False)
+    message_text = Column(Text, nullable=False)
+    is_announcement = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    group = relationship("SusuGroup", back_populates="messages")
 
 
 class ContributionPayment(Base):

@@ -95,6 +95,24 @@ export const submitBid = async (payload) => {
   return res.data;
 };
 
+// Chat & Messages Endpoints
+export const getGroupMessages = async (groupId) => {
+  const res = await api.get(`/chat/${groupId}/messages`);
+  return res.data;
+};
+
+export const sendGroupMessage = async (payload) => {
+  const res = await api.post('/chat/send', payload);
+  return res.data;
+};
+
+// Reminders
+export const triggerDueReminders = async (groupId) => {
+  const params = groupId ? `?group_id=${groupId}` : '';
+  const res = await api.post(`/reminders/send-due-reminders${params}`);
+  return res.data;
+};
+
 export const initiatePayment = async (payload) => {
   const res = await api.post('/payments/initiate', payload);
   return res.data;

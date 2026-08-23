@@ -19,20 +19,25 @@ import {
   Lock,
   RotateCw,
   Coins,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  Bell,
+  Star
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { 
   getGroupDetail, 
   joinGroup, 
   advanceRound, 
-  deleteGroup 
+  deleteGroup,
+  triggerDueReminders 
 } from '../api/client';
 import { RotationalTimeline } from '../components/RotationalTimeline';
 import { MoMoPaymentModal } from '../components/MoMoPaymentModal';
 import { BallotDrawModal } from '../components/BallotDrawModal';
 import { BiddingModal } from '../components/BiddingModal';
 import { ShareModal } from '../components/ShareModal';
+import { GroupChatModal } from '../components/GroupChatModal';
 import { TransactionLedger } from '../components/TransactionLedger';
 import confetti from 'canvas-confetti';
 
@@ -48,10 +53,12 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isBallotModalOpen, setIsBallotModalOpen] = useState(false);
   const [isBiddingModalOpen, setIsBiddingModalOpen] = useState(false);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [selectedPaymentMember, setSelectedPaymentMember] = useState(null);
   const [isEscrowPayment, setIsEscrowPayment] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [reminderStatus, setReminderStatus] = useState(null);
 
   const fetchDetail = async () => {
     setLoading(true);
@@ -166,6 +173,19 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
     }
   };
 
+  const handleSendReminders = async () => {
+    setActionLoading(true);
+    try {
+      const res = await triggerDueReminders(group.id);
+      setReminderStatus(`SMS Reminders sent to ${res.total_reminded} members!`);
+      setTimeout(() => setReminderStatus(null), 4000);
+    } catch (err) {
+      alert('Failed to send SMS reminders.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleDeleteGroup = async () => {
     if (!user) return;
     setActionLoading(true);
@@ -206,7 +226,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
   return (
     <div className="space-y-6 pb-12">
       
-      {/* 🧭 Top Navigation & Share Actions */}
+      {/* 🧭 Top Navigation & Actions */}
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
@@ -217,6 +237,15 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </button>
 
         <div className="flex items-center gap-2">
+          {/* Chat Button */}
+          <button
+            onClick={() => setIsChatModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-white font-bold text-xs transition-all cursor-pointer shadow-sm"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+            <span>Group Chat</span>
+          </button>
+
           {/* Share */}
           <button
             onClick={() => setIsShareModalOpen(true)}
@@ -225,6 +254,19 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             <Share2 className="w-3.5 h-3.5 text-blue-400" />
             <span>Share</span>
           </button>
+
+          {/* Send SMS Due Reminders (Creator Only) */}
+          {isCreator && group.status === 'ACTIVE' && (
+            <button
+              onClick={handleSendReminders}
+              disabled={actionLoading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs transition-all cursor-pointer shadow-sm"
+              title="Send SMS Payment Reminders to Due Members"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">SMS Reminders</span>
+            </button>
+          )}
 
           {/* Delete (Creator Only) */}
           {isCreator && (
@@ -248,10 +290,14 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </div>
       </div>
 
-      {/* 💳 Hero Pot & Cycle Banner (Inspired by Image 1) */}
+      {reminderStatus && (
+        <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold text-center animate-in fade-in">
+          {reminderStatus}
+        </div>
+      )}
+
+      {/* 💳 Hero Pot & Cycle Banner */}
       <div className="relative overflow-hidden rounded-3xl sm:rounded-[2rem] bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-6 sm:p-8 text-white shadow-[0_15px_35px_-5px_rgba(59,130,246,0.5)]">
-        
-        {/* Glow Element */}
         <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none"></div>
 
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
@@ -369,6 +415,15 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             </button>
           )}
 
+          {/* Group Chat Button */}
+          <button
+            onClick={() => setIsChatModalOpen(true)}
+            className="px-3.5 py-2.5 bg-[#1C233A] hover:bg-[#252E4B] text-slate-200 font-bold text-xs rounded-2xl border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <MessageSquare className="w-4 h-4 text-blue-400" />
+            <span>Chat</span>
+          </button>
+
           {group.rotation_type === 'BIDDING' && isEnrolled && !isCompleted && (
             <button
               onClick={() => setIsBiddingModalOpen(true)}
@@ -405,7 +460,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
       {/* 🔄 Cycle Rotational Timeline */}
       <RotationalTimeline group={group} />
 
-      {/* 👥 Group Members Table */}
+      {/* 👥 Group Members Table with Saver Trust Scores */}
       <div className="dark-card rounded-3xl overflow-hidden shadow-lg border border-white/5">
         <div className="p-4 sm:p-5 border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -422,7 +477,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             <thead className="bg-[#0E1322] text-slate-400 font-bold uppercase tracking-wider text-[10px] border-b border-white/5">
               <tr>
                 <th className="py-3 px-4">Turn</th>
-                <th className="py-3 px-4">Member</th>
+                <th className="py-3 px-4">Saver & Reliability</th>
                 <th className="py-3 px-4">Network</th>
                 <th className="py-3 px-4">Round {group.current_round}</th>
                 <th className="py-3 px-4">Payout</th>
@@ -454,13 +509,17 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                     </td>
 
                     <td className="py-3 px-4">
-                      <div className="font-bold text-white flex items-center gap-1.5">
+                      <div className="font-bold text-white flex items-center gap-1.5 flex-wrap">
                         <span>{member.full_name}</span>
                         {isCurrentUserRow && (
                           <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 font-black text-[9px] px-1.5 py-0.2 rounded-md">
                             YOU
                           </span>
                         )}
+                        <span className="inline-flex items-center gap-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[9px] font-black px-1.5 py-0.2 rounded">
+                          <Star size={9} className="fill-amber-400 text-amber-400" />
+                          <span>{member.trust_score || 100}% Trust</span>
+                        </span>
                       </div>
                       <div className="text-[10px] font-mono text-slate-400 mt-0.5">{member.phone_number}</div>
                     </td>
@@ -581,6 +640,13 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           </div>
         </div>
       )}
+
+      {/* In-Group Chat Activity Modal */}
+      <GroupChatModal
+        isOpen={isChatModalOpen}
+        onClose={() => setIsChatModalOpen(false)}
+        group={group}
+      />
 
       {/* Multi-Platform Share Modal */}
       <ShareModal

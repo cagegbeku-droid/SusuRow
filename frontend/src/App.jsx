@@ -8,11 +8,12 @@ import { ReferralModal } from './components/ReferralModal';
 import { CreateCircleModal } from './components/CreateCircleModal';
 import { JoinCodeModal } from './components/JoinCodeModal';
 import { SusuCalculator } from './components/SusuCalculator';
+import { TermsModal } from './components/TermsModal';
 import { MarketplacePage } from './pages/MarketplacePage';
 import { CircleDetailPage } from './pages/CircleDetailPage';
 import { MyCirclesPage } from './pages/MyCirclesPage';
 import { getPlatformStats, getGroupByCode } from './api/client';
-import { ShieldCheck, Loader2 } from 'lucide-react';
+import { ShieldCheck, Loader2, Globe, Building2 } from 'lucide-react';
 
 function AppContent() {
   const { user, isAuthenticated, loading, isAuthModalOpen, openAuthModal, closeAuthModal } = useUser();
@@ -33,6 +34,7 @@ function AppContent() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinCodeModalOpen, setIsJoinCodeModalOpen] = useState(false);
   const [isCalculatorModalOpen, setIsCalculatorModalOpen] = useState(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -126,6 +128,7 @@ function AppContent() {
         onOpenJoinCodeModal={() => setIsJoinCodeModalOpen(true)}
         onOpenCalculator={() => setIsCalculatorModalOpen(true)}
         onOpenReferralModal={handleOpenReferralModal}
+        onOpenTermsModal={() => setIsTermsModalOpen(true)}
       />
 
       {/* Top Navbar */}
@@ -173,25 +176,43 @@ function AppContent() {
         )}
       </main>
 
-      {/* Footer */}
+      {/* Footer with Coratech Global Corporate Branding */}
       <footer className="bg-[#05070D] text-slate-400 border-t border-white/5 py-8 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             
+            {/* Brand & Coratech Global Info */}
             <div className="space-y-3 md:col-span-2">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-base shadow">
                   ₵
                 </div>
                 <span className="text-xl font-black text-white">Susu<span className="text-amber-400">Row</span></span>
-                <span className="text-[10px] font-black bg-blue-600/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full">GHANA DIGITAL ROSCA</span>
+                <span className="text-[10px] font-black bg-blue-600/20 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-full">
+                  GHANA DIGITAL ROSCA
+                </span>
               </div>
               <p className="text-xs text-slate-400 max-w-md">
-                Communal Susu rotational peer savings with automated Ghana Mobile Money payouts.
+                Communal Susu rotational savings with automated Ghana Mobile Money payouts. Engineered by <strong>Coratech Global</strong>.
               </p>
+
+              <div className="pt-1 flex items-center gap-4 text-xs font-semibold text-slate-400">
+                <a 
+                  href="https://coratechglobal.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline flex items-center gap-1"
+                >
+                  <Globe size={13} />
+                  <span>coratechglobal.com</span>
+                </a>
+                <span>•</span>
+                <span className="text-slate-400">@coratechglobal</span>
+              </div>
             </div>
 
+            {/* Networks */}
             <div>
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-3">Supported Networks</h4>
               <ul className="space-y-1.5 text-xs text-slate-300 font-medium">
@@ -210,13 +231,14 @@ function AppContent() {
               </ul>
             </div>
 
+            {/* Quick Links & Terms */}
             <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-3">Quick Tools</h4>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-3">Platform & Legal</h4>
               <ul className="space-y-1.5 text-xs text-slate-400 font-medium">
+                <li><button onClick={() => setIsTermsModalOpen(true)} className="hover:text-blue-400 transition-colors cursor-pointer">• Terms of Service & Privacy</button></li>
                 <li><button onClick={handleOpenReferralModal} className="hover:text-amber-300 transition-colors cursor-pointer">• Refer & Earn Hub</button></li>
-                <li><button onClick={() => setIsCalculatorModalOpen(true)} className="hover:text-amber-300 transition-colors cursor-pointer">• Pot & Turn Calculator</button></li>
+                <li><button onClick={() => setIsCalculatorModalOpen(true)} className="hover:text-amber-300 transition-colors cursor-pointer">• Pot Calculator</button></li>
                 <li><button onClick={() => setIsJoinCodeModalOpen(true)} className="hover:text-amber-300 transition-colors cursor-pointer">• Enter Group Code</button></li>
-                <li><button onClick={handleOpenCreateModal} className="hover:text-amber-300 transition-colors cursor-pointer">• Create Susu Group</button></li>
               </ul>
             </div>
 
@@ -224,13 +246,16 @@ function AppContent() {
 
           <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
             <div>
-              © 2026 SusuRow Ghana Ltd.
+              © 2026 SusuRow Ghana. Built by <strong className="text-slate-300">Coratech Global</strong>.
             </div>
             <div className="flex items-center space-x-4">
-              <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+              <button 
+                onClick={() => setIsTermsModalOpen(true)}
+                className="flex items-center gap-1 text-emerald-400 font-semibold hover:underline cursor-pointer"
+              >
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Bank of Ghana Partner Standards</span>
-              </span>
+                <span>Bank of Ghana Security Standards</span>
+              </button>
             </div>
           </div>
 
@@ -278,6 +303,10 @@ function AppContent() {
         onLaunchCircle={(cfg) => {
           handleOpenCreateModal();
         }}
+      />
+      <TermsModal
+        isOpen={isTermsModalOpen}
+        onClose={() => setIsTermsModalOpen(false)}
       />
 
     </div>

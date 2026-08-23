@@ -11,8 +11,8 @@ class GhanaMoMoGateway:
     """
     Production-ready Ghana Mobile Money Gateway
     Supports:
-      - Paystack Ghana (MTN MoMo, Telecel Cash, AT Money)
-      - Hubtel Merchant Payment API
+      - Paystack Ghana Inbound Charges (MTN MoMo, Telecel Cash, AT Money)
+      - Paystack Ghana Outbound Transfers (Direct Mobile Money Disbursement)
       - Local Simulation Mode for development testing
     """
 
@@ -22,9 +22,6 @@ class GhanaMoMoGateway:
         return {
             "PAYSTACK_SECRET_KEY": os.getenv("PAYSTACK_SECRET_KEY", "").strip(),
             "PAYSTACK_PUBLIC_KEY": os.getenv("PAYSTACK_PUBLIC_KEY", "").strip(),
-            "HUBTEL_CLIENT_ID": os.getenv("HUBTEL_CLIENT_ID", "").strip(),
-            "HUBTEL_CLIENT_SECRET": os.getenv("HUBTEL_CLIENT_SECRET", "").strip(),
-            "HUBTEL_MERCHANT_ACCOUNT_NUMBER": os.getenv("HUBTEL_MERCHANT_ACCOUNT_NUMBER", "").strip(),
         }
 
     @classmethod
@@ -38,6 +35,18 @@ class GhanaMoMoGateway:
         elif p in ["AT", "AIRTELTIGO"]:
             return "tgo"
         return "mtn"
+
+    @classmethod
+    def _map_paystack_bank_code(cls, provider: str) -> str:
+        """Map telecom provider to Paystack Ghana Mobile Money bank code."""
+        p = provider.upper()
+        if p == "MTN":
+            return "MTN"
+        elif p in ["TELECEL", "VODAFONE"]:
+            return "VOD"
+        elif p in ["AT", "AIRTELTIGO"]:
+            return "ATL"
+        return "MTN"
 
     @classmethod
     async def charge_momo(
@@ -92,7 +101,7 @@ class GhanaMoMoGateway:
                         timeout=15.0
                     )
                     data = resp.json()
-                    print(f"[Paystack Ghana MoMo Response]: Status {resp.status_code} - {data}")
+                    print(f"[Paystack Ghana MoMo Charge]: Status {resp.status_code} - {data}")
 
                     if data.get("status"):
                         charge_data = data.get("data", {})
@@ -124,6 +133,91 @@ class GhanaMoMoGateway:
             "ussd_prompt": f"Authorize payment of GH₵{amount_ghs:.2f} to SusuRow on {clean_phone} ({provider}).",
             "message": "Simulated USSD dispatched. Configure PAYSTACK_SECRET_KEY in .env for live debit prompts."
         }
+
+    @classmethod
+    async def create_transfer_recipient(
+        cls,
+        name: str,
+        phone_number: str,
+        provider: str
+    ) -> Dict[str, Any]:
+        """
+        Creates a Paystack Transfer Recipient for direct MoMo payout disbursement.
+        """
+        keys = cls.get_keys()
+        clean_phone = phone_number.replace("+233", "0").replace(" ", "").replace("-", "").strip()
+        if clean_phone.startswith("233"):
+            clean_phone = "0" + clean_phone[3:]
+
+        if keys["PAYSTACK_SECRET_KEY"]:
+            try:
+                bank_code = cls._map_paystack_bank_code(provider)
+                async with httpx.AsyncClient() as client:
+                    resp = await client.post(
+                        "https://api.paystack.co/transferrecipient",
+                        headers={
+                            "Authorization": f"Bearer {keys['PAYSTACK_SECRET_KEY']}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "type": "mobile_money",
+                            "name": name,
+                            "account_number": clean_phone,
+                            "bank_code": bank_code,
+                            "currency": "GHS"
+                        },
+                        timeout=10.0
+                    )
+                    data = resp.json()
+                    if data.get("status"):
+                        recipient_code = data["data"]["recipient_code"]
+                        return {"success": True, "recipient_code": recipient_code}
+                    return {"success": False, "error": data.get("message")}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        return {"success": True, "recipient_code": f"RCP_SIM_{clean_phone}"}
+
+    @classmethod
+    async def initiate_transfer(
+        cls,
+        amount_ghs: float,
+        recipient_code: str,
+        reference: str,
+        reason: str = "SusuRow Pot Payout"
+    ) -> Dict[str, Any]:
+        """
+        Initiates outbound Paystack transfer directly into recipient's MoMo wallet.
+        """
+        keys = cls.get_keys()
+        if keys["PAYSTACK_SECRET_KEY"]:
+            try:
+                amount_in_pesewas = int(round(amount_ghs * 100))
+                async with httpx.AsyncClient() as client:
+                    resp = await client.post(
+                        "https://api.paystack.co/transfer",
+                        headers={
+                            "Authorization": f"Bearer {keys['PAYSTACK_SECRET_KEY']}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "source": "balance",
+                            "amount": str(amount_in_pesewas),
+                            "recipient": recipient_code,
+                            "reason": reason,
+                            "reference": reference,
+                            "currency": "GHS"
+                        },
+                        timeout=15.0
+                    )
+                    data = resp.json()
+                    if data.get("status"):
+                        return {"success": True, "data": data.get("data")}
+                    return {"success": False, "error": data.get("message")}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+        return {"success": True, "message": "Transfer simulated"}
 
     @classmethod
     async def verify_payment(cls, reference: str) -> Dict[str, Any]:

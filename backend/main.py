@@ -3,13 +3,15 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
-import models # Ensure all SQLAlchemy models are registered on Base.metadata
+import models
 from routes.auth import router as auth_router
 from routes.groups import router as groups_router
 from routes.members import router as members_router
 from routes.payments import router as payments_router
 from routes.rotation import router as rotation_router
 from routes.stats import router as stats_router
+from routes.chat import router as chat_router
+from routes.reminders import router as reminders_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,9 +24,9 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(
-    title="SusuRow API - Production Ghanaian ROSCA Platform",
-    description="Production digital West African Susu rotational savings with Ghana Mobile Money settlement engine.",
-    version="1.0.0",
+    title="SusuRow API - Digital ROSCA Platform (by Coratech Global)",
+    description="Digital Ghanaian Susu rotational savings with Ghana Mobile Money settlement engine.",
+    version="1.5.0",
     lifespan=lifespan
 )
 
@@ -44,15 +46,17 @@ app.include_router(members_router)
 app.include_router(payments_router)
 app.include_router(rotation_router)
 app.include_router(stats_router)
+app.include_router(chat_router)
+app.include_router(reminders_router)
 
 @app.get("/")
 def root():
     return {
         "app": "SusuRow API",
+        "developer": "Coratech Global (coratechglobal.com)",
         "environment": "production",
-        "description": "Production Digital Rotating Savings & Credit Association (ROSCA) for Ghana",
         "status": "online",
-        "version": "1.0.0",
+        "version": "1.5.0",
         "currency": "GHS (Ghanaian Cedi GH₵)",
         "supported_momo": ["MTN Mobile Money", "Telecel Cash", "AT Money"]
     }

@@ -18,7 +18,9 @@ import {
   ChevronRight,
   ExternalLink,
   MessageCircle,
-  Sparkles
+  Sparkles,
+  Building2,
+  FileText
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
@@ -30,7 +32,8 @@ export default function AppSidebar({
   onOpenCreateModal,
   onOpenJoinCodeModal,
   onOpenCalculator,
-  onOpenReferralModal
+  onOpenReferralModal,
+  onOpenTermsModal
 }) {
   const {
     user,
@@ -125,7 +128,7 @@ export default function AppSidebar({
         aria-hidden="true"
       />
 
-      {/* Slide-over Drawer (Inspired by Image 2) */}
+      {/* Slide-over Drawer */}
       <aside
         className={`fixed top-0 left-0 bottom-0 z-50 w-[85vw] max-w-sm bg-[#0E1322] border-r border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col transition-transform duration-300 ease-in-out transform ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
@@ -146,7 +149,7 @@ export default function AppSidebar({
                 <span className="text-amber-400">Row</span>
               </div>
               <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-                Ghana Digital ROSCA
+                By Coratech Global
               </div>
             </div>
           </div>
@@ -163,7 +166,7 @@ export default function AppSidebar({
         {/* Drawer Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           
-          {/* User Profile Card (Image 2 style) */}
+          {/* User Profile Card */}
           {isAuthenticated ? (
             <div className="bg-[#141A2D] border border-white/10 rounded-3xl p-4 space-y-3 shadow-lg">
               <div className="flex items-center gap-3">
@@ -188,7 +191,7 @@ export default function AppSidebar({
                 {getProviderBadge(user?.momo_provider)}
                 <span className="flex items-center gap-1 text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                   <ShieldCheck size={12} />
-                  <span>Verified</span>
+                  <span>Verified Saver</span>
                 </span>
               </div>
             </div>
@@ -211,7 +214,7 @@ export default function AppSidebar({
             </div>
           )}
 
-          {/* Navigation Links (Image 2 style with pills) */}
+          {/* Navigation Links */}
           <div className="space-y-1.5">
             <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 px-3 mb-1">
               Menu Navigation
@@ -311,9 +314,25 @@ export default function AppSidebar({
               </div>
               <ChevronRight size={14} className="text-slate-500" />
             </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                if (onOpenTermsModal) onOpenTermsModal();
+              }}
+              className="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold text-slate-300 hover:bg-white/5 hover:text-white transition-all cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-1.5 rounded-xl bg-[#141A2D] text-slate-400">
+                  <FileText size={16} />
+                </div>
+                <span>Terms & Compliance</span>
+              </div>
+              <ChevronRight size={14} className="text-slate-500" />
+            </button>
           </div>
 
-          {/* 🎁 Floating Refer & Earn Card (Image 2 style) */}
+          {/* 🎁 Floating Refer & Earn Card */}
           <div className="bg-gradient-to-br from-blue-600/20 via-indigo-600/30 to-[#141A2D] border border-blue-500/30 rounded-3xl p-4 space-y-3 relative overflow-hidden shadow-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -378,6 +397,26 @@ export default function AppSidebar({
             </div>
           </div>
 
+          {/* Coratech Global Developer Info Card */}
+          <div className="bg-[#141A2D] border border-blue-500/20 rounded-3xl p-3.5 space-y-2">
+            <div className="flex items-center gap-2">
+              <Building2 size={16} className="text-blue-400" />
+              <span className="text-xs font-bold text-white">Coratech Global</span>
+            </div>
+            <p className="text-[10px] text-slate-400">
+              IT Support, Web Design, Custom Software & Digital FinTech Solutions.
+            </p>
+            <a
+              href="https://coratechglobal.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] font-bold text-blue-400 hover:underline flex items-center justify-between pt-1"
+            >
+              <span>coratechglobal.com</span>
+              <ExternalLink size={11} />
+            </a>
+          </div>
+
           {/* Senior / High-Legibility Mode Switch */}
           <div className="bg-[#141A2D] border border-white/5 rounded-3xl p-3.5 space-y-1.5">
             <div className="flex items-center justify-between">
@@ -405,22 +444,6 @@ export default function AppSidebar({
             </p>
           </div>
 
-          {/* Direct WhatsApp Help */}
-          <div>
-            <a
-              href="https://wa.me/233248355112?text=Hello%20SusuRow%20Support,%20I%20need%20assistance"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-3 px-4 rounded-3xl border border-white/10 bg-[#141A2D] hover:bg-[#1C233A] text-slate-300 hover:text-white text-xs font-bold flex items-center justify-between transition-all"
-            >
-              <div className="flex items-center gap-2">
-                <MessageCircle size={16} className="text-emerald-400" />
-                <span>WhatsApp Customer Help</span>
-              </div>
-              <ExternalLink size={13} className="text-slate-500" />
-            </a>
-          </div>
-
         </div>
 
         {/* Drawer Footer */}
@@ -439,7 +462,7 @@ export default function AppSidebar({
           )}
 
           <div className="text-center text-[10px] text-slate-500 font-semibold">
-            SusuRow v1.5.0 • Bank of Ghana Security Standards
+            SusuRow • Developed by Coratech Global
           </div>
         </div>
 

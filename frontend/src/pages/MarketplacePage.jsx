@@ -11,7 +11,9 @@ import {
   Gavel,
   ShieldCheck,
   Sparkles,
-  Plus
+  Plus,
+  TrendingUp,
+  Building2
 } from 'lucide-react';
 import { getGroups } from '../api/client';
 import { CircleCard } from '../components/CircleCard';
@@ -58,14 +60,8 @@ export const MarketplacePage = ({
     fetchCircles();
   };
 
-  // Mock avatar portraits for "Recent Savers / Active Turns" row (Image 1 style)
-  const activeSavers = [
-    { name: "Kofi", initial: "K", round: "Turn 1", color: "from-blue-600 to-indigo-600" },
-    { name: "Ama", initial: "A", round: "Turn 2", color: "from-amber-500 to-amber-600" },
-    { name: "Kwame", initial: "K", round: "Turn 3", color: "from-emerald-500 to-teal-600" },
-    { name: "Akosua", initial: "A", round: "Turn 4", color: "from-rose-500 to-pink-600" },
-    { name: "Yaw", initial: "Y", round: "Turn 5", color: "from-violet-600 to-purple-600" },
-  ];
+  // Collect active enrolled members dynamically from real loaded groups (no demo/mock data)
+  const realActiveGroups = groups.filter(g => g.enrolled_count > 0);
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-10">
@@ -78,50 +74,62 @@ export const MarketplacePage = ({
         openCalculatorModal={openCalculatorModal}
       />
 
-      {/* 👥 Recent Savers in Rotation Row (Inspired by Image 1) */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <Sparkles size={14} className="text-amber-400" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-300">
-              Active Savers & Turn Recipients
-            </h3>
+      {/* Coratech Global Corporate Trust Badge */}
+      <div className="bg-[#0E1322] border border-blue-500/20 rounded-2xl p-3 sm:px-4 sm:py-3 flex items-center justify-between gap-3 text-xs shadow-sm">
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          <div className="w-7 h-7 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center font-black">
+            <Building2 size={15} />
           </div>
-          <span className="text-[10px] font-bold text-slate-500">Live Community</span>
+          <div>
+            <span className="font-black text-white">Engineered by Coratech Global</span>
+            <span className="text-[11px] text-slate-400 hidden sm:inline ml-2">• Enterprise ROSCA FinTech Platform</span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-          {/* Add / Invite Button Circle */}
-          <button
-            onClick={() => {
-              if (!isAuthenticated) openAuthModal();
-              else openCreateModal();
-            }}
-            className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer group"
-          >
-            <div className="w-13 h-13 rounded-full bg-[#141A2D] hover:bg-[#1C233A] border-2 border-dashed border-white/20 hover:border-blue-400 text-slate-400 hover:text-white flex items-center justify-center transition-all group-active:scale-95 shadow-md">
-              <Plus size={20} />
-            </div>
-            <span className="text-[11px] font-bold text-slate-400">Join</span>
-          </button>
-
-          {/* Saver Avatar Circles */}
-          {activeSavers.map((saver, idx) => (
-            <div
-              key={idx}
-              className="flex flex-col items-center gap-1.5 shrink-0"
-            >
-              <div className={`w-13 h-13 rounded-full bg-gradient-to-tr ${saver.color} text-white font-black text-base flex items-center justify-center shadow-lg ring-2 ring-[#080B11]`}>
-                {saver.initial}
-              </div>
-              <div className="text-center">
-                <div className="text-[11px] font-bold text-white leading-none">{saver.name}</div>
-                <div className="text-[9px] font-semibold text-slate-400 mt-0.5">{saver.round}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <a 
+          href="https://coratechglobal.com" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-[11px] font-bold text-blue-400 hover:text-blue-300 transition-colors shrink-0 font-mono"
+        >
+          coratechglobal.com →
+        </a>
       </div>
+
+      {/* Live Active Groups Quick Bar (Dynamic Real Data Only) */}
+      {realActiveGroups.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="text-amber-400" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-300">
+                Active Rotating Circles
+              </h3>
+            </div>
+            <span className="text-[10px] font-bold text-slate-500">Live Network</span>
+          </div>
+
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-none">
+            {realActiveGroups.map((g) => (
+              <button
+                key={g.id}
+                onClick={() => onSelectCircle(g)}
+                className="flex items-center gap-2 bg-[#141A2D] hover:bg-[#1C233A] border border-white/5 px-3.5 py-2 rounded-2xl shrink-0 transition-all cursor-pointer text-left"
+              >
+                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-xs flex items-center justify-center">
+                  ₵
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-white truncate max-w-[130px]">{g.name}</div>
+                  <div className="text-[10px] text-amber-400 font-mono font-bold">
+                    GH₵{g.total_pool?.toLocaleString()} pot
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 🔍 Search & Filters Bar */}
       <div className="space-y-3">
@@ -131,7 +139,7 @@ export const MarketplacePage = ({
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Search Susu groups (e.g. Accra Traders, Tech Savers)..."
+            placeholder="Search Susu groups by name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-11 pr-24 py-3 rounded-2xl sm:rounded-3xl bg-[#141A2D] border border-white/10 text-white placeholder-slate-500 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-md"
