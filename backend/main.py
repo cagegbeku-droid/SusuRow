@@ -17,47 +17,53 @@ from routes.chat import router as chat_router
 from routes.reminders import router as reminders_router
 
 def auto_migrate_schema():
-    """Ensures newly added columns exist in both PostgreSQL (Supabase / Render) and SQLite."""
+    """Ensures all columns exist in PostgreSQL (Supabase / Render) and SQLite."""
     results = []
-    columns_to_add = [
-        ("username", "VARCHAR(50)"),
-        ("email", "VARCHAR(120)"),
-        ("avatar_url", "TEXT"),
-        ("security_pin_hash", "VARCHAR(256)"),
-        ("tier", "VARCHAR(20) DEFAULT 'BRONZE'"),
-        ("points", "INTEGER DEFAULT 50"),
-        ("date_of_birth", "VARCHAR(20)"),
-        ("nationality", "VARCHAR(50) DEFAULT 'Ghanaian'"),
-        ("kyc_status", "VARCHAR(20) DEFAULT 'UNVERIFIED'"),
-        ("ghana_card_number", "VARCHAR(30)"),
-        ("next_of_kin_name", "VARCHAR(100)"),
-        ("next_of_kin_phone", "VARCHAR(20)"),
-        ("next_of_kin_relation", "VARCHAR(50)"),
-        ("employment_status", "VARCHAR(50)"),
-        ("savings_goal", "VARCHAR(100)"),
-        ("signature_data", "TEXT"),
-        ("primary_wallet_provider", "VARCHAR(20) DEFAULT 'MTN'"),
-        ("primary_wallet_number", "VARCHAR(30)"),
-        ("bank_name", "VARCHAR(100)"),
-        ("bank_account_number", "VARCHAR(50)"),
-        ("bank_branch", "VARCHAR(50)"),
-        ("auto_debit_enabled", "BOOLEAN DEFAULT FALSE"),
-        ("auto_debit_frequency", "VARCHAR(20) DEFAULT 'WEEKLY'"),
-        ("auto_debit_time", "VARCHAR(10) DEFAULT '08:00'"),
-        ("is_active", "BOOLEAN DEFAULT TRUE"),
+    
+    # Table migrations: (table_name, column_name, column_type)
+    migrations = [
+        ("users", "username", "VARCHAR(50)"),
+        ("users", "email", "VARCHAR(120)"),
+        ("users", "avatar_url", "TEXT"),
+        ("users", "security_pin_hash", "VARCHAR(256)"),
+        ("users", "tier", "VARCHAR(20) DEFAULT 'BRONZE'"),
+        ("users", "points", "INTEGER DEFAULT 50"),
+        ("users", "trust_score", "INTEGER DEFAULT 100"),
+        ("users", "on_time_payments_count", "INTEGER DEFAULT 0"),
+        ("users", "date_of_birth", "VARCHAR(20)"),
+        ("users", "nationality", "VARCHAR(50) DEFAULT 'Ghanaian'"),
+        ("users", "kyc_status", "VARCHAR(20) DEFAULT 'UNVERIFIED'"),
+        ("users", "ghana_card_number", "VARCHAR(30)"),
+        ("users", "next_of_kin_name", "VARCHAR(100)"),
+        ("users", "next_of_kin_phone", "VARCHAR(20)"),
+        ("users", "next_of_kin_relation", "VARCHAR(50)"),
+        ("users", "employment_status", "VARCHAR(50)"),
+        ("users", "savings_goal", "VARCHAR(100)"),
+        ("users", "signature_data", "TEXT"),
+        ("users", "primary_wallet_provider", "VARCHAR(20) DEFAULT 'MTN'"),
+        ("users", "primary_wallet_number", "VARCHAR(30)"),
+        ("users", "bank_name", "VARCHAR(100)"),
+        ("users", "bank_account_number", "VARCHAR(50)"),
+        ("users", "bank_branch", "VARCHAR(50)"),
+        ("users", "auto_debit_enabled", "BOOLEAN DEFAULT FALSE"),
+        ("users", "auto_debit_frequency", "VARCHAR(20) DEFAULT 'WEEKLY'"),
+        ("users", "auto_debit_time", "VARCHAR(10) DEFAULT '08:00'"),
+        ("users", "is_active", "BOOLEAN DEFAULT TRUE"),
+        ("group_members", "trust_score", "INTEGER DEFAULT 100"),
+        ("group_members", "bid_amount", "FLOAT DEFAULT 0.0"),
     ]
     
     is_sqlite = engine.dialect.name == "sqlite"
-    for col_name, col_type in columns_to_add:
+    for table_name, col_name, col_type in migrations:
         try:
             with engine.begin() as conn:
                 if is_sqlite:
-                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}"))
                 else:
-                    conn.execute(text(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
-            results.append(f"Added/Verified {col_name}")
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+            results.append(f"Verified {table_name}.{col_name}")
         except Exception as e:
-            results.append(f"Notice for {col_name}: {str(e)}")
+            results.append(f"Notice {table_name}.{col_name}: {str(e)}")
     return results
 
 @asynccontextmanager
