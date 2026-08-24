@@ -1,4 +1,5 @@
 import uuid
+import re
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from sqlalchemy.orm import Session
@@ -89,7 +90,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         primary_wallet_number=clean_phone,
         hashed_password=pwd_hash,
         tier=UserTier.BRONZE.value,
-        points=50, # Initial welcome bonus points
+        points=50,
         trust_score=100,
         is_verified=False,
         kyc_status=KYCStatus.UNVERIFIED.value,
@@ -162,11 +163,18 @@ def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
             phone_seed = f"024{random_digits(7)}"
             clean_phone = sanitize_ghana_phone(phone_seed)
 
+        # Unique sanitized username
+        base_username = payload.email.split("@")[0] if payload.email else f"saver_{clean_phone[-4:]}"
+        base_username = re.sub(r'[^a-zA-Z0-9_]', '', base_username).lower()
+        candidate_username = base_username or f"saver_{clean_phone[-4:]}"
+        if db.query(User).filter(User.username == candidate_username).first():
+            candidate_username = f"{candidate_username}_{random_digits(3)}"
+
         user = User(
             id=str(uuid.uuid4()),
             phone_number=clean_phone,
             full_name=payload.name.strip(),
-            username=payload.email.split("@")[0] if payload.email else f"saver_{clean_phone[-4:]}",
+            username=candidate_username,
             email=payload.email.strip().lower() if payload.email else None,
             avatar_url=payload.picture,
             momo_provider="MTN",
@@ -312,7 +320,6 @@ def update_profile(
     if payload.full_name and payload.full_name.strip():
         current_user.full_name = payload.full_name.strip()
     if payload.username and payload.username.strip():
-        # Check if username is taken by another user
         uname = payload.username.strip().lower().replace("@", "")
         existing = db.query(User).filter(User.username == uname, User.id != current_user.id).first()
         if existing:
@@ -359,14 +366,12 @@ def submit_kyc(
     if payload.signature_data:
         current_user.signature_data = payload.signature_data
 
-    # Verify and upgrade tier
     current_user.kyc_status = KYCStatus.VERIFIED.value
     current_user.is_verified = True
     
-    # Award KYC Bonus points & upgrade tier
     if current_user.tier == UserTier.BRONZE.value:
         current_user.tier = UserTier.SILVER.value
-        current_user.points += 100 # +100 bonus points for full KYC verification
+        current_user.points += 100
 
     current_user.updated_at = datetime.utcnow()
     db.commit()
@@ -445,7 +450,6 @@ def delete_account(
     db: Session = Depends(get_db)
 ):
     """Permanently deletes account after validating no running rounds with active funds."""
-    # Check if user has running active groups
     user_members = db.query(GroupMember).filter(GroupMember.phone_number == current_user.phone_number).all()
     for m in user_members:
         group = db.query(SusuGroup).filter(SusuGroup.id == m.group_id).first()
