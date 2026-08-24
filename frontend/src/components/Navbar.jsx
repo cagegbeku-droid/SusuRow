@@ -9,7 +9,6 @@ import {
   KeyRound,
   Calculator,
   Gift,
-  Bell,
   Sparkles
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
@@ -40,29 +39,29 @@ export default function Navbar({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#080B11]/85 backdrop-blur-xl border-b border-white/[0.07] text-white">
-      <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-18">
+    <header className="sticky top-0 z-40 w-full max-w-full bg-[#080B11]/90 backdrop-blur-xl border-b border-white/[0.07] text-white">
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14 sm:h-18">
           
           {/* Left: Sidebar Toggle + Brand Logo */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <button
               onClick={onToggleSidebar}
-              className="p-2 -ml-1 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/5 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-sm"
+              className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/5 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-sm"
               aria-label="Open App Menu"
             >
-              <Menu size={20} />
+              <Menu size={18} />
             </button>
 
             {/* Logo */}
             <div
               onClick={() => setActiveView('marketplace')}
-              className="flex items-center gap-2.5 cursor-pointer select-none group"
+              className="flex items-center gap-2 cursor-pointer select-none group"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-[0_0_15px_rgba(59,130,246,0.5)] group-hover:scale-105 transition-transform">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-base sm:text-lg shadow-[0_0_15px_rgba(59,130,246,0.5)] group-hover:scale-105 transition-transform">
                 ₵
               </div>
-              <div className="font-black text-lg sm:text-xl tracking-tight text-white">
+              <div className="font-black text-base sm:text-xl tracking-tight text-white">
                 Susu<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-amber-400">Row</span>
               </div>
             </div>
@@ -107,20 +106,19 @@ export default function Navbar({
             </nav>
           </div>
 
-          {/* Right: Referral, Create & User Profile */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Right: Actions & User Profile */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             
-            {/* Refer & Earn Button */}
+            {/* Refer & Earn Button (Hidden on small mobile to prevent overflow, shown on tablet/desktop) */}
             <button
               onClick={onOpenReferralModal}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-gradient-to-r from-amber-500/15 to-gold-500/20 text-amber-300 border border-amber-500/30 hover:border-amber-400/60 transition-all cursor-pointer shadow-xs"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-gradient-to-r from-amber-500/15 to-gold-500/20 text-amber-300 border border-amber-500/30 hover:border-amber-400/60 transition-all cursor-pointer shadow-xs"
             >
               <Gift size={14} className="text-amber-400" />
-              <span className="hidden sm:inline">Refer & Earn</span>
-              <span className="sm:hidden font-black">Refer</span>
+              <span>Refer & Earn</span>
             </button>
 
-            {/* Code Join */}
+            {/* Code Join (Desktop only) */}
             <button
               onClick={onOpenJoinCodeModal}
               className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold bg-[#141A2D] hover:bg-[#1C233A] text-slate-300 border border-white/5 transition-all cursor-pointer"
@@ -129,24 +127,23 @@ export default function Navbar({
               <span>Group Code</span>
             </button>
 
-            {/* Create Group Button */}
+            {/* Create Group Button (Hidden on mobile because bottom bar has floating center create button) */}
             <button
               onClick={onOpenCreateModal}
-              className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all cursor-pointer active:scale-95"
+              className="hidden sm:flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all cursor-pointer active:scale-95"
             >
               <PlusCircle size={15} />
-              <span className="hidden sm:inline">New Group</span>
-              <span className="sm:hidden">New</span>
+              <span>New Group</span>
             </button>
 
-            {/* User Profile / Sign In */}
+            {/* User Profile / Sign In (Always visible and cleanly sized) */}
             {isAuthenticated ? (
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-2 p-1 sm:px-3 sm:py-1.5 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-left transition-all cursor-pointer shadow-xs"
+                  className="flex items-center gap-1.5 sm:gap-2 p-1 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-left transition-all cursor-pointer shadow-xs"
                 >
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-black flex items-center justify-center text-xs shadow">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-black flex items-center justify-center text-xs shadow">
                     {user?.full_name ? user.full_name.charAt(0).toUpperCase() : '₵'}
                   </div>
                   <div className="hidden sm:block text-left">
@@ -159,11 +156,11 @@ export default function Navbar({
 
                 {dropdownOpen && (
                   <div
-                    className="absolute right-0 mt-2 w-60 rounded-3xl bg-[#141A2D] text-slate-200 shadow-2xl border border-white/10 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-2xl"
+                    className="absolute right-0 mt-2 w-56 sm:w-60 rounded-2xl sm:rounded-3xl bg-[#141A2D] text-slate-200 shadow-2xl border border-white/10 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-2xl"
                     onClick={() => setDropdownOpen(false)}
                   >
-                    <div className="px-4 py-3 border-b border-white/5 bg-[#0E1322] rounded-t-3xl">
-                      <p className="text-xs font-black text-white">{user?.full_name}</p>
+                    <div className="px-4 py-3 border-b border-white/5 bg-[#0E1322] rounded-t-2xl sm:rounded-t-3xl">
+                      <p className="text-xs font-black text-white truncate">{user?.full_name}</p>
                       <p className="text-[11px] font-mono text-slate-400 mt-0.5">{user?.phone_number}</p>
                       <div className="mt-1.5">{getProviderBadge(user?.momo_provider)}</div>
                     </div>
@@ -197,9 +194,9 @@ export default function Navbar({
             ) : (
               <button
                 onClick={openAuthModal}
-                className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-2xl text-xs font-bold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-bold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition-all cursor-pointer shrink-0"
               >
-                <LogIn size={14} className="text-amber-400" />
+                <LogIn size={13} className="text-amber-400" />
                 <span>Sign In</span>
               </button>
             )}

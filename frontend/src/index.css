@@ -43,12 +43,20 @@
 }
 
 @layer base {
-  body {
-    background-color: #080B11;
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    background-color: #080B11 !important;
     color: #F8FAFC;
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
-    overflow-x: hidden;
+    overflow-x: hidden !important;
+    max-width: 100vw;
+    width: 100%;
+    margin: 0;
+    padding: 0;
   }
 
   h1, h2, h3, h4, h5, h6 {
