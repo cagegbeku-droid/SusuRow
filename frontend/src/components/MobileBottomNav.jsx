@@ -4,24 +4,31 @@ import {
   Users, 
   PlusCircle, 
   Gift, 
-  Menu 
+  User 
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
 export default function MobileBottomNav({
   activeView,
   setActiveView,
-  onToggleSidebar,
   onOpenCreateModal,
   onOpenReferralModal
 }) {
-  const { isAuthenticated, openAuthModal } = useUser();
+  const { isAuthenticated, openAuthModal, user } = useUser();
 
   const handleMyCircles = () => {
     if (!isAuthenticated) {
       openAuthModal();
     } else {
       setActiveView('my-circles');
+    }
+  };
+
+  const handleProfile = () => {
+    if (!isAuthenticated) {
+      openAuthModal();
+    } else {
+      setActiveView('profile');
     }
   };
 
@@ -87,15 +94,21 @@ export default function MobileBottomNav({
             <span className="text-[9px] font-bold mt-0.5 text-amber-300">Refer</span>
           </button>
 
-          {/* Menu Drawer Toggle */}
+          {/* Profile & KYC */}
           <button
-            onClick={onToggleSidebar}
-            className="flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+            onClick={handleProfile}
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all cursor-pointer ${
+              activeView === 'profile'
+                ? 'text-blue-400 font-black'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
           >
-            <div className="p-1 rounded-xl">
-              <Menu size={18} />
+            <div className={`p-1 rounded-xl transition-all ${
+              activeView === 'profile' ? 'bg-blue-600/25 text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.5)]' : ''
+            }`}>
+              <User size={18} />
             </div>
-            <span className="text-[9px] font-bold mt-0.5">Menu</span>
+            <span className="text-[9px] font-bold mt-0.5">Profile</span>
           </button>
 
         </nav>

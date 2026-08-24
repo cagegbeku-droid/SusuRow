@@ -27,6 +27,11 @@ export const loginUser = async (payload) => {
   return res.data;
 };
 
+export const loginWithGoogle = async (payload) => {
+  const res = await api.post('/auth/google', payload);
+  return res.data;
+};
+
 export const sendOtp = async (payload) => {
   const res = await api.post('/auth/send-otp', payload);
   return res.data;
@@ -44,6 +49,36 @@ export const getProfile = async () => {
 
 export const updateProfile = async (payload) => {
   const res = await api.put('/auth/profile', payload);
+  return res.data;
+};
+
+export const submitKYC = async (payload) => {
+  const res = await api.post('/auth/kyc', payload);
+  return res.data;
+};
+
+export const setSecurityPIN = async (payload) => {
+  const res = await api.post('/auth/pin', payload);
+  return res.data;
+};
+
+export const configureWallets = async (payload) => {
+  const res = await api.post('/auth/wallet', payload);
+  return res.data;
+};
+
+export const configureAutoDebit = async (payload) => {
+  const res = await api.post('/auth/auto-debit', payload);
+  return res.data;
+};
+
+export const deactivateAccount = async () => {
+  const res = await api.post('/auth/deactivate');
+  return res.data;
+};
+
+export const deleteAccount = async () => {
+  const res = await api.delete('/auth/account');
   return res.data;
 };
 

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   registerUser as apiRegisterUser,
   loginUser as apiLoginUser,
+  loginWithGoogle as apiLoginWithGoogle,
   sendOtp as apiSendOtp, 
   verifyOtp as apiVerifyOtp, 
   getProfile, 
@@ -45,20 +46,25 @@ export const UserProvider = ({ children }) => {
     setIsSeniorMode(prev => !prev);
   };
 
+  const refreshProfile = async () => {
+    const savedToken = localStorage.getItem('susurow_auth_token');
+    if (savedToken) {
+      try {
+        const profile = await getProfile();
+        setUser(profile);
+        localStorage.setItem('susurow_auth_user', JSON.stringify(profile));
+        return profile;
+      } catch (err) {
+        console.warn('Failed to refresh profile', err);
+      }
+    }
+    return null;
+  };
+
   // Validate token on mount
   useEffect(() => {
     const initAuth = async () => {
-      const savedToken = localStorage.getItem('susurow_auth_token');
-      if (savedToken) {
-        try {
-          const profile = await getProfile();
-          setUser(profile);
-          localStorage.setItem('susurow_auth_user', JSON.stringify(profile));
-        } catch (err) {
-          console.warn('Session expired or invalid token');
-          logout();
-        }
-      }
+      await refreshProfile();
       setLoading(false);
     };
 
@@ -97,7 +103,18 @@ export const UserProvider = ({ children }) => {
     return res;
   };
 
-  // 3. OTP Fallback
+  // 3. Google Sign-In
+  const handleGoogleAuth = async (googlePayload) => {
+    const res = await apiLoginWithGoogle(googlePayload);
+    setToken(res.access_token);
+    setUser(res.user);
+    localStorage.setItem('susurow_auth_token', res.access_token);
+    localStorage.setItem('susurow_auth_user', JSON.stringify(res.user));
+    setIsAuthModalOpen(false);
+    return res;
+  };
+
+  // 4. OTP Fallback
   const requestOtp = async (phoneNumber, fullName, momoProvider) => {
     return await apiSendOtp({
       phone_number: phoneNumber,
@@ -155,10 +172,12 @@ export const UserProvider = ({ children }) => {
         closeAuthModal: () => setIsAuthModalOpen(false),
         registerWithPassword,
         loginWithPassword,
+        loginWithGoogle: handleGoogleAuth,
         requestOtp,
         verifyAndLogin,
         logout,
         updateUserProfile,
+        refreshProfile,
         isSeniorMode,
         toggleSeniorMode,
         referralCode

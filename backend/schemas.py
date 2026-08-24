@@ -3,11 +3,6 @@ from typing import Optional, List
 from datetime import datetime
 import re
 
-# Ghanaian Mobile Network Prefixes
-# MTN: 024, 054, 055, 059, 025, 053
-# Telecel (Vodafone): 020, 050
-# AT (AirtelTigo): 027, 057, 026, 056
-
 class MoMoProviderEnum(str):
     MTN = "MTN"
     TELECEL = "TELECEL"
@@ -42,6 +37,8 @@ class RegisterRequest(BaseModel):
     phone_number: str
     password: str = Field(..., min_length=4, max_length=128)
     full_name: str
+    username: Optional[str] = None
+    email: Optional[str] = None
     momo_provider: Optional[str] = "MTN"
 
     @field_validator("phone_number")
@@ -62,6 +59,14 @@ class LoginRequest(BaseModel):
     @classmethod
     def validate_phone(cls, v: str) -> str:
         return sanitize_ghana_phone(v)
+
+
+class GoogleAuthRequest(BaseModel):
+    id_token: Optional[str] = None
+    email: str
+    name: str
+    picture: Optional[str] = None
+    phone_number: Optional[str] = None
 
 
 class SendOTPRequest(BaseModel):
@@ -98,19 +103,99 @@ class UserProfile(BaseModel):
     id: str
     phone_number: str
     full_name: str
+    username: Optional[str] = None
+    email: Optional[str] = None
+    avatar_url: Optional[str] = None
     momo_provider: str
-    is_verified: bool
-    ghana_card_number: Optional[str] = None
+    tier: str = "BRONZE"
+    points: int = 50
     trust_score: int = 100
     on_time_payments_count: int = 0
+    is_verified: bool = False
+    nationality: str = "Ghanaian"
+    date_of_birth: Optional[str] = None
+    
+    # KYC & Documents
+    kyc_status: str = "UNVERIFIED"
+    ghana_card_number: Optional[str] = None
+    next_of_kin_name: Optional[str] = None
+    next_of_kin_phone: Optional[str] = None
+    next_of_kin_relation: Optional[str] = None
+    employment_status: Optional[str] = None
+    savings_goal: Optional[str] = None
+    has_security_pin: bool = False
+    has_signature: bool = False
+
+    # Financial Rails
+    primary_wallet_provider: str = "MTN"
+    primary_wallet_number: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_number: Optional[str] = None
+    bank_branch: Optional[str] = None
+
+    # Automated Top-ups
+    auto_debit_enabled: bool = False
+    auto_debit_frequency: str = "WEEKLY"
+    auto_debit_time: str = "08:00"
+
     created_at: datetime
 
 
 class UpdateProfileRequest(BaseModel):
     full_name: Optional[str] = None
-    momo_provider: Optional[str] = None
-    password: Optional[str] = None
-    ghana_card_number: Optional[str] = None
+    username: Optional[str] = None
+    email: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    nationality: Optional[str] = None
+    avatar_url: Optional[str] = None
+    employment_status: Optional[str] = None
+    savings_goal: Optional[str] = None
+
+
+class KYCSubmitRequest(BaseModel):
+    ghana_card_number: str = Field(..., description="Format: GHA-XXXXXXXXX-X")
+    next_of_kin_name: str = Field(..., min_length=2)
+    next_of_kin_phone: str = Field(..., min_length=10)
+    next_of_kin_relation: str = Field("Spouse/Sibling/Parent", min_length=2)
+    employment_status: Optional[str] = "Employed"
+    savings_goal: Optional[str] = None
+    signature_data: Optional[str] = None # Base64 signature image
+
+    @field_validator("ghana_card_number")
+    @classmethod
+    def validate_ghana_card(cls, v: str) -> str:
+        clean = v.strip().upper()
+        if not re.match(r"^GHA-\d{9}-\d$", clean):
+            # Also accept loose format GHA-XXXXXXXXX-X
+            if not clean.startswith("GHA-") or len(clean) < 14:
+                raise ValueError("Invalid Ghana Card format. Must be GHA-XXXXXXXXX-X (e.g. GHA-712345678-9)")
+        return clean
+
+
+class SecurityPINRequest(BaseModel):
+    pin: str = Field(..., min_length=4, max_length=4, description="4-digit numeric PIN")
+    current_password: Optional[str] = None
+
+    @field_validator("pin")
+    @classmethod
+    def validate_pin_digits(cls, v: str) -> str:
+        if not v.isdigit() or len(v) != 4:
+            raise ValueError("PIN must be exactly 4 numeric digits")
+        return v
+
+
+class WalletConfigRequest(BaseModel):
+    primary_wallet_provider: str = Field("MTN", description="MTN, TELECEL, AT, or BANK")
+    primary_wallet_number: str = Field(...)
+    bank_name: Optional[str] = None
+    bank_account_number: Optional[str] = None
+    bank_branch: Optional[str] = None
+
+
+class AutoDebitRequest(BaseModel):
+    enabled: bool
+    frequency: str = "WEEKLY" # DAILY, WEEKLY, MONTHLY
+    time: str = "08:00"
 
 
 class AuthResponse(BaseModel):

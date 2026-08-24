@@ -20,7 +20,8 @@ import {
   MessageCircle,
   Sparkles,
   Building2,
-  FileText
+  FileText,
+  User
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
@@ -168,11 +169,23 @@ export default function AppSidebar({
           
           {/* User Profile Card */}
           {isAuthenticated ? (
-            <div className="bg-[#141A2D] border border-white/10 rounded-3xl p-4 space-y-3 shadow-lg">
+            <div 
+              onClick={() => {
+                setActiveView('profile');
+                onClose();
+              }}
+              className="bg-[#141A2D] hover:bg-[#1B223C] border border-white/10 rounded-3xl p-4 space-y-3 shadow-lg cursor-pointer transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-black text-xl flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)]">
-                    {user?.full_name ? user.full_name.charAt(0).toUpperCase() : '₵'}
+                    {user?.avatar_url ? (
+                      <img src={user.avatar_url} alt="" className="w-full h-full object-cover rounded-2xl" />
+                    ) : user?.full_name ? (
+                      user.full_name.charAt(0).toUpperCase()
+                    ) : (
+                      '₵'
+                    )}
                   </div>
                   <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#141A2D]"></span>
                 </div>
@@ -185,13 +198,14 @@ export default function AppSidebar({
                     <span>{user?.phone_number}</span>
                   </p>
                 </div>
+                <ChevronRight size={16} className="text-slate-500" />
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
                 {getProviderBadge(user?.momo_provider)}
                 <span className="flex items-center gap-1 text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                   <ShieldCheck size={12} />
-                  <span>Verified Saver</span>
+                  <span>{user?.kyc_status === 'VERIFIED' ? 'Verified KYC' : 'Action Required'}</span>
                 </span>
               </div>
             </div>
@@ -265,6 +279,31 @@ export default function AppSidebar({
               <span className="text-[10px] font-black bg-white/20 text-white px-2 py-0.5 rounded-full">
                 Active
               </span>
+            </button>
+
+            <button
+              onClick={() => {
+                if (!isAuthenticated) {
+                  onClose();
+                  openAuthModal();
+                } else {
+                  setActiveView('profile');
+                  onClose();
+                }
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                activeView === 'profile'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 font-black'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-1.5 rounded-xl ${activeView === 'profile' ? 'bg-white/20 text-white' : 'bg-[#141A2D] text-slate-400'}`}>
+                  <User size={16} />
+                </div>
+                <span>Profile, KYC & Wallets</span>
+              </div>
+              <ChevronRight size={14} className="text-slate-500" />
             </button>
 
             <button

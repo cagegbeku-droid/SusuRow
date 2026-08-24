@@ -9,6 +9,8 @@ import {
   KeyRound,
   Calculator,
   Gift,
+  User,
+  ShieldCheck,
   Sparkles
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
@@ -97,6 +99,23 @@ export default function Navbar({
               </button>
 
               <button
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    openAuthModal();
+                  } else {
+                    setActiveView('profile');
+                  }
+                }}
+                className={`px-4 py-2 rounded-xl transition-all cursor-pointer ${
+                  activeView === 'profile'
+                    ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/25'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                Profile & KYC
+              </button>
+
+              <button
                 onClick={onOpenCalculator}
                 className="px-3.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
               >
@@ -109,7 +128,7 @@ export default function Navbar({
           {/* Right: Actions & User Profile */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             
-            {/* Refer & Earn Button (Hidden on small mobile to prevent overflow, shown on tablet/desktop) */}
+            {/* Refer & Earn Button */}
             <button
               onClick={onOpenReferralModal}
               className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-gradient-to-r from-amber-500/15 to-gold-500/20 text-amber-300 border border-amber-500/30 hover:border-amber-400/60 transition-all cursor-pointer shadow-xs"
@@ -118,7 +137,7 @@ export default function Navbar({
               <span>Refer & Earn</span>
             </button>
 
-            {/* Code Join (Desktop only) */}
+            {/* Code Join */}
             <button
               onClick={onOpenJoinCodeModal}
               className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold bg-[#141A2D] hover:bg-[#1C233A] text-slate-300 border border-white/5 transition-all cursor-pointer"
@@ -127,7 +146,7 @@ export default function Navbar({
               <span>Group Code</span>
             </button>
 
-            {/* Create Group Button (Hidden on mobile because bottom bar has floating center create button) */}
+            {/* Create Group Button */}
             <button
               onClick={onOpenCreateModal}
               className="hidden sm:flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all cursor-pointer active:scale-95"
@@ -136,7 +155,7 @@ export default function Navbar({
               <span>New Group</span>
             </button>
 
-            {/* User Profile / Sign In (Always visible and cleanly sized) */}
+            {/* User Profile / Sign In */}
             {isAuthenticated ? (
               <div className="relative">
                 <button
@@ -144,7 +163,13 @@ export default function Navbar({
                   className="flex items-center gap-1.5 sm:gap-2 p-1 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-left transition-all cursor-pointer shadow-xs"
                 >
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-black flex items-center justify-center text-xs shadow">
-                    {user?.full_name ? user.full_name.charAt(0).toUpperCase() : '₵'}
+                    {user?.avatar_url ? (
+                      <img src={user.avatar_url} alt="" className="w-full h-full object-cover rounded-lg" />
+                    ) : user?.full_name ? (
+                      user.full_name.charAt(0).toUpperCase()
+                    ) : (
+                      '₵'
+                    )}
                   </div>
                   <div className="hidden sm:block text-left">
                     <div className="text-xs font-bold text-white truncate max-w-[110px]">
@@ -156,20 +181,33 @@ export default function Navbar({
 
                 {dropdownOpen && (
                   <div
-                    className="absolute right-0 mt-2 w-56 sm:w-60 rounded-2xl sm:rounded-3xl bg-[#141A2D] text-slate-200 shadow-2xl border border-white/10 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-2xl"
+                    className="absolute right-0 mt-2 w-60 rounded-2xl sm:rounded-3xl bg-[#141A2D] text-slate-200 shadow-2xl border border-white/10 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-2xl"
                     onClick={() => setDropdownOpen(false)}
                   >
                     <div className="px-4 py-3 border-b border-white/5 bg-[#0E1322] rounded-t-2xl sm:rounded-t-3xl">
                       <p className="text-xs font-black text-white truncate">{user?.full_name}</p>
                       <p className="text-[11px] font-mono text-slate-400 mt-0.5">{user?.phone_number}</p>
-                      <div className="mt-1.5">{getProviderBadge(user?.momo_provider)}</div>
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        {getProviderBadge(user?.momo_provider)}
+                        <span className="text-[9px] font-bold bg-amber-400/20 text-amber-300 px-1.5 py-0.2 rounded-full border border-amber-400/30">
+                          {user?.points || 50} pts
+                        </span>
+                      </div>
                     </div>
+
+                    <button
+                      onClick={() => setActiveView('profile')}
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2.5 cursor-pointer transition-colors"
+                    >
+                      <User size={15} className="text-blue-400" />
+                      <span>Profile & KYC Status</span>
+                    </button>
 
                     <button
                       onClick={() => setActiveView('my-circles')}
                       className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2.5 cursor-pointer transition-colors"
                     >
-                      <Users size={15} className="text-blue-400" />
+                      <Users size={15} className="text-indigo-400" />
                       <span>My Susu Groups</span>
                     </button>
 

@@ -3,33 +3,76 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User, OTPVerification
+from models import User, OTPVerification, KYCStatus, UserTier, GroupMember, SusuGroup, GroupStatus
 from schemas import (
     RegisterRequest,
     LoginRequest,
+    GoogleAuthRequest,
     SendOTPRequest,
     VerifyOTPRequest,
     AuthResponse,
     UserProfile,
     UpdateProfileRequest,
+    KYCSubmitRequest,
+    SecurityPINRequest,
+    WalletConfigRequest,
+    AutoDebitRequest,
     detect_momo_provider,
     sanitize_ghana_phone
 )
 from services.sms_service import GhanaSMSService
 from auth import create_access_token, get_current_user, hash_password, verify_password
 
-router = APIRouter(prefix="/api/auth", tags=["Authentication & Savers"])
+router = APIRouter(prefix="/api/auth", tags=["Authentication & Profile Hierarchy"])
+
+
+def _build_user_profile(user: User) -> UserProfile:
+    return UserProfile(
+        id=user.id,
+        phone_number=user.phone_number,
+        full_name=user.full_name,
+        username=user.username,
+        email=user.email,
+        avatar_url=user.avatar_url,
+        momo_provider=user.momo_provider,
+        tier=user.tier or "BRONZE",
+        points=user.points or 50,
+        trust_score=user.trust_score or 100,
+        on_time_payments_count=user.on_time_payments_count or 0,
+        is_verified=user.is_verified,
+        nationality=user.nationality or "Ghanaian",
+        date_of_birth=user.date_of_birth,
+        kyc_status=user.kyc_status or "UNVERIFIED",
+        ghana_card_number=user.ghana_card_number,
+        next_of_kin_name=user.next_of_kin_name,
+        next_of_kin_phone=user.next_of_kin_phone,
+        next_of_kin_relation=user.next_of_kin_relation,
+        employment_status=user.employment_status,
+        savings_goal=user.savings_goal,
+        has_security_pin=bool(user.security_pin_hash),
+        has_signature=bool(user.signature_data),
+        primary_wallet_provider=user.primary_wallet_provider or user.momo_provider or "MTN",
+        primary_wallet_number=user.primary_wallet_number or user.phone_number,
+        bank_name=user.bank_name,
+        bank_account_number=user.bank_account_number,
+        bank_branch=user.bank_branch,
+        auto_debit_enabled=user.auto_debit_enabled or False,
+        auto_debit_frequency=user.auto_debit_frequency or "WEEKLY",
+        auto_debit_time=user.auto_debit_time or "08:00",
+        created_at=user.created_at
+    )
+
 
 @router.post("/register", response_model=AuthResponse)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
-    """Registers a new saver account with Full Name, Phone Number, MoMo Provider, and Password."""
+    """Registers a new saver account with Phone Number and Password."""
     clean_phone = sanitize_ghana_phone(payload.phone_number)
     
     existing = db.query(User).filter(User.phone_number == clean_phone).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An account with this phone number already exists. Please log in."
+            detail="An account with this phone number already exists. Please sign in."
         )
     
     provider = payload.momo_provider or detect_momo_provider(clean_phone)
@@ -39,9 +82,17 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         id=str(uuid.uuid4()),
         phone_number=clean_phone,
         full_name=payload.full_name.strip(),
+        username=payload.username.strip() if payload.username else f"saver_{clean_phone[-4:]}",
+        email=payload.email.strip() if payload.email else None,
         momo_provider=provider,
+        primary_wallet_provider=provider,
+        primary_wallet_number=clean_phone,
         hashed_password=pwd_hash,
-        is_verified=True,
+        tier=UserTier.BRONZE.value,
+        points=50, # Initial welcome bonus points
+        trust_score=100,
+        is_verified=False,
+        kyc_status=KYCStatus.UNVERIFIED.value,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow()
     )
@@ -53,139 +104,203 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     return AuthResponse(
         access_token=token,
         token_type="bearer",
-        user=UserProfile.model_validate(user)
+        user=_build_user_profile(user)
     )
+
 
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    """Logs in an existing saver with Phone Number and Password."""
+    """Logs in an existing saver using Phone Number and Password."""
     clean_phone = sanitize_ghana_phone(payload.phone_number)
     user = db.query(User).filter(User.phone_number == clean_phone).first()
     
-    if not user:
+    if not user or not user.hashed_password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No account found with this phone number. Please register first."
+            detail="Invalid phone number or password."
         )
     
-    if not user.hashed_password or not verify_password(payload.password, user.hashed_password):
+    if not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect password. Please verify and try again, or use SMS code."
+            detail="Invalid phone number or password."
         )
+
+    if not user.is_active:
+        user.is_active = True
+        db.commit()
 
     token = create_access_token(data={"sub": user.id, "phone": user.phone_number})
     return AuthResponse(
         access_token=token,
         token_type="bearer",
-        user=UserProfile.model_validate(user)
+        user=_build_user_profile(user)
     )
 
+
+@router.post("/google", response_model=AuthResponse)
+def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
+    """
+    Sign Up / Log In with Google.
+    Creates or retrieves user by email or phone.
+    """
+    user = None
+    if payload.email:
+        user = db.query(User).filter(User.email == payload.email.strip().lower()).first()
+    
+    if not user and payload.phone_number:
+        clean_phone = sanitize_ghana_phone(payload.phone_number)
+        user = db.query(User).filter(User.phone_number == clean_phone).first()
+
+    if not user:
+        # Create new user via Google
+        phone_seed = payload.phone_number or f"024{random_digits(7)}"
+        clean_phone = sanitize_ghana_phone(phone_seed)
+        
+        # Ensure unique phone number
+        while db.query(User).filter(User.phone_number == clean_phone).first():
+            phone_seed = f"024{random_digits(7)}"
+            clean_phone = sanitize_ghana_phone(phone_seed)
+
+        user = User(
+            id=str(uuid.uuid4()),
+            phone_number=clean_phone,
+            full_name=payload.name.strip(),
+            username=payload.email.split("@")[0] if payload.email else f"saver_{clean_phone[-4:]}",
+            email=payload.email.strip().lower() if payload.email else None,
+            avatar_url=payload.picture,
+            momo_provider="MTN",
+            primary_wallet_provider="MTN",
+            primary_wallet_number=clean_phone,
+            tier=UserTier.BRONZE.value,
+            points=60, # 60 points for Google verified signup
+            trust_score=100,
+            is_verified=True,
+            kyc_status=KYCStatus.UNVERIFIED.value,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    else:
+        # Update user's avatar or email if missing
+        if payload.picture and not user.avatar_url:
+            user.avatar_url = payload.picture
+        if payload.email and not user.email:
+            user.email = payload.email.strip().lower()
+        db.commit()
+        db.refresh(user)
+
+    token = create_access_token(data={"sub": user.id, "phone": user.phone_number})
+    return AuthResponse(
+        access_token=token,
+        token_type="bearer",
+        user=_build_user_profile(user)
+    )
+
+
+def random_digits(n: int = 7) -> str:
+    import random
+    return "".join(str(random.randint(0, 9)) for _ in range(n))
+
+
 @router.post("/send-otp")
-async def send_otp(
-    payload: SendOTPRequest,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    """Generates and instantly dispatches a 6-digit OTP to a Ghanaian mobile number via background task."""
-    clean_phone = payload.phone_number.replace("+233", "0").replace(" ", "").strip()
+async def send_otp(payload: SendOTPRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Generates and sends single-segment fast OTP SMS via Arkesel Ghana."""
+    clean_phone = sanitize_ghana_phone(payload.phone_number)
     otp_code = GhanaSMSService.generate_otp(6)
     expires_at = datetime.utcnow() + timedelta(minutes=10)
 
-    # Invalidate previous unused OTPs for this number
     db.query(OTPVerification).filter(
         OTPVerification.phone_number == clean_phone,
         OTPVerification.is_used == False
-    ).update({"is_used": True})
+    ).delete()
 
-    otp_entry = OTPVerification(
-        id=str(uuid.uuid4()),
+    otp_record = OTPVerification(
         phone_number=clean_phone,
         otp_code=otp_code,
         expires_at=expires_at,
-        is_used=False,
-        created_at=datetime.utcnow()
+        is_used=False
     )
-    db.add(otp_entry)
+    db.add(otp_record)
     db.commit()
 
-    # Dispatch SMS concurrently in background task for sub-second UI response
     background_tasks.add_task(GhanaSMSService.send_otp_sms, clean_phone, otp_code)
 
-    detected_provider = payload.momo_provider or detect_momo_provider(clean_phone)
-
     return {
-        "status": "OTP_SENT",
-        "message": f"Verification code sent to {clean_phone}",
+        "success": True,
+        "message": f"6-digit verification code sent to {clean_phone}.",
         "phone_number": clean_phone,
-        "momo_provider": detected_provider,
         "expires_in_seconds": 600
     }
 
+
 @router.post("/verify-otp", response_model=AuthResponse)
 def verify_otp(payload: VerifyOTPRequest, db: Session = Depends(get_db)):
-    """Validates the OTP code, registers or signs in the saver, and issues a JWT token."""
-    clean_phone = payload.phone_number.replace("+233", "0").replace(" ", "").strip()
+    """Verifies OTP code and signs in/registers user."""
+    clean_phone = sanitize_ghana_phone(payload.phone_number)
 
-    otp_entry = db.query(OTPVerification).filter(
+    otp_record = db.query(OTPVerification).filter(
         OTPVerification.phone_number == clean_phone,
         OTPVerification.otp_code == payload.otp_code.strip(),
         OTPVerification.is_used == False,
         OTPVerification.expires_at > datetime.utcnow()
     ).first()
 
-    if not otp_entry:
+    if not otp_record:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification code. Please request a new OTP."
+            detail="Invalid or expired verification code. Please request a new one."
         )
 
-    # Mark OTP as used
-    otp_entry.is_used = True
+    otp_record.is_used = True
+    db.commit()
 
-    # Find or create user
     user = db.query(User).filter(User.phone_number == clean_phone).first()
-    provider = payload.momo_provider or detect_momo_provider(clean_phone)
-
     if not user:
-        name = payload.full_name or f"Saver {clean_phone[-4:]}"
+        provider = payload.momo_provider or detect_momo_provider(clean_phone)
+        name = payload.full_name.strip() if payload.full_name else f"Saver {clean_phone[-4:]}"
         user = User(
             id=str(uuid.uuid4()),
             phone_number=clean_phone,
             full_name=name,
+            username=f"saver_{clean_phone[-4:]}",
             momo_provider=provider,
+            primary_wallet_provider=provider,
+            primary_wallet_number=clean_phone,
             hashed_password=hash_password(payload.password) if payload.password else None,
+            tier=UserTier.BRONZE.value,
+            points=50,
+            trust_score=100,
             is_verified=True,
+            kyc_status=KYCStatus.UNVERIFIED.value,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
         )
         db.add(user)
+        db.commit()
+        db.refresh(user)
     else:
         user.is_verified = True
-        if payload.full_name:
-            user.full_name = payload.full_name
-        if payload.momo_provider:
-            user.momo_provider = payload.momo_provider
-        if payload.password:
+        if payload.password and not user.hashed_password:
             user.hashed_password = hash_password(payload.password)
-        user.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(user)
 
-    db.commit()
-    db.refresh(user)
-
-    # Create JWT access token
     token = create_access_token(data={"sub": user.id, "phone": user.phone_number})
-
     return AuthResponse(
         access_token=token,
         token_type="bearer",
-        user=UserProfile.model_validate(user)
+        user=_build_user_profile(user)
     )
 
+
 @router.get("/me", response_model=UserProfile)
-def get_current_profile(current_user: User = Depends(get_current_user)):
-    """Returns the authenticated saver's profile."""
-    return UserProfile.model_validate(current_user)
+def get_current_user_profile(current_user: User = Depends(get_current_user)):
+    """Retrieves full profile for the authenticated saver."""
+    return _build_user_profile(current_user)
+
 
 @router.put("/profile", response_model=UserProfile)
 def update_profile(
@@ -193,17 +308,153 @@ def update_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Updates profile information (Full Name, Preferred MoMo Provider, Ghana Card)."""
-    if payload.full_name:
+    """Updates personal information (Legal Name, Username, Email, DOB, Nationality, Goals)."""
+    if payload.full_name and payload.full_name.strip():
         current_user.full_name = payload.full_name.strip()
-    if payload.momo_provider:
-        current_user.momo_provider = payload.momo_provider
-    if payload.password:
-        current_user.hashed_password = hash_password(payload.password)
-    if payload.ghana_card_number:
-        current_user.ghana_card_number = payload.ghana_card_number.strip()
-    current_user.updated_at = datetime.utcnow()
+    if payload.username and payload.username.strip():
+        # Check if username is taken by another user
+        uname = payload.username.strip().lower().replace("@", "")
+        existing = db.query(User).filter(User.username == uname, User.id != current_user.id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="This username is already taken.")
+        current_user.username = uname
+    if payload.email:
+        current_user.email = payload.email.strip().lower()
+    if payload.date_of_birth:
+        current_user.date_of_birth = payload.date_of_birth
+    if payload.nationality:
+        current_user.nationality = payload.nationality
+    if payload.avatar_url:
+        current_user.avatar_url = payload.avatar_url
+    if payload.employment_status:
+        current_user.employment_status = payload.employment_status
+    if payload.savings_goal:
+        current_user.savings_goal = payload.savings_goal
 
+    current_user.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(current_user)
-    return UserProfile.model_validate(current_user)
+    return _build_user_profile(current_user)
+
+
+@router.post("/kyc", response_model=UserProfile)
+def submit_kyc(
+    payload: KYCSubmitRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Submits Ghana Card ID, Next of Kin emergency contact info, and Digital Signature.
+    Upgrades saver tier and awards verification reward points.
+    """
+    current_user.ghana_card_number = payload.ghana_card_number.strip().upper()
+    current_user.next_of_kin_name = payload.next_of_kin_name.strip()
+    current_user.next_of_kin_phone = payload.next_of_kin_phone.strip()
+    current_user.next_of_kin_relation = payload.next_of_kin_relation.strip()
+    
+    if payload.employment_status:
+        current_user.employment_status = payload.employment_status
+    if payload.savings_goal:
+        current_user.savings_goal = payload.savings_goal
+    if payload.signature_data:
+        current_user.signature_data = payload.signature_data
+
+    # Verify and upgrade tier
+    current_user.kyc_status = KYCStatus.VERIFIED.value
+    current_user.is_verified = True
+    
+    # Award KYC Bonus points & upgrade tier
+    if current_user.tier == UserTier.BRONZE.value:
+        current_user.tier = UserTier.SILVER.value
+        current_user.points += 100 # +100 bonus points for full KYC verification
+
+    current_user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(current_user)
+    return _build_user_profile(current_user)
+
+
+@router.post("/pin", response_model=UserProfile)
+def set_security_pin(
+    payload: SecurityPINRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Sets or updates 4-digit Security PIN for pot payouts & wallet authorization."""
+    current_user.security_pin_hash = hash_password(payload.pin)
+    current_user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(current_user)
+    return _build_user_profile(current_user)
+
+
+@router.post("/wallet", response_model=UserProfile)
+def configure_wallets(
+    payload: WalletConfigRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Configures multi-rail Mobile Money and Bank payout channels."""
+    current_user.primary_wallet_provider = payload.primary_wallet_provider
+    current_user.primary_wallet_number = payload.primary_wallet_number
+    if payload.bank_name:
+        current_user.bank_name = payload.bank_name
+    if payload.bank_account_number:
+        current_user.bank_account_number = payload.bank_account_number
+    if payload.bank_branch:
+        current_user.bank_branch = payload.bank_branch
+
+    current_user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(current_user)
+    return _build_user_profile(current_user)
+
+
+@router.post("/auto-debit", response_model=UserProfile)
+def configure_auto_debit(
+    payload: AutoDebitRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Configures scheduled recurring auto-debit top-up."""
+    current_user.auto_debit_enabled = payload.enabled
+    current_user.auto_debit_frequency = payload.frequency
+    current_user.auto_debit_time = payload.time
+    
+    current_user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(current_user)
+    return _build_user_profile(current_user)
+
+
+@router.post("/deactivate")
+def deactivate_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Temporarily pauses saver account."""
+    current_user.is_active = False
+    current_user.updated_at = datetime.utcnow()
+    db.commit()
+    return {"success": True, "message": "Account deactivated successfully."}
+
+
+@router.delete("/account")
+def delete_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Permanently deletes account after validating no running rounds with active funds."""
+    # Check if user has running active groups
+    user_members = db.query(GroupMember).filter(GroupMember.phone_number == current_user.phone_number).all()
+    for m in user_members:
+        group = db.query(SusuGroup).filter(SusuGroup.id == m.group_id).first()
+        if group and group.status == GroupStatus.ACTIVE.value:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot delete account while enrolled in active group '{group.name}' with rounds in progress."
+            )
+
+    db.delete(current_user)
+    db.commit()
+    return {"success": True, "message": "Account deleted permanently."}

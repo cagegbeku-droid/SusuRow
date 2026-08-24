@@ -12,12 +12,13 @@ import { TermsModal } from './components/TermsModal';
 import { MarketplacePage } from './pages/MarketplacePage';
 import { CircleDetailPage } from './pages/CircleDetailPage';
 import { MyCirclesPage } from './pages/MyCirclesPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { getPlatformStats, getGroupByCode } from './api/client';
 import { ShieldCheck, Loader2, Globe, Building2 } from 'lucide-react';
 
 function AppContent() {
   const { user, isAuthenticated, loading, isAuthModalOpen, openAuthModal, closeAuthModal } = useUser();
-  const [currentTab, setCurrentTab] = useState('marketplace'); // 'marketplace' | 'my-circles' | 'detail'
+  const [currentTab, setCurrentTab] = useState('marketplace'); // 'marketplace' | 'my-circles' | 'profile' | 'detail'
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [stats, setStats] = useState({
     total_pooled_ghs: 0.0,
@@ -117,7 +118,7 @@ function AppContent() {
         onClose={() => setIsSidebarOpen(false)}
         activeView={currentTab}
         setActiveView={(tab) => {
-          if (tab === 'my-circles' && !isAuthenticated) {
+          if ((tab === 'my-circles' || tab === 'profile') && !isAuthenticated) {
             openAuthModal();
           } else {
             setCurrentTab(tab);
@@ -135,7 +136,7 @@ function AppContent() {
       <Navbar
         activeView={currentTab}
         setActiveView={(tab) => {
-          if (tab === 'my-circles' && !isAuthenticated) {
+          if ((tab === 'my-circles' || tab === 'profile') && !isAuthenticated) {
             openAuthModal();
           } else {
             setCurrentTab(tab);
@@ -172,6 +173,14 @@ function AppContent() {
           <MyCirclesPage
             onSelectCircle={handleSelectCircle}
             openCreateModal={handleOpenCreateModal}
+          />
+        )}
+
+        {currentTab === 'profile' && (
+          <ProfilePage
+            onBack={handleBackToMarketplace}
+            onOpenReferralModal={handleOpenReferralModal}
+            onOpenTermsModal={() => setIsTermsModalOpen(true)}
           />
         )}
       </main>
@@ -266,14 +275,13 @@ function AppContent() {
       <MobileBottomNav
         activeView={currentTab}
         setActiveView={(tab) => {
-          if (tab === 'my-circles' && !isAuthenticated) {
+          if ((tab === 'my-circles' || tab === 'profile') && !isAuthenticated) {
             openAuthModal();
           } else {
             setCurrentTab(tab);
             if (tab !== 'detail') setSelectedGroupId(null);
           }
         }}
-        onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
         onOpenCreateModal={handleOpenCreateModal}
         onOpenReferralModal={handleOpenReferralModal}
       />

@@ -39,19 +39,65 @@ class PaymentStatus(str, enum.Enum):
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
 
+class KYCStatus(str, enum.Enum):
+    UNVERIFIED = "UNVERIFIED"
+    PENDING = "PENDING"
+    VERIFIED = "VERIFIED"
+
+class UserTier(str, enum.Enum):
+    BRONZE = "BRONZE"
+    SILVER = "SILVER"
+    GOLD = "GOLD"
+    LEGENDARY = "LEGENDARY"
+
 class User(Base):
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     phone_number = Column(String(20), unique=True, index=True, nullable=False)
     full_name = Column(String(100), nullable=False)
+    username = Column(String(50), unique=True, index=True, nullable=True)
+    email = Column(String(120), unique=True, index=True, nullable=True)
+    avatar_url = Column(Text, nullable=True)
     momo_provider = Column(String(20), default=MoMoProvider.MTN.value, nullable=False)
     hashed_password = Column(String(256), nullable=True) # Secure PBKDF2 hash
-    hashed_pin = Column(String(128), nullable=True)
-    is_verified = Column(Boolean, default=False, nullable=False)
-    ghana_card_number = Column(String(30), nullable=True) # Optional Ghana Card (GHA-XXXXXXXXX-X)
+    security_pin_hash = Column(String(256), nullable=True) # 4-digit PIN for pot payouts & wallet authorization
+    
+    # Gamification & Tier
+    tier = Column(String(20), default=UserTier.BRONZE.value, nullable=False)
+    points = Column(Integer, default=50, nullable=False) # Reward points (Earn 10 per referral)
     trust_score = Column(Integer, default=100, nullable=False) # 0 to 100 Saver Reliability Score
     on_time_payments_count = Column(Integer, default=0, nullable=False)
+    
+    # Personal & Identity Info
+    is_verified = Column(Boolean, default=False, nullable=False)
+    nationality = Column(String(50), default="Ghanaian", nullable=False)
+    date_of_birth = Column(String(20), nullable=True) # YYYY-MM-DD
+    
+    # KYC & Next of Kin (Recovery / Anti-default)
+    kyc_status = Column(String(20), default=KYCStatus.UNVERIFIED.value, nullable=False)
+    ghana_card_number = Column(String(30), nullable=True) # Format: GHA-XXXXXXXXX-X
+    next_of_kin_name = Column(String(100), nullable=True)
+    next_of_kin_phone = Column(String(20), nullable=True)
+    next_of_kin_relation = Column(String(50), nullable=True)
+    employment_status = Column(String(50), nullable=True) # Employed, Self-Employed, Student, Trader, etc.
+    savings_goal = Column(String(100), nullable=True)
+    signature_data = Column(Text, nullable=True) # Base64 digital signature for pot payouts
+    
+    # Financial Channels & Multi-Rail Wallets
+    primary_wallet_provider = Column(String(20), default="MTN", nullable=False) # MTN, TELECEL, AT, BANK
+    primary_wallet_number = Column(String(30), nullable=True)
+    bank_name = Column(String(100), nullable=True)
+    bank_account_number = Column(String(50), nullable=True)
+    bank_branch = Column(String(50), nullable=True)
+    
+    # Automated Top-ups (Scheduled Debits)
+    auto_debit_enabled = Column(Boolean, default=False, nullable=False)
+    auto_debit_frequency = Column(String(20), default="WEEKLY", nullable=False)
+    auto_debit_time = Column(String(10), default="08:00", nullable=False)
+
+    # Account Lifecycle
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 

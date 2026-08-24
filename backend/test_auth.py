@@ -17,7 +17,6 @@ def test_password_register_and_login(client):
     assert "access_token" in data
     assert data["user"]["phone_number"] == phone
     assert data["user"]["full_name"] == "Kofi Mensah"
-    assert data["user"]["is_verified"] == True
 
     # 2. Duplicate registration fails
     dup_res = client.post("/api/auth/register", json={
@@ -54,7 +53,7 @@ def test_send_and_verify_otp(client):
     })
     assert send_res.status_code == 200
     data = send_res.json()
-    assert data["status"] == "OTP_SENT"
+    assert data["success"] == True
     assert data["phone_number"] == phone
 
     # Retrieve OTP directly from test DB session
@@ -90,11 +89,10 @@ def test_send_and_verify_otp(client):
     update_res = client.put(
         "/api/auth/profile",
         headers={"Authorization": f"Bearer {token}"},
-        json={"full_name": "Kwame Mensah Snr", "ghana_card_number": "GHA-123456789-0"}
+        json={"full_name": "Kwame Mensah Snr"}
     )
     assert update_res.status_code == 200
     assert update_res.json()["full_name"] == "Kwame Mensah Snr"
-    assert update_res.json()["ghana_card_number"] == "GHA-123456789-0"
 
 def test_invalid_otp(client):
     phone = "0201234567"
