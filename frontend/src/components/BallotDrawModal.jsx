@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { X, Shuffle, Sparkles, CheckCircle2, Loader2, Trophy } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { executeBallotDraw } from '../api/client';
 
 export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
@@ -24,13 +23,6 @@ export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
 
       setDrawResults(res.members);
       setShuffled(true);
-
-      confetti({
-        particleCount: 120,
-        spread: 90,
-        origin: { y: 0.5 },
-        colors: ['#3B82F6', '#F59E0B', '#8B5CF6', '#10B981']
-      });
 
       if (onDrawComplete) {
         onDrawComplete(res);

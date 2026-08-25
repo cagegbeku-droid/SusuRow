@@ -39,7 +39,6 @@ import { BiddingModal } from '../components/BiddingModal';
 import { ShareModal } from '../components/ShareModal';
 import { GroupChatModal } from '../components/GroupChatModal';
 import { TransactionLedger } from '../components/TransactionLedger';
-import confetti from 'canvas-confetti';
 
 export const CircleDetailPage = ({ groupId, onBack }) => {
   const { user, openAuthModal } = useUser();
@@ -131,20 +130,23 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
       openAuthModal();
       return;
     }
+    if (!user.phone_number) {
+      alert("Please add your Ghanaian Mobile Money phone number in your Profile before joining a group.");
+      return;
+    }
+    if (isEnrolled || isCreator) {
+      alert("You are already an enrolled member of this Susu group.");
+      return;
+    }
     setActionLoading(true);
     try {
       const res = await joinGroup({
         group_id: group.id,
         phone_number: user.phone_number,
-        full_name: user.full_name,
-        momo_provider: user.momo_provider
+        full_name: user.full_name || 'Ghana Saver',
+        momo_provider: user.momo_provider || 'MTN'
       });
       setGroup(res);
-      confetti({
-        particleCount: 60,
-        spread: 60,
-        origin: { y: 0.6 }
-      });
     } catch (err) {
       alert(err.response?.data?.detail || 'Could not join group.');
     } finally {
@@ -157,14 +159,9 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
     try {
       const res = await advanceRound(group.id);
       if (res.success) {
-        confetti({
-          particleCount: 100,
-          spread: 80,
-          origin: { y: 0.5 }
-        });
         await fetchDetail();
       } else {
-        alert(res.message);
+        alert(res.message || 'Could not disburse pot.');
       }
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to disburse pot.');
@@ -394,13 +391,26 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {!isEnrolled && !isFull && !isCompleted && (
+          {isCreator && (
+            <span className="px-3.5 py-2 rounded-2xl bg-blue-600/20 text-blue-300 font-bold border border-blue-500/30 text-xs flex items-center gap-1.5 shadow-sm">
+              👑 Circle Leader
+            </span>
+          )}
+
+          {isEnrolled && !isCreator && (
+            <span className="px-3.5 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 text-xs flex items-center gap-1.5 shadow-sm">
+              <CheckCircle2 size={13} />
+              <span>Enrolled Member</span>
+            </span>
+          )}
+
+          {!isEnrolled && !isCreator && !isFull && !isCompleted && (
             <button
               onClick={handleJoinCircle}
               disabled={actionLoading}
-              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-2xl shadow transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
             >
-              <PlusCircle className="w-4 h-4 text-amber-300" />
+              <PlusCircle className="w-4 h-4 text-white" />
               <span>Join Group</span>
             </button>
           )}
@@ -408,7 +418,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           {isEnrolled && !enrolledMember?.has_paid_current_round && !isCompleted && (
             <button
               onClick={() => openMoMoModalForUser(enrolledMember, false)}
-              className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-2xl shadow-[0_0_15px_rgba(245,158,11,0.5)] transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <Smartphone className="w-4 h-4" />
               <span>Pay GH₵{group.contribution_amount}</span>

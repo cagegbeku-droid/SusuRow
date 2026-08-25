@@ -33,15 +33,26 @@ def join_group(payload: MemberJoinRequest, db: Session = Depends(get_db)):
     if len(current_members) >= group.members_count:
         raise HTTPException(status_code=400, detail=f"Circle has reached maximum capacity ({group.members_count} savers).")
 
-    clean_phone = payload.phone_number.replace("+233", "0").replace(" ", "")
+    clean_phone = payload.phone_number.replace("+233", "0").replace(" ", "").strip()
+    clean_creator = group.creator_id.replace("+233", "0").replace(" ", "").strip() if group.creator_id else ""
+
+    # Check if user is the creator (creators are automatically enrolled on creation)
+    if clean_phone == clean_creator or payload.phone_number.strip() == group.creator_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="You created this Susu group and are already enrolled as the Circle Leader."
+        )
 
     # Check if already enrolled in this circle
     existing = db.query(GroupMember).filter(
         GroupMember.group_id == group.id,
-        (GroupMember.phone_number == clean_phone) | (GroupMember.phone_number == payload.phone_number)
+        (GroupMember.phone_number == clean_phone) | (GroupMember.phone_number == payload.phone_number.strip())
     ).first()
     if existing:
-        raise HTTPException(status_code=400, detail="This mobile money number is already enrolled in this circle.")
+        raise HTTPException(
+            status_code=400, 
+            detail="You are already an enrolled member of this Susu group."
+        )
 
     # Auto-detect or use selected MoMo provider
     provider = payload.momo_provider or GhanaMoMoService.detect_provider(clean_phone)

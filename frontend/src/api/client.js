@@ -153,6 +153,11 @@ export const initiatePayment = async (payload) => {
   return res.data;
 };
 
+export const verifyPayment = async (reference) => {
+  const res = await api.get(`/payments/verify/${reference}`);
+  return res.data;
+};
+
 export const processWebhookSettlement = async (payload) => {
   const res = await api.post('/payments/webhook', payload);
   return res.data;

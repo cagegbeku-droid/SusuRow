@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlalchemy.orm import Session
 from database import get_db
-from models import SusuGroup, GroupMember, ContributionPayment, PaymentStatus, GroupStatus
+from models import SusuGroup, GroupMember, ContributionPayment, PaymentStatus, GroupStatus, MoMoWebhookLog
 from schemas import (
     PaymentInitiateRequest,
     PaymentWebhookPayload,
@@ -245,3 +245,54 @@ def get_group_payments(group_id: str, db: Session = Depends(get_db)):
         ContributionPayment.group_id == group_id
     ).order_by(ContributionPayment.paid_at.desc()).all()
     return [PaymentResponse.model_validate(p) for p in payments]
+
+
+@router.get("/verify/{reference}")
+async def verify_transaction(reference: str, db: Session = Depends(get_db)):
+    """
+    Verifies payment status with Paystack / Mobile Money network.
+    Only marks as settled if Paystack confirms real successful transaction.
+    """
+    verify_result = await GhanaMoMoGateway.verify_payment(reference)
+    if verify_result.get("paid"):
+        log = db.query(MoMoWebhookLog).filter(MoMoWebhookLog.transaction_reference == reference).first()
+        if log and log.payload:
+            payload_data = log.payload
+            group_id = payload_data.get("group_id")
+            member_id = payload_data.get("member_id")
+            amount = payload_data.get("amount", 0.0)
+            is_escrow = payload_data.get("is_commitment_deposit", False)
+
+            member = db.query(GroupMember).filter(GroupMember.id == member_id).first()
+            group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
+
+            if member and group:
+                existing_payment = db.query(ContributionPayment).filter(
+                    ContributionPayment.transaction_reference == reference
+                ).first()
+                if not existing_payment:
+                    payment = ContributionPayment(
+                        id=str(uuid.uuid4()),
+                        group_id=group.id,
+                        member_id=member.id,
+                        round_number=group.current_round,
+                        amount=float(amount),
+                        momo_provider=member.momo_provider,
+                        transaction_reference=reference,
+                        status=PaymentStatus.SUCCESS.value,
+                        paid_at=datetime.utcnow()
+                    )
+                    db.add(payment)
+                    if is_escrow:
+                        member.deposit_paid = True
+                    else:
+                        member.has_paid_current_round = True
+                    db.commit()
+                    RotationEngine.check_and_advance_round(db, group)
+
+        return {"status": "SUCCESS", "message": "Payment verified and contribution recorded!"}
+
+    return {
+        "status": verify_result.get("status", "PENDING"),
+        "message": "Payment is still pending authorization on your phone. Please approve the prompt on your SIM."
+    }

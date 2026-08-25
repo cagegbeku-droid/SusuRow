@@ -11,7 +11,6 @@ import {
   MessageSquare,
   Sparkles
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 
 export const ShareModal = ({
   isOpen,
@@ -37,11 +36,6 @@ export const ShareModal = ({
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
-    confetti({
-      particleCount: 50,
-      spread: 60,
-      origin: { y: 0.6 }
-    });
     setTimeout(() => setCopied(false), 2500);
   };
 

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { X, Gavel, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { submitBid } from '../api/client';
 
 export const BiddingModal = ({ isOpen, onClose, group, member, onBidSuccess }) => {
@@ -18,12 +17,6 @@ export const BiddingModal = ({ isOpen, onClose, group, member, onBidSuccess }) =
       await submitBid({
         member_id: member.id,
         bid_amount: Number(bidAmount)
-      });
-
-      confetti({
-        particleCount: 70,
-        spread: 60,
-        origin: { y: 0.6 }
       });
 
       onClose();

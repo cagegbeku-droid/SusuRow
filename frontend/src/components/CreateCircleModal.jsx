@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { createGroup } from '../api/client';
-import confetti from 'canvas-confetti';
 
 export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
   const { user } = useUser();
@@ -39,6 +38,10 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
+    if (!user?.phone_number) {
+      alert("Please add your Ghanaian Mobile Money phone number in your Profile before creating a group.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await createGroup({
@@ -50,15 +53,9 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
         members_count: Number(membersCount),
         commitment_deposit: Number(commitmentDeposit),
         rotation_type: rotationType,
-        creator_phone: user?.phone_number || '0244000000',
-        creator_name: user?.full_name || 'Group Leader',
-        creator_momo_provider: user?.momo_provider || 'MTN'
-      });
-
-      confetti({
-        particleCount: 100,
-        spread: 80,
-        origin: { y: 0.6 }
+        creator_phone: user.phone_number,
+        creator_name: user.full_name || 'Group Leader',
+        creator_momo_provider: user.momo_provider || 'MTN'
       });
 
       onClose();

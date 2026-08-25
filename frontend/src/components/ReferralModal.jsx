@@ -12,7 +12,6 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-import confetti from 'canvas-confetti';
 
 export const ReferralModal = ({ isOpen, onClose }) => {
   const { referralCode, user } = useUser();
@@ -25,11 +24,6 @@ export const ReferralModal = ({ isOpen, onClose }) => {
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
-    confetti({
-      particleCount: 50,
-      spread: 60,
-      origin: { y: 0.6 }
-    });
     setTimeout(() => setCopied(false), 2500);
   };
 
