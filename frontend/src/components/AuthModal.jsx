@@ -11,7 +11,6 @@ import {
   Eye, 
   EyeOff,
   Sparkles,
-  Mail,
   CheckCircle2
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
@@ -20,9 +19,9 @@ const GOOGLE_CLIENT_ID = "912069601596-uv6jcts8q2t1bg7sc4h8maju1odnd720.apps.goo
 
 export default function AuthModal({ isOpen, onClose }) {
   const { registerWithPassword, loginWithPassword, loginWithGoogle, requestOtp, verifyAndLogin } = useUser();
-  const [tab, setTab] = useState('login'); // 'login' | 'register' | 'google' | 'otp'
+  const [tab, setTab] = useState('login'); // 'login' | 'register' | 'otp'
   
-  // Phone Form fields
+  // Form fields
   const [phoneNumber, setPhoneNumber] = useState('');
   const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
@@ -30,14 +29,10 @@ export default function AuthModal({ isOpen, onClose }) {
   const [otpCode, setOtpCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Google Form fields
-  const [googleEmail, setGoogleEmail] = useState('');
-  const [googleName, setGoogleName] = useState('');
-  
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState(null);
   const [resendCountdown, setResendCountdown] = useState(0);
-  const googleBtnRef = useRef(null);
 
   useEffect(() => {
     let timer;
@@ -78,31 +73,11 @@ export default function AuthModal({ isOpen, onClose }) {
     }
   };
 
-  const handleGoogleCredentialResponse = async (response) => {
-    if (!response.credential) return;
-    setLoading(true);
+  // Google OAuth 2.0 Sign In
+  const handleGoogleClick = () => {
     setError(null);
-    try {
-      const payload = parseJwt(response.credential);
-      if (payload && payload.email) {
-        await loginWithGoogle({
-          id_token: response.credential,
-          email: payload.email,
-          name: payload.name || payload.given_name || 'Google Saver',
-          picture: payload.picture
-        });
-        onClose();
-      }
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Google sign-in failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setGoogleLoading(true);
 
-  // Google OAuth 2.0 Popup Trigger
-  const triggerGoogleOAuthPopup = () => {
-    setError(null);
     if (window.google?.accounts?.oauth2) {
       try {
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -110,17 +85,17 @@ export default function AuthModal({ isOpen, onClose }) {
           scope: 'email profile openid',
           callback: async (tokenResponse) => {
             if (tokenResponse?.error) {
-              setError(`Google Notice: ${tokenResponse.error_description || tokenResponse.error}`);
+              setGoogleLoading(false);
+              setError(`Google Sign-In: ${tokenResponse.error_description || tokenResponse.error}`);
               return;
             }
             if (tokenResponse && tokenResponse.access_token) {
-              setLoading(true);
               try {
                 const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                   headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
                 });
                 if (!userRes.ok) {
-                  throw new Error('Could not fetch Google profile.');
+                  throw new Error('Could not retrieve Google profile.');
                 }
                 const userData = await userRes.json();
                 if (userData && userData.email) {
@@ -131,56 +106,29 @@ export default function AuthModal({ isOpen, onClose }) {
                   });
                   onClose();
                 } else {
-                  setError('Google profile did not contain an email address.');
+                  setError('Google profile did not return an email address.');
                 }
               } catch (err) {
                 console.error('Google Auth Error:', err);
                 const msg = err.response?.data?.detail || err.message || 'Google sign-in failed. Please try again.';
                 setError(msg);
               } finally {
-                setLoading(false);
+                setGoogleLoading(false);
               }
             }
           }
         });
         tokenClient.requestAccessToken();
       } catch (err) {
-        console.warn('OAuth Popup error:', err);
-        setError(err.message || 'Unable to open Google sign-in window.');
+        console.error('OAuth Popup error:', err);
+        setGoogleLoading(false);
+        setError('Unable to open Google sign-in window. Please use phone sign-in.');
       }
     } else {
-      setTab('google');
+      setGoogleLoading(false);
+      setError('Google Sign-In is initializing. Please wait a moment or sign in with your phone.');
     }
   };
-
-  // Mount Google GSI Button on render
-  useEffect(() => {
-    if (isOpen && window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: handleGoogleCredentialResponse,
-          auto_select: false,
-          cancel_on_tap_outside: true
-        });
-
-        if (googleBtnRef.current) {
-          googleBtnRef.current.innerHTML = '';
-          window.google.accounts.id.renderButton(googleBtnRef.current, {
-            type: "standard",
-            theme: "filled_blue",
-            size: "large",
-            text: "continue_with",
-            shape: "pill",
-            width: "300",
-            logo_alignment: "left"
-          });
-        }
-      } catch (e) {
-        console.warn('Google GSI init notice:', e);
-      }
-    }
-  }, [isOpen, tab]);
 
   if (!isOpen) return null;
 
@@ -192,7 +140,7 @@ export default function AuthModal({ isOpen, onClose }) {
       await loginWithPassword(phoneNumber, password);
       onClose();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid phone or password. Please try again.');
+      setError(err.response?.data?.detail || 'Invalid phone number or password.');
     } finally {
       setLoading(false);
     }
@@ -212,32 +160,6 @@ export default function AuthModal({ isOpen, onClose }) {
     }
   };
 
-  const handleGoogleSubmit = async (e) => {
-    e.preventDefault();
-    if (!googleEmail.trim()) {
-      setError('Please enter your Google email address.');
-      return;
-    }
-    if (!googleName.trim()) {
-      setError('Please enter your full legal name.');
-      return;
-    }
-
-    setError(null);
-    setLoading(true);
-    try {
-      await loginWithGoogle({
-        email: googleEmail.trim().toLowerCase(),
-        name: googleName.trim()
-      });
-      onClose();
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Google sign-in failed. Please check your details.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
     if (!phoneNumber || phoneNumber.length < 9) {
@@ -247,7 +169,7 @@ export default function AuthModal({ isOpen, onClose }) {
     setError(null);
     setLoading(true);
     try {
-      const res = await requestOtp(phoneNumber, fullName || 'Ghana Saver', momoProvider);
+      await requestOtp(phoneNumber, fullName || 'Ghana Saver', momoProvider);
       setTab('otp');
       setResendCountdown(60);
     } catch (err) {
@@ -275,7 +197,7 @@ export default function AuthModal({ isOpen, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#04060A]/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="dark-card rounded-[2rem] shadow-2xl max-w-md w-full overflow-hidden border border-white/10 flex flex-col">
         
-        {/* Header */}
+        {/* Clean Modern Header */}
         <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 text-white p-6 relative">
           <button
             onClick={onClose}
@@ -290,71 +212,17 @@ export default function AuthModal({ isOpen, onClose }) {
           </div>
 
           <h2 className="text-xl sm:text-2xl font-black text-white">
-            {tab === 'login' && 'Sign In to Continue'}
+            {tab === 'login' && 'Sign In to SusuRow'}
             {tab === 'register' && 'Create Your Account'}
-            {tab === 'google' && 'Google Account Access'}
             {tab === 'otp' && 'Verify SMS Code'}
           </h2>
           <p className="text-xs text-blue-100 mt-0.5">
-            {tab === 'login' && 'Enter your phone number or Google account to access your groups.'}
-            {tab === 'register' && 'Save together in groups with 0% loan interest.'}
-            {tab === 'google' && 'Instant Google sign-in with +60 bonus reward points.'}
+            {tab === 'login' && 'Access your rotating Susu groups and payout wallets.'}
+            {tab === 'register' && 'Save together in verified circles with 0% loan interest.'}
             {tab === 'otp' && `Enter the 6-digit code sent to ${phoneNumber}`}
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        {tab !== 'otp' && (
-          <div className="flex border-b border-white/5 bg-[#0E1322]">
-            <button
-              onClick={() => {
-                setTab('login');
-                setError(null);
-              }}
-              className={`flex-1 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-                tab === 'login'
-                  ? 'border-blue-500 text-white bg-[#141A2D] font-black shadow-xs'
-                  : 'border-transparent text-slate-400 hover:text-white'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => {
-                setTab('register');
-                setError(null);
-              }}
-              className={`flex-1 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer ${
-                tab === 'register'
-                  ? 'border-blue-500 text-white bg-[#141A2D] font-black shadow-xs'
-                  : 'border-transparent text-slate-400 hover:text-white'
-              }`}
-            >
-              Register
-            </button>
-            <button
-              onClick={() => {
-                setTab('google');
-                setError(null);
-              }}
-              className={`flex-1 py-3 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center justify-center gap-1.5 ${
-                tab === 'google'
-                  ? 'border-blue-500 text-white bg-[#141A2D] font-black shadow-xs'
-                  : 'border-transparent text-slate-400 hover:text-white'
-              }`}
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-              </svg>
-              <span>Google</span>
-            </button>
-          </div>
-        )}
-
-        {/* Form Body */}
         <div className="p-5 sm:p-6 space-y-4">
           
           {error && (
@@ -364,87 +232,74 @@ export default function AuthModal({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* 1. GOOGLE SIGN-IN FORM */}
-          {tab === 'google' && (
-            <div className="space-y-4">
-              
-              {/* Primary Google One-Click Button */}
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={triggerGoogleOAuthPopup}
-                  disabled={loading}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-black text-xs flex items-center justify-center gap-2.5 shadow-lg transition-all cursor-pointer active:scale-95 border border-slate-200"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                  </svg>
-                  <span>Continue with Google Account</span>
-                </button>
+          {tab !== 'otp' && (
+            <>
+              {/* 🌟 1 SINGLE CLEAN GOOGLE BUTTON */}
+              <button
+                type="button"
+                onClick={handleGoogleClick}
+                disabled={googleLoading || loading}
+                className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center justify-center gap-3 shadow-md transition-all cursor-pointer active:scale-95 border border-slate-200"
+              >
+                {googleLoading ? (
+                  <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    <span>Continue with Google</span>
+                  </>
+                )}
+              </button>
 
-                <div ref={googleBtnRef} className="flex justify-center w-full min-h-[40px]"></div>
-              </div>
-
-              {/* Or manual entry fallback */}
+              {/* Clean Divider */}
               <div className="relative flex py-1 items-center">
                 <div className="flex-grow border-t border-white/10"></div>
                 <span className="flex-shrink mx-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  Or enter details manually
+                  Or with phone number
                 </span>
                 <div className="flex-grow border-t border-white/10"></div>
               </div>
 
-              <form onSubmit={handleGoogleSubmit} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Google Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="your.email@gmail.com"
-                      value={googleEmail}
-                      onChange={(e) => setGoogleEmail(e.target.value)}
-                      className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-white placeholder-slate-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Full Legal Name
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter your full name"
-                    value={googleName}
-                    onChange={(e) => setGoogleName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-white placeholder-slate-500"
-                  />
-                </div>
-
+              {/* Clean 2-Option Segmented Control (Sign In / Register) */}
+              <div className="flex rounded-2xl bg-[#0E1322] p-1 border border-white/5">
                 <button
-                  type="submit"
-                  disabled={loading || !googleEmail.trim() || !googleName.trim()}
-                  className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                  type="button"
+                  onClick={() => {
+                    setTab('login');
+                    setError(null);
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                    tab === 'login'
+                      ? 'bg-blue-600 text-white font-black shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                 >
-                  {loading ? (
-                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                  ) : (
-                    <span>Sign In with Email</span>
-                  )}
+                  Sign In
                 </button>
-              </form>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab('register');
+                    setError(null);
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                    tab === 'register'
+                      ? 'bg-blue-600 text-white font-black shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Create Account
+                </button>
+              </div>
+            </>
           )}
 
-          {/* 2. LOGIN FORM */}
+          {/* SIGN IN FORM */}
           {tab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-3.5">
               <div>
@@ -501,7 +356,7 @@ export default function AuthModal({ isOpen, onClose }) {
               <button
                 type="submit"
                 disabled={loading || phoneNumber.length < 9 || password.length < 1}
-                className="w-full mt-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all cursor-pointer active:scale-95"
+                className="w-full mt-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
               >
                 {loading ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -512,24 +367,10 @@ export default function AuthModal({ isOpen, onClose }) {
                   </>
                 )}
               </button>
-
-              <div className="pt-2 text-center text-xs text-slate-400">
-                Don't have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTab('register');
-                    setError(null);
-                  }}
-                  className="text-blue-400 font-bold hover:underline cursor-pointer"
-                >
-                  Create one now
-                </button>
-              </div>
             </form>
           )}
 
-          {/* 3. REGISTER FORM */}
+          {/* REGISTER FORM */}
           {tab === 'register' && (
             <form onSubmit={handleRegister} className="space-y-3.5">
               <div>
@@ -617,7 +458,7 @@ export default function AuthModal({ isOpen, onClose }) {
               <button
                 type="submit"
                 disabled={loading || phoneNumber.length < 9 || password.length < 4 || !fullName.trim()}
-                className="w-full mt-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all cursor-pointer active:scale-95"
+                className="w-full mt-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
               >
                 {loading ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -628,31 +469,10 @@ export default function AuthModal({ isOpen, onClose }) {
                   </>
                 )}
               </button>
-
-              <div className="flex items-center justify-center gap-3 pt-2 text-xs text-slate-400">
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  className="text-amber-400 font-bold hover:underline cursor-pointer"
-                >
-                  Register via SMS OTP
-                </button>
-                <span>•</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTab('login');
-                    setError(null);
-                  }}
-                  className="text-blue-400 font-bold hover:underline cursor-pointer"
-                >
-                  Sign in here
-                </button>
-              </div>
             </form>
           )}
 
-          {/* 4. OTP VERIFICATION FORM */}
+          {/* OTP VERIFICATION FORM */}
           {tab === 'otp' && (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
               <div>
@@ -673,7 +493,7 @@ export default function AuthModal({ isOpen, onClose }) {
               <button
                 type="submit"
                 disabled={loading || otpCode.length < 4}
-                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all cursor-pointer"
+                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
               >
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <span>Verify & Continue</span>}
               </button>

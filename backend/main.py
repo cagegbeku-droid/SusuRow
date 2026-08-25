@@ -54,6 +54,15 @@ def auto_migrate_schema():
     ]
     
     is_sqlite = engine.dialect.name == "sqlite"
+    if not is_sqlite:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ALTER COLUMN phone_number DROP NOT NULL;"))
+                conn.execute(text("ALTER TABLE users ALTER COLUMN momo_provider DROP NOT NULL;"))
+                results.append("Dropped NOT NULL on users.phone_number and users.momo_provider")
+        except Exception as e:
+            results.append(f"Notice dropping NOT NULL: {str(e)}")
+
     for table_name, col_name, col_type in migrations:
         try:
             with engine.begin() as conn:
