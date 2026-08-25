@@ -31,16 +31,16 @@ def _build_user_profile(user: User) -> UserProfile:
     return UserProfile(
         id=user.id,
         phone_number=user.phone_number,
-        full_name=user.full_name,
+        full_name=user.full_name or "Saver",
         username=user.username,
         email=user.email,
         avatar_url=user.avatar_url,
-        momo_provider=user.momo_provider,
+        momo_provider=user.momo_provider or "MTN",
         tier=user.tier or "BRONZE",
-        points=user.points or 50,
-        trust_score=user.trust_score or 100,
+        points=user.points if user.points is not None else 50,
+        trust_score=user.trust_score if user.trust_score is not None else 100,
         on_time_payments_count=user.on_time_payments_count or 0,
-        is_verified=user.is_verified,
+        is_verified=bool(user.is_verified),
         nationality=user.nationality or "Ghanaian",
         date_of_birth=user.date_of_birth,
         kyc_status=user.kyc_status or "UNVERIFIED",
@@ -57,10 +57,10 @@ def _build_user_profile(user: User) -> UserProfile:
         bank_name=user.bank_name,
         bank_account_number=user.bank_account_number,
         bank_branch=user.bank_branch,
-        auto_debit_enabled=user.auto_debit_enabled or False,
+        auto_debit_enabled=bool(user.auto_debit_enabled),
         auto_debit_frequency=user.auto_debit_frequency or "WEEKLY",
         auto_debit_time=user.auto_debit_time or "08:00",
-        created_at=user.created_at
+        created_at=user.created_at or datetime.utcnow()
     )
 
 

@@ -109,12 +109,19 @@ export default function AuthModal({ isOpen, onClose }) {
           client_id: GOOGLE_CLIENT_ID,
           scope: 'email profile openid',
           callback: async (tokenResponse) => {
+            if (tokenResponse?.error) {
+              setError(`Google Notice: ${tokenResponse.error_description || tokenResponse.error}`);
+              return;
+            }
             if (tokenResponse && tokenResponse.access_token) {
               setLoading(true);
               try {
                 const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                   headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
                 });
+                if (!userRes.ok) {
+                  throw new Error('Could not fetch Google profile.');
+                }
                 const userData = await userRes.json();
                 if (userData && userData.email) {
                   await loginWithGoogle({
@@ -123,9 +130,13 @@ export default function AuthModal({ isOpen, onClose }) {
                     picture: userData.picture
                   });
                   onClose();
+                } else {
+                  setError('Google profile did not contain an email address.');
                 }
               } catch (err) {
-                setError(err.response?.data?.detail || 'Could not verify Google account.');
+                console.error('Google Auth Error:', err);
+                const msg = err.response?.data?.detail || err.message || 'Google sign-in failed. Please try again.';
+                setError(msg);
               } finally {
                 setLoading(false);
               }
@@ -135,6 +146,7 @@ export default function AuthModal({ isOpen, onClose }) {
         tokenClient.requestAccessToken();
       } catch (err) {
         console.warn('OAuth Popup error:', err);
+        setError(err.message || 'Unable to open Google sign-in window.');
       }
     } else {
       setTab('google');
