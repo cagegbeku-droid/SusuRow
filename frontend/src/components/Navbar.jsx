@@ -14,6 +14,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import { ThemeToggle } from './ThemeToggle';
 
 export default function Navbar({
   activeView,
@@ -129,6 +130,9 @@ export default function Navbar({
           {/* Right: Actions & User Profile */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             
+            {/* Theme Toggle (Light / Dark) */}
+            <ThemeToggle />
+
             {/* Refer & Earn Button */}
             <button
               onClick={onOpenReferralModal}

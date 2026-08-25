@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserProvider, useUser } from './context/UserContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
 import AuthModal from './components/AuthModal';
 import MobileBottomNav from './components/MobileBottomNav';
@@ -323,9 +324,11 @@ function AppContent() {
 
 export function App() {
   return (
-    <UserProvider>
-      <AppContent />
-    </UserProvider>
+    <ThemeProvider>
+      <UserProvider>
+        <AppContent />
+      </UserProvider>
+    </ThemeProvider>
   );
 }
 

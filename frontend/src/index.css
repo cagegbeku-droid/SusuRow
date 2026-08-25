@@ -26,8 +26,9 @@
     box-sizing: border-box;
   }
 
+  /* Default Dark Mode */
   html, body, #root {
-    background-color: #080C16 !important;
+    background-color: #080C16;
     color: #F8FAFC;
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
@@ -38,33 +39,131 @@
     padding: 0;
     font-size: 15px;
     line-height: 1.5;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  /* Light Mode Base Override */
+  html.light, 
+  html.light body, 
+  html.light #root {
+    background-color: #F4F7F9 !important;
+    color: #0F172A !important;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
     color: #FFFFFF;
+    transition: color 0.25s ease;
+  }
+
+  html.light h1,
+  html.light h2,
+  html.light h3,
+  html.light h4,
+  html.light h5,
+  html.light h6 {
+    color: #0F172A !important;
   }
 }
 
-/* Ezpay Style Card & Surface Utilities */
+/* ========================================================
+   Ezpay Card & Surface Utilities (Dual Light & Dark Theme)
+   ======================================================== */
+
+/* Dark Mode Card */
 .dark-card {
   background-color: #131A2E;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-}
-
-.dark-card-hover {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark-card-hover:hover {
   background-color: #18223C;
-  border-color: rgba(0, 208, 156, 0.3);
+  border-color: rgba(0, 208, 156, 0.35);
   transform: translateY(-2px);
   box-shadow: 0 10px 25px -5px rgba(0, 208, 156, 0.15);
 }
 
+/* Light Mode Card Adaptations */
+html.light .dark-card {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+  color: #0F172A !important;
+}
+
+html.light .dark-card-hover:hover {
+  background-color: #FFFFFF !important;
+  border-color: #00D09C !important;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 208, 156, 0.2) !important;
+}
+
+/* Light Mode Header & Navigation */
+html.light header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+html.light nav {
+  background-color: #F1F5F9 !important;
+  border-color: #E2E8F0 !important;
+}
+
+/* Light Mode Text Adapters */
+html.light .text-white {
+  color: #0F172A !important;
+}
+
+html.light .text-slate-200,
+html.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-400 {
+  color: #64748B !important;
+}
+
+html.light .text-slate-500 {
+  color: #94A3B8 !important;
+}
+
+/* Light Mode Inner Wells & Nested Surfaces */
+html.light .bg-\[\#131A2E\],
+html.light .bg-\[\#141A2D\],
+html.light .bg-\[\#0E1424\],
+html.light .bg-\[\#0E1322\],
+html.light .bg-\[\#111827\],
+html.light .bg-\[\#161F33\] {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+/* Light Mode Inputs, Dropdowns & Modals */
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+html.light footer {
+  background-color: #FFFFFF !important;
+  border-top-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+/* Ezpay Signature Mint Buttons */
 .ezpay-mint-btn {
   background: linear-gradient(135deg, #00D09C 0%, #00B789 100%);
   color: #05140F;
@@ -87,9 +186,17 @@
   background: #080C16;
 }
 
+html.light ::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #18223C;
   border-radius: 9999px;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
 }
 
 ::-webkit-scrollbar-thumb:hover {
