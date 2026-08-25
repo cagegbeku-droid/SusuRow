@@ -101,12 +101,12 @@ class UserProfile(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    phone_number: str
+    phone_number: Optional[str] = None
     full_name: str
     username: Optional[str] = None
     email: Optional[str] = None
     avatar_url: Optional[str] = None
-    momo_provider: str
+    momo_provider: Optional[str] = "MTN"
     tier: str = "BRONZE"
     points: int = 50
     trust_score: int = 100
