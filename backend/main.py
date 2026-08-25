@@ -146,6 +146,9 @@ def trigger_migration(db: Session = Depends(get_db)):
             "error": str(e),
             "traceback": traceback.format_exc(),
             "migration_logs": migration_logs
+        }
+
+
 @app.get("/api/admin/clean-all-data")
 def clean_all_data(db: Session = Depends(get_db)):
     """Cleans all test data from the database for a fresh start."""
