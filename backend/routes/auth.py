@@ -155,18 +155,12 @@ def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
 
     if not user:
         # Create new user via Google
-        phone_seed = payload.phone_number or f"024{random_digits(7)}"
-        clean_phone = sanitize_ghana_phone(phone_seed)
-        
-        # Ensure unique phone number
-        while db.query(User).filter(User.phone_number == clean_phone).first():
-            phone_seed = f"024{random_digits(7)}"
-            clean_phone = sanitize_ghana_phone(phone_seed)
+        clean_phone = sanitize_ghana_phone(payload.phone_number) if payload.phone_number else None
 
-        # Unique sanitized username
-        base_username = payload.email.split("@")[0] if payload.email else f"saver_{clean_phone[-4:]}"
-        base_username = re.sub(r'[^a-zA-Z0-9_]', '', base_username).lower()
-        candidate_username = base_username or f"saver_{clean_phone[-4:]}"
+        # Unique sanitized username from real Google email
+        base_username = payload.email.split("@")[0] if payload.email else "saver"
+        base_username = re.sub(r'[^a-zA-Z0-9_]', '', base_username).lower() or "saver"
+        candidate_username = base_username
         if db.query(User).filter(User.username == candidate_username).first():
             candidate_username = f"{candidate_username}_{random_digits(3)}"
 
@@ -192,9 +186,11 @@ def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
     else:
-        # Update user's avatar or email if missing
-        if payload.picture and not user.avatar_url:
+        # Update user's avatar or email or full name if provided by Google
+        if payload.picture:
             user.avatar_url = payload.picture
+        if payload.name and (not user.full_name or user.full_name == "Google Saver"):
+            user.full_name = payload.name.strip()
         if payload.email and not user.email:
             user.email = payload.email.strip().lower()
         db.commit()

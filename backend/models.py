@@ -54,7 +54,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    phone_number = Column(String(20), unique=True, index=True, nullable=False)
+    phone_number = Column(String(20), unique=True, index=True, nullable=True)
     full_name = Column(String(100), nullable=False)
     username = Column(String(50), unique=True, index=True, nullable=True)
     email = Column(String(120), unique=True, index=True, nullable=True)

@@ -9,7 +9,7 @@ import {
   ArrowRight,
   Wallet,
   Sparkles,
-  ChevronRight
+  Phone
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { getUserGroups } from '../api/client';
@@ -39,18 +39,10 @@ export const MyCirclesPage = ({ onSelectCircle, openCreateModal }) => {
 
   const totalPotsValue = circles.reduce((acc, c) => acc + (c.total_pool || 0), 0);
 
-  // Categorized savings metrics (Image 1 style)
-  const savingsCategories = [
-    { title: "Business Expansion", target: "GH₵10,000", progress: 65, color: "from-blue-500 to-indigo-600" },
-    { title: "School Fees / Tuition", target: "GH₵3,500", progress: 80, color: "from-emerald-500 to-teal-500" },
-    { title: "Emergency Cushion", target: "GH₵5,000", progress: 45, color: "from-amber-500 to-amber-600" },
-    { title: "Rent & Housing", target: "GH₵12,000", progress: 30, color: "from-rose-500 to-pink-600" },
-  ];
-
   return (
     <div className="space-y-6 sm:space-y-8 pb-10">
       
-      {/* 💼 Saver Wallet Banner (Matching Image 1) */}
+      {/* 💼 Saver Portfolio Card */}
       <div className="relative overflow-hidden rounded-3xl sm:rounded-[2rem] bg-gradient-to-br from-blue-900/60 via-[#141A2D] to-[#0E1322] border border-blue-500/25 p-6 sm:p-7 text-white shadow-xl">
         
         {/* Glow Element */}
@@ -64,16 +56,17 @@ export const MyCirclesPage = ({ onSelectCircle, openCreateModal }) => {
                 Saver Portfolio
               </span>
               <span className="text-xs text-slate-400 font-mono">
-                {user?.momo_provider} MoMo
+                {user?.momo_provider || 'MTN'} MoMo
               </span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-black text-white">
-              {user?.full_name || 'My Account'}
+              {user?.full_name || 'My Groups'}
             </h1>
             
-            <p className="text-xs text-slate-400 font-mono">
-              Phone: {user?.phone_number}
+            <p className="text-xs text-slate-400 font-mono flex items-center gap-1.5">
+              <Phone size={12} className="text-slate-500" />
+              <span>{user?.phone_number || 'No Phone Linked'}</span>
             </p>
           </div>
 
@@ -93,40 +86,6 @@ export const MyCirclesPage = ({ onSelectCircle, openCreateModal }) => {
 
           </div>
 
-        </div>
-      </div>
-
-      {/* 🎯 Savings Categories & Target Progress Meters (Inspired by Image 1) */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-            <Sparkles size={14} className="text-amber-400" />
-            <span>Savings Target Breakdown</span>
-          </h3>
-          <span className="text-[10px] font-bold text-slate-500">ROSCA Rotation Goals</span>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {savingsCategories.map((cat, idx) => (
-            <div
-              key={idx}
-              className="dark-card rounded-2xl p-3.5 space-y-2 border border-white/5"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-200 line-clamp-1">{cat.title}</span>
-                <ChevronRight size={13} className="text-slate-500 shrink-0" />
-              </div>
-              <div className="text-sm font-black text-white font-mono">{cat.target}</div>
-              
-              {/* Progress bar */}
-              <div className="w-full bg-[#0E1322] rounded-full h-1.5 overflow-hidden">
-                <div 
-                  className={`bg-gradient-to-r ${cat.color} h-full rounded-full`}
-                  style={{ width: `${cat.progress}%` }}
-                />
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 
