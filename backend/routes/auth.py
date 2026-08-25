@@ -319,6 +319,18 @@ def update_profile(
     """Updates personal information (Legal Name, Username, Email, DOB, Nationality, Goals)."""
     if payload.full_name and payload.full_name.strip():
         current_user.full_name = payload.full_name.strip()
+    if payload.phone_number and payload.phone_number.strip():
+        clean_phone = sanitize_ghana_phone(payload.phone_number)
+        existing = db.query(User).filter(User.phone_number == clean_phone, User.id != current_user.id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="This phone number is already registered to another account.")
+        current_user.phone_number = clean_phone
+        current_user.primary_wallet_number = clean_phone
+        current_user.momo_provider = payload.momo_provider or detect_momo_provider(clean_phone)
+        current_user.primary_wallet_provider = current_user.momo_provider
+    elif payload.momo_provider:
+        current_user.momo_provider = payload.momo_provider
+        current_user.primary_wallet_provider = payload.momo_provider
     if payload.username and payload.username.strip():
         uname = payload.username.strip().lower().replace("@", "")
         existing = db.query(User).filter(User.username == uname, User.id != current_user.id).first()

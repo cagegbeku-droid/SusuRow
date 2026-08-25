@@ -47,6 +47,7 @@ export default function AppSidebar({
   } = useUser();
 
   const [copied, setCopied] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   // Close on Escape key
   useEffect(() => {
@@ -178,13 +179,18 @@ export default function AppSidebar({
             >
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-black text-xl flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)]">
-                    {user?.avatar_url ? (
-                      <img src={user.avatar_url} alt="" className="w-full h-full object-cover rounded-2xl" />
-                    ) : user?.full_name ? (
-                      user.full_name.charAt(0).toUpperCase()
+                  <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-violet-600 text-white font-black text-xl flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.4)] overflow-hidden">
+                    {user?.avatar_url && !avatarError ? (
+                      <img 
+                        src={user.avatar_url} 
+                        alt="" 
+                        onError={() => setAvatarError(true)} 
+                        className="w-full h-full object-cover rounded-2xl" 
+                      />
                     ) : (
-                      '₵'
+                      <span className="text-white font-black text-lg">
+                        {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '₵'}
+                      </span>
                     )}
                   </div>
                   <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-[#141A2D]"></span>

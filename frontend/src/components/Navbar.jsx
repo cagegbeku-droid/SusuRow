@@ -26,6 +26,7 @@ export default function Navbar({
 }) {
   const { user, isAuthenticated, logout, openAuthModal } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
 
   const getProviderBadge = (provider) => {
     switch (provider) {
@@ -162,13 +163,16 @@ export default function Navbar({
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-1.5 sm:gap-2 p-1 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-left transition-all cursor-pointer shadow-xs"
                 >
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-black flex items-center justify-center text-xs shadow">
-                    {user?.avatar_url ? (
-                      <img src={user.avatar_url} alt="" className="w-full h-full object-cover rounded-lg" />
-                    ) : user?.full_name ? (
-                      user.full_name.charAt(0).toUpperCase()
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black flex items-center justify-center text-xs shadow overflow-hidden">
+                    {user?.avatar_url && !avatarError ? (
+                      <img 
+                        src={user.avatar_url} 
+                        alt="" 
+                        onError={() => setAvatarError(true)} 
+                        className="w-full h-full object-cover rounded-lg" 
+                      />
                     ) : (
-                      '₵'
+                      <span>{user?.full_name ? user.full_name.charAt(0).toUpperCase() : '₵'}</span>
                     )}
                   </div>
                   <div className="hidden sm:block text-left">

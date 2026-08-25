@@ -143,6 +143,8 @@ class UserProfile(BaseModel):
 
 class UpdateProfileRequest(BaseModel):
     full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    momo_provider: Optional[str] = None
     username: Optional[str] = None
     email: Optional[str] = None
     date_of_birth: Optional[str] = None
