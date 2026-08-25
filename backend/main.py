@@ -118,7 +118,7 @@ def root():
         "developer": "Coratech Global (coratechglobal.com)",
         "environment": "production",
         "status": "online",
-        "version": "1.5.0",
+        "version": "1.6.0",
         "currency": "GHS (Ghanaian Cedi GH₵)",
         "supported_momo": ["MTN Mobile Money", "Telecel Cash", "AT Money"]
     }
@@ -126,28 +126,6 @@ def root():
 @app.get("/api/health")
 def health():
     return {"status": "healthy"}
-
-@app.get("/api/migrate-db")
-def trigger_migration(db: Session = Depends(get_db)):
-    """Triggers and checks DB schema migration."""
-    migration_logs = auto_migrate_schema()
-    try:
-        user_count = db.query(models.User).count()
-        return {
-            "status": "success",
-            "db_dialect": engine.dialect.name,
-            "user_count": user_count,
-            "migration_logs": migration_logs
-        }
-    except Exception as e:
-        return {
-            "status": "error",
-            "db_dialect": engine.dialect.name,
-            "error": str(e),
-            "traceback": traceback.format_exc(),
-            "migration_logs": migration_logs
-        }
-
 
 @app.get("/api/admin/clean-all-data")
 def clean_all_data(db: Session = Depends(get_db)):
@@ -169,6 +147,27 @@ def clean_all_data(db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         return {"status": "error", "error": str(e)}
+
+@app.get("/api/migrate-db")
+def trigger_migration(db: Session = Depends(get_db)):
+    """Triggers and checks DB schema migration."""
+    migration_logs = auto_migrate_schema()
+    try:
+        user_count = db.query(models.User).count()
+        return {
+            "status": "success",
+            "db_dialect": engine.dialect.name,
+            "user_count": user_count,
+            "migration_logs": migration_logs
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "db_dialect": engine.dialect.name,
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "migration_logs": migration_logs
+        }
 
 if __name__ == "__main__":
     import uvicorn
