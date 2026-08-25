@@ -1,23 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --color-dark-bg: #0B0F19;
-  --color-dark-surface: #111827;
-  --color-dark-card: #161F33;
-  --color-dark-card-hover: #1E293B;
-  --color-dark-border: rgba(255, 255, 255, 0.12);
+  --color-brand-mint: #00D09C;
+  --color-brand-mint-hover: #00B789;
+  --color-brand-mint-light: #E6FAF4;
+  --color-brand-mint-dark: #008764;
 
-  --color-primary-950: #060913;
-  --color-primary-900: #0B0F19;
-  --color-primary-800: #111827;
-  --color-primary-700: #1D4ED8;
-  --color-primary-600: #2563EB;
-  --color-primary-500: #3B82F6;
-  --color-primary-100: #DBEAFE;
-  --color-primary-50: #EFF6FF;
+  --color-dark-bg: #080C16;
+  --color-dark-surface: #0E1424;
+  --color-dark-card: #131A2E;
+  --color-dark-card-hover: #18223C;
+  --color-dark-border: rgba(255, 255, 255, 0.08);
 
-  --color-accent-blue: #2563EB;
-  --color-accent-emerald: #10B981;
+  --color-accent-blue: #3B82F6;
+  --color-accent-emerald: #00D09C;
   --color-accent-gold: #F59E0B;
 
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -31,7 +27,7 @@
   }
 
   html, body, #root {
-    background-color: #0B0F19 !important;
+    background-color: #080C16 !important;
     color: #F8FAFC;
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
@@ -51,43 +47,34 @@
   }
 }
 
-/* Card & Surface Utilities */
-.glass-panel {
-  background: #111827;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
+/* Ezpay Style Card & Surface Utilities */
 .dark-card {
-  background-color: #111827;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background-color: #131A2E;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
 .dark-card-hover {
-  transition: all 0.2s ease-in-out;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark-card-hover:hover {
-  background-color: #161F33;
-  border-color: rgba(37, 99, 235, 0.4);
-  transform: translateY(-1px);
+  background-color: #18223C;
+  border-color: rgba(0, 208, 156, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 208, 156, 0.15);
 }
 
-/* Senior / High-Legibility Accessibility Mode */
-html.senior-mode {
-  font-size: 115%;
+.ezpay-mint-btn {
+  background: linear-gradient(135deg, #00D09C 0%, #00B789 100%);
+  color: #05140F;
+  font-weight: 800;
+  transition: all 0.2s ease;
 }
 
-html.senior-mode body {
-  font-weight: 500;
-  letter-spacing: 0.01em;
-}
-
-html.senior-mode button,
-html.senior-mode input,
-html.senior-mode select {
-  font-size: 1rem;
-  min-height: 48px;
+.ezpay-mint-btn:hover {
+  background: linear-gradient(135deg, #00E4AB 0%, #00C896 100%);
+  box-shadow: 0 4px 20px rgba(0, 208, 156, 0.35);
 }
 
 /* Custom Sleek Scrollbars */
@@ -97,14 +84,14 @@ html.senior-mode select {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0F19;
+  background: #080C16;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1F293D;
+  background: #18223C;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2563EB;
+  background: #00D09C;
 }

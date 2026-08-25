@@ -142,55 +142,54 @@ export const MarketplacePage = ({
             placeholder="Search Susu groups by name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-11 pr-24 py-3 rounded-2xl sm:rounded-3xl bg-[#141A2D] border border-white/10 text-white placeholder-slate-500 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-md"
+            className="w-full pl-11 pr-24 py-3 rounded-2xl sm:rounded-3xl bg-[#131A2E] border border-white/10 text-white placeholder-slate-500 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#00D09C] shadow-md"
           />
           <button
             type="submit"
-            className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow transition-all cursor-pointer"
+            className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded-xl bg-[#00D09C] hover:bg-[#00B789] text-slate-950 font-bold text-xs shadow transition-all cursor-pointer"
           >
             Search
           </button>
         </form>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
           
-          {/* Frequency Filters */}
-          <div className="flex items-center gap-1 bg-[#141A2D] p-1 rounded-2xl border border-white/5 shrink-0">
+          {/* Frequency Filters (Ezpay Segmented Pill style) */}
+          <div className="flex items-center gap-1 bg-[#131A2E] p-1 rounded-2xl border border-white/10 shrink-0">
             {['ALL', 'DAILY', 'WEEKLY', 'MONTHLY'].map((freq) => (
               <button
                 key={freq}
                 onClick={() => setFrequencyFilter(freq)}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
                   frequencyFilter === freq
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? 'bg-[#00D09C] text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                {freq === 'ALL' ? 'All Schedules' : freq.charAt(0) + freq.slice(1).toLowerCase()}
+                {freq === 'ALL' ? 'All Cycles' : freq.charAt(0) + freq.slice(1).toLowerCase()}
               </button>
             ))}
           </div>
 
           {/* Scheme Filters */}
-          <div className="flex items-center gap-1 bg-[#141A2D] p-1 rounded-2xl border border-white/5 shrink-0">
+          <div className="flex items-center gap-1 bg-[#131A2E] p-1 rounded-2xl border border-white/10 shrink-0">
             {['ALL', 'SEQUENTIAL', 'BALLOT', 'BIDDING'].map((scheme) => (
               <button
                 key={scheme}
                 onClick={() => setRotationFilter(scheme)}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
                   rotationFilter === scheme
-                    ? 'bg-amber-500 text-slate-950 shadow-sm font-black'
+                    ? 'bg-[#00D09C] text-slate-950 shadow-sm'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                {scheme === 'ALL' ? 'All Schemes' : scheme.charAt(0) + scheme.slice(1).toLowerCase()}
+                {scheme === 'ALL' ? 'All Types' : scheme.charAt(0) + scheme.slice(1).toLowerCase()}
               </button>
             ))}
           </div>
 
         </div>
-
       </div>
 
       {/* 📦 Susu Groups Grid */}

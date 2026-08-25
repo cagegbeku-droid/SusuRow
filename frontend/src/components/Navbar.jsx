@@ -42,7 +42,7 @@ export default function Navbar({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full max-w-full bg-[#080B11]/90 backdrop-blur-xl border-b border-white/[0.07] text-white">
+    <header className="sticky top-0 z-40 w-full max-w-full bg-[#080C16]/95 backdrop-blur-xl border-b border-white/[0.08] text-white">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-18">
           
@@ -50,7 +50,7 @@ export default function Navbar({
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <button
               onClick={onToggleSidebar}
-              className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/5 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-sm"
+              className="p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-[#131A2E] hover:bg-[#18223C] border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-sm"
               aria-label="Open App Menu"
             >
               <Menu size={18} />
@@ -61,25 +61,25 @@ export default function Navbar({
               onClick={() => setActiveView('marketplace')}
               className="flex items-center gap-2 cursor-pointer select-none group"
             >
-              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-base sm:text-lg shadow-[0_0_15px_rgba(59,130,246,0.5)] group-hover:scale-105 transition-transform">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-[#00D09C] flex items-center justify-center text-slate-950 font-black text-base sm:text-lg shadow-[0_0_15px_rgba(0,208,156,0.4)] group-hover:scale-105 transition-transform">
                 ₵
               </div>
-              <div className="font-black text-base sm:text-xl tracking-tight text-white">
-                Susu<span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-amber-400">Row</span>
+              <div className="font-bold text-base sm:text-xl tracking-tight text-white">
+                Susu<span className="text-[#00D09C]">Row</span>
               </div>
             </div>
 
             {/* Desktop Navigation Links */}
-            <nav className="hidden lg:flex items-center space-x-1 text-xs font-bold ml-6 bg-[#141A2D]/80 p-1 rounded-2xl border border-white/5">
+            <nav className="hidden lg:flex items-center space-x-1 text-xs font-bold ml-6 bg-[#131A2E] p-1 rounded-2xl border border-white/10">
               <button
                 onClick={() => setActiveView('marketplace')}
                 className={`px-4 py-2 rounded-xl transition-all cursor-pointer ${
                   activeView === 'marketplace'
-                    ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/25'
+                    ? 'bg-[#00D09C] text-slate-950 font-bold shadow-md'
                     : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
-                All Groups
+                Explore Circles
               </button>
 
               <button
@@ -92,7 +92,7 @@ export default function Navbar({
                 }}
                 className={`px-4 py-2 rounded-xl transition-all cursor-pointer ${
                   activeView === 'my-circles'
-                    ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/25'
+                    ? 'bg-[#00D09C] text-slate-950 font-bold shadow-md'
                     : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
@@ -109,7 +109,7 @@ export default function Navbar({
                 }}
                 className={`px-4 py-2 rounded-xl transition-all cursor-pointer ${
                   activeView === 'profile'
-                    ? 'bg-blue-600 text-white font-black shadow-md shadow-blue-500/25'
+                    ? 'bg-[#00D09C] text-slate-950 font-bold shadow-md'
                     : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
@@ -120,7 +120,7 @@ export default function Navbar({
                 onClick={onOpenCalculator}
                 className="px-3.5 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <Calculator size={14} className="text-amber-400" />
+                <Calculator size={14} className="text-[#00D09C]" />
                 <span>Calculator</span>
               </button>
             </nav>
@@ -132,25 +132,25 @@ export default function Navbar({
             {/* Refer & Earn Button */}
             <button
               onClick={onOpenReferralModal}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-gradient-to-r from-amber-500/15 to-gold-500/20 text-amber-300 border border-amber-500/30 hover:border-amber-400/60 transition-all cursor-pointer shadow-xs"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold bg-[#131A2E] text-slate-300 hover:text-white border border-white/10 hover:border-white/20 transition-all cursor-pointer shadow-xs"
             >
-              <Gift size={14} className="text-amber-400" />
-              <span>Refer & Earn</span>
+              <Gift size={14} className="text-[#00D09C]" />
+              <span>Refer Friends</span>
             </button>
 
             {/* Code Join */}
             <button
               onClick={onOpenJoinCodeModal}
-              className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold bg-[#141A2D] hover:bg-[#1C233A] text-slate-300 border border-white/5 transition-all cursor-pointer"
+              className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold bg-[#131A2E] hover:bg-[#18223C] text-slate-300 border border-white/10 transition-all cursor-pointer"
             >
-              <KeyRound size={13} className="text-blue-400" />
+              <KeyRound size={13} className="text-[#00D09C]" />
               <span>Group Code</span>
             </button>
 
             {/* Create Group Button */}
             <button
               onClick={onOpenCreateModal}
-              className="hidden sm:flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-[0_0_20px_rgba(59,130,246,0.4)] transition-all cursor-pointer active:scale-95"
+              className="hidden sm:flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-bold bg-[#00D09C] hover:bg-[#00B789] text-slate-950 shadow-[0_0_20px_rgba(0,208,156,0.35)] transition-all cursor-pointer active:scale-95"
             >
               <PlusCircle size={15} />
               <span>New Group</span>
@@ -161,9 +161,9 @@ export default function Navbar({
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center gap-1.5 sm:gap-2 p-1 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-left transition-all cursor-pointer shadow-xs"
+                  className="flex items-center gap-1.5 sm:gap-2 p-1 sm:px-3 sm:py-1.5 rounded-xl sm:rounded-2xl bg-[#131A2E] hover:bg-[#18223C] border border-white/10 text-left transition-all cursor-pointer shadow-xs"
                 >
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black flex items-center justify-center text-xs shadow overflow-hidden">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[#00D09C] text-slate-950 font-bold flex items-center justify-center text-xs shadow overflow-hidden">
                     {user?.avatar_url && !avatarError ? (
                       <img 
                         src={user.avatar_url} 

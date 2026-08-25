@@ -146,7 +146,26 @@ def trigger_migration(db: Session = Depends(get_db)):
             "error": str(e),
             "traceback": traceback.format_exc(),
             "migration_logs": migration_logs
+@app.get("/api/admin/clean-all-data")
+def clean_all_data(db: Session = Depends(get_db)):
+    """Cleans all test data from the database for a fresh start."""
+    try:
+        db.query(models.ContributionPayment).delete()
+        db.query(models.PayoutDisbursement).delete()
+        db.query(models.GroupMessage).delete()
+        db.query(models.GroupMember).delete()
+        db.query(models.SusuGroup).delete()
+        db.query(models.OTPVerification).delete()
+        db.query(models.MoMoWebhookLog).delete()
+        db.query(models.User).delete()
+        db.commit()
+        return {
+            "status": "success",
+            "message": "All test groups, members, payments, and users were permanently cleared from the database."
         }
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

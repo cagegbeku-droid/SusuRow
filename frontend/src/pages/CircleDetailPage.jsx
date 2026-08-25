@@ -293,75 +293,75 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </div>
       )}
 
-      {/* 💳 Hero Pot & Cycle Banner */}
-      <div className="relative overflow-hidden rounded-3xl sm:rounded-[2rem] bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-6 sm:p-8 text-white shadow-[0_15px_35px_-5px_rgba(59,130,246,0.5)]">
-        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/10 blur-2xl pointer-events-none"></div>
+      {/* 💳 Hero Pot & Cycle Banner (Ezpay Mint Style) */}
+      <div className="relative overflow-hidden rounded-3xl sm:rounded-[2rem] bg-gradient-to-br from-[#00D09C] to-[#008F6B] p-6 sm:p-8 text-slate-950 shadow-[0_15px_35px_-5px_rgba(0,208,156,0.3)]">
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/20 blur-2xl pointer-events-none"></div>
 
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           
           <div className="lg:col-span-8 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+              <span className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ${
                 isCompleted
-                  ? 'bg-black/30 text-slate-300 border border-white/15'
+                  ? 'bg-slate-900 text-white'
                   : group.status === 'ACTIVE'
-                  ? 'bg-amber-400 text-slate-950 font-black shadow'
-                  : 'bg-white/20 text-white border border-white/20'
+                  ? 'bg-slate-950 text-[#00D09C] font-bold shadow'
+                  : 'bg-white/30 text-slate-950 font-bold'
               }`}>
                 {isCompleted ? 'Cycle Completed' : group.status === 'ACTIVE' ? `Active Cycle • Round ${group.current_round} of ${group.members_count}` : 'Recruiting Group'}
               </span>
 
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-black/25 text-white border border-white/15">
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-950/20 text-slate-950 border border-black/10">
                 {group.frequency} Cycle
               </span>
 
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-black/25 text-white border border-white/15">
-                {group.rotation_type}
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-950/20 text-slate-950 border border-black/10 capitalize">
+                {group.rotation_type.toLowerCase()}
               </span>
 
               <button
                 onClick={handleCopyCode}
-                className="inline-flex items-center gap-1 text-xs font-mono font-black px-2.5 py-0.5 rounded-full bg-black/30 text-white border border-white/20 hover:bg-black/40 transition-all cursor-pointer"
+                className="inline-flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-950/25 text-slate-950 border border-black/15 hover:bg-slate-950/35 transition-all cursor-pointer"
                 title="Copy group code"
               >
-                {copiedCode ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-slate-300" />}
+                {copiedCode ? <Check className="w-3 h-3 text-emerald-950" /> : <Copy className="w-3 h-3 text-slate-900" />}
                 <span>Code: {group.invite_code}</span>
               </button>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black text-white">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-950">
               {group.name}
             </h1>
 
             {group.description && (
-              <p className="text-xs sm:text-sm text-blue-100 max-w-xl leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-900 max-w-xl leading-relaxed font-medium">
                 {group.description}
               </p>
             )}
 
             {group.commitment_deposit > 0 && (
-              <div className="inline-flex items-center gap-1.5 text-xs text-blue-100 bg-black/20 border border-white/15 px-3 py-1 rounded-xl">
-                <ShieldCheck className="w-4 h-4 text-emerald-300 shrink-0" />
+              <div className="inline-flex items-center gap-1.5 text-xs text-slate-950 bg-slate-950/15 border border-black/10 px-3 py-1 rounded-xl font-bold">
+                <ShieldCheck className="w-4 h-4 text-slate-950 shrink-0" />
                 <span>Security Deposit: <strong>GH₵{group.commitment_deposit}</strong> per saver</span>
               </div>
             )}
           </div>
 
           <div className="lg:col-span-4">
-            <div className="bg-[#080B11]/70 backdrop-blur-xl p-5 rounded-3xl border border-white/15 shadow-lg space-y-3">
-              <div className="text-[10px] uppercase font-bold text-blue-200">
+            <div className="bg-slate-950/85 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-lg space-y-3 text-white">
+              <div className="text-[10px] uppercase font-bold text-slate-400">
                 Total Payout Pot per Turn
               </div>
-              <div className="text-3xl sm:text-4xl font-black text-amber-400 font-mono">
+              <div className="text-3xl sm:text-4xl font-black text-[#00D09C] font-mono">
                 GH₵{group.total_pool?.toLocaleString()}
               </div>
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 text-xs">
                 <div>
-                  <div className="text-[10px] text-blue-200">Contribution</div>
+                  <div className="text-[10px] text-slate-400">Contribution</div>
                   <div className="font-bold text-white font-mono">GH₵{group.contribution_amount}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[10px] text-blue-200">Savers</div>
+                  <div className="text-[10px] text-slate-400">Savers</div>
                   <div className="font-bold text-white">{group.enrolled_count} of {group.members_count}</div>
                 </div>
               </div>

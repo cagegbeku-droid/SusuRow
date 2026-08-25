@@ -42,44 +42,44 @@ export const MyCirclesPage = ({ onSelectCircle, openCreateModal }) => {
   return (
     <div className="space-y-6 sm:space-y-8 pb-10">
       
-      {/* 💼 Saver Portfolio Card */}
-      <div className="relative overflow-hidden rounded-3xl sm:rounded-[2rem] bg-gradient-to-br from-blue-900/60 via-[#141A2D] to-[#0E1322] border border-blue-500/25 p-6 sm:p-7 text-white shadow-xl">
+      {/* 💼 Saver Portfolio Card (Ezpay Mint Style) */}
+      <div className="relative overflow-hidden rounded-3xl sm:rounded-[2rem] bg-gradient-to-br from-[#00D09C] to-[#008F6B] p-6 sm:p-7 text-slate-950 shadow-[0_15px_35px_-5px_rgba(0,208,156,0.3)]">
         
         {/* Glow Element */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase font-black tracking-wider text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-slate-950 bg-slate-950/15 px-2.5 py-0.5 rounded-full border border-black/10">
                 Saver Portfolio
               </span>
-              <span className="text-xs text-slate-400 font-mono">
+              <span className="text-xs text-slate-900 font-bold">
                 {user?.momo_provider || 'MTN'} MoMo
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black text-white">
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-950">
               {user?.full_name || 'My Groups'}
             </h1>
             
-            <p className="text-xs text-slate-400 font-mono flex items-center gap-1.5">
-              <Phone size={12} className="text-slate-500" />
+            <p className="text-xs text-slate-900 font-bold font-mono flex items-center gap-1.5">
+              <Phone size={12} className="text-slate-950" />
               <span>{user?.phone_number || 'No Phone Linked'}</span>
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             
-            <div className="bg-[#0E1322] px-4 py-3 rounded-2xl border border-white/10 text-center min-w-[100px]">
+            <div className="bg-slate-950/85 px-4 py-3 rounded-2xl border border-white/10 text-center min-w-[100px] text-white">
               <div className="text-[10px] text-slate-400 uppercase font-bold">My Groups</div>
               <div className="text-xl font-black text-white font-mono mt-0.5">{circles.length}</div>
             </div>
 
-            <div className="bg-[#0E1322] px-5 py-3 rounded-2xl border border-white/10 text-center min-w-[140px]">
+            <div className="bg-slate-950/85 px-5 py-3 rounded-2xl border border-white/10 text-center min-w-[140px] text-white">
               <div className="text-[10px] text-slate-400 uppercase font-bold">Total Pot Value</div>
-              <div className="text-xl font-black text-amber-400 font-mono mt-0.5">
+              <div className="text-xl font-black text-[#00D09C] font-mono mt-0.5">
                 GH₵{totalPotsValue.toLocaleString()}
               </div>
             </div>
