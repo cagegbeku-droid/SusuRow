@@ -38,21 +38,16 @@ export const HeroBanner = ({ stats, openCreateModal, openJoinCodeModal, openCalc
 
         <div className="relative z-10 space-y-4">
           
-          {/* Top greeting / Status Pill */}
+          {/* Top greeting */}
           <div className="flex items-center justify-between">
             <div>
               <span className="text-[11px] font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
                 <Wallet size={13} className="text-slate-950" />
-                <span>Smart Rotational Savings</span>
+                <span>Rotational Savings</span>
               </span>
               <h2 className="text-sm sm:text-base font-bold text-slate-950 mt-0.5">
                 {isAuthenticated ? `Welcome back, ${user?.full_name?.split(' ')[0]}!` : 'Digital Susu Banking'}
               </h2>
-            </div>
-
-            <div className="flex items-center gap-1.5 bg-slate-950/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 text-xs font-bold text-slate-950">
-              <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
-              <span>Bank of Ghana MoMo</span>
             </div>
           </div>
 

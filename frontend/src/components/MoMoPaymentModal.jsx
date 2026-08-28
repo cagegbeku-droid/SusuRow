@@ -182,7 +182,7 @@ export const MoMoPaymentModal = ({
             <div className="text-3xl sm:text-4xl font-black text-white font-mono">
               GH₵{amount.toLocaleString()}
             </div>
-            <div className="text-[10px] text-slate-400 font-medium">Bank of Ghana Mobile Money Rail</div>
+            <div className="text-[11px] text-slate-400 font-medium">Secure Mobile Money (MTN • Telecel • AT)</div>
           </div>
 
           {/* Network Selector Pills */}
