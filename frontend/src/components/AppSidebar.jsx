@@ -122,7 +122,7 @@ export default function AppSidebar({
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-slate-900/30 backdrop-blur-xs z-50 transition-opacity duration-300 ${
           isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
@@ -139,13 +139,13 @@ export default function AppSidebar({
         aria-label="Application Menu"
       >
         {/* Drawer Header */}
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-sky-600 flex items-center justify-center text-white font-black text-xl shadow-xs">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-sky-600 flex items-center justify-center text-white font-black text-lg shadow-xs">
               ₵
             </div>
             <div>
-              <div className="font-bold text-lg tracking-tight text-slate-900 flex items-center gap-1">
+              <div className="font-bold text-base tracking-tight text-slate-900 flex items-center gap-1">
                 <span>Susu</span>
                 <span className="text-sky-600">Row</span>
               </div>
@@ -157,28 +157,28 @@ export default function AppSidebar({
 
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-2xl bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer border border-slate-200 shadow-xs"
+            className="w-8 h-8 rounded-full bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer border border-slate-200 shadow-xs"
             aria-label="Close menu"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
         {/* Drawer Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           
-          {/* User Profile Card */}
+          {/* User Profile Card or Welcome Banner */}
           {isAuthenticated ? (
             <div 
               onClick={() => {
                 setActiveView('profile');
                 onClose();
               }}
-              className="bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-3xl p-4 space-y-3 shadow-xs cursor-pointer transition-colors"
+              className="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-3xl p-4 space-y-3 shadow-xs cursor-pointer transition-colors"
             >
               <div className="flex items-center gap-3">
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-2xl bg-sky-600 text-white font-bold text-lg flex items-center justify-center shadow-xs overflow-hidden">
+                  <div className="w-11 h-11 rounded-2xl bg-sky-600 text-white font-bold text-base flex items-center justify-center shadow-xs overflow-hidden">
                     {user?.avatar_url && !avatarError ? (
                       <img 
                         src={user.avatar_url} 
@@ -215,9 +215,9 @@ export default function AppSidebar({
               </div>
             </div>
           ) : (
-            <div className="bg-sky-50 border border-sky-100 text-slate-900 rounded-3xl p-5 text-center space-y-3 shadow-xs">
+            <div className="bg-sky-50/70 border border-sky-100 rounded-3xl p-5 text-center space-y-3 shadow-xs">
               <h3 className="text-sm font-bold text-slate-900">Welcome to SusuRow</h3>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-600 leading-relaxed">
                 Join or start rotational savings groups with automated Ghana Mobile Money payouts.
               </p>
               <button
@@ -225,7 +225,7 @@ export default function AppSidebar({
                   onClose();
                   openAuthModal();
                 }}
-                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 <LogIn size={15} />
                 <span>Sign In / Register</span>
@@ -239,6 +239,7 @@ export default function AppSidebar({
               Menu Navigation
             </div>
 
+            {/* Explore Susu Groups */}
             <button
               onClick={() => {
                 setActiveView('marketplace');
@@ -246,19 +247,20 @@ export default function AppSidebar({
               }}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                 activeView === 'marketplace'
-                  ? 'bg-slate-900 text-white shadow-xs'
+                  ? 'bg-sky-50 text-sky-700 border border-sky-200/80 shadow-xs'
                   : 'text-slate-700 hover:bg-slate-100'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`p-1.5 rounded-xl ${activeView === 'marketplace' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                <div className={`p-1.5 rounded-xl ${activeView === 'marketplace' ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                   <Compass size={16} />
                 </div>
                 <span>Explore Susu Groups</span>
               </div>
-              <ChevronRight size={14} className="opacity-60" />
+              <ChevronRight size={14} className={activeView === 'marketplace' ? 'text-sky-600' : 'text-slate-400'} />
             </button>
 
+            {/* My Active Groups */}
             <button
               onClick={() => {
                 if (!isAuthenticated) {
@@ -271,12 +273,12 @@ export default function AppSidebar({
               }}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                 activeView === 'my-circles'
-                  ? 'bg-slate-900 text-white shadow-xs'
+                  ? 'bg-sky-50 text-sky-700 border border-sky-200/80 shadow-xs'
                   : 'text-slate-700 hover:bg-slate-100'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`p-1.5 rounded-xl ${activeView === 'my-circles' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                <div className={`p-1.5 rounded-xl ${activeView === 'my-circles' ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                   <Users size={16} />
                 </div>
                 <span>My Active Groups</span>
@@ -286,6 +288,7 @@ export default function AppSidebar({
               </span>
             </button>
 
+            {/* Profile & Wallets */}
             <button
               onClick={() => {
                 if (!isAuthenticated) {
@@ -298,19 +301,20 @@ export default function AppSidebar({
               }}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                 activeView === 'profile'
-                  ? 'bg-slate-900 text-white shadow-xs'
+                  ? 'bg-sky-50 text-sky-700 border border-sky-200/80 shadow-xs'
                   : 'text-slate-700 hover:bg-slate-100'
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`p-1.5 rounded-xl ${activeView === 'profile' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                <div className={`p-1.5 rounded-xl ${activeView === 'profile' ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                   <User size={16} />
                 </div>
                 <span>Profile, KYC & Wallets</span>
               </div>
-              <ChevronRight size={14} className="text-slate-400" />
+              <ChevronRight size={14} className={activeView === 'profile' ? 'text-sky-600' : 'text-slate-400'} />
             </button>
 
+            {/* Create New Group */}
             <button
               onClick={() => {
                 onClose();
@@ -327,6 +331,7 @@ export default function AppSidebar({
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
+            {/* Pot Calculator */}
             <button
               onClick={() => {
                 onClose();
@@ -343,6 +348,7 @@ export default function AppSidebar({
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
+            {/* Enter Group Code */}
             <button
               onClick={() => {
                 onClose();
@@ -359,6 +365,7 @@ export default function AppSidebar({
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
+            {/* Terms & Compliance */}
             <button
               onClick={() => {
                 onClose();
@@ -377,7 +384,7 @@ export default function AppSidebar({
           </div>
 
           {/* 🎁 Floating Refer & Earn Card */}
-          <div className="bg-amber-50 border border-amber-200 rounded-3xl p-4 space-y-3 shadow-xs">
+          <div className="bg-amber-50/70 border border-amber-200/80 rounded-3xl p-4 space-y-3 shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-xs">
@@ -422,7 +429,7 @@ export default function AppSidebar({
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 onClick={handleWhatsAppShare}
-                className="py-2.5 px-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-2xl transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                className="py-2.5 px-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-2xl transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
               >
                 <MessageCircle size={13} />
                 <span>WhatsApp</span>
@@ -433,7 +440,7 @@ export default function AppSidebar({
                   onClose();
                   if (onOpenReferralModal) onOpenReferralModal();
                 }}
-                className="py-2.5 px-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] rounded-2xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                className="py-2.5 px-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] rounded-2xl transition-all flex items-center justify-center gap-1 shadow-xs cursor-pointer active:scale-95"
               >
                 <Share2 size={13} />
                 <span>Details</span>
@@ -447,7 +454,7 @@ export default function AppSidebar({
               <Building2 size={15} className="text-sky-600" />
               <span className="text-xs font-bold text-slate-900">Coratech Global</span>
             </div>
-            <p className="text-[10px] text-slate-500">
+            <p className="text-[10px] text-slate-500 leading-relaxed">
               IT Support, Web Design, Custom Software & Digital FinTech Solutions.
             </p>
             <a
