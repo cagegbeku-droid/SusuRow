@@ -27,7 +27,7 @@ export default function MobileBottomNav({
   const navItems = [
     {
       id: 'marketplace',
-      label: 'Portfolio',
+      label: 'Home',
       icon: Home
     },
     {
@@ -38,7 +38,7 @@ export default function MobileBottomNav({
     },
     {
       id: 'my-circles',
-      label: 'More',
+      label: 'My Groups',
       icon: LayoutGrid,
       target: 'my-circles'
     },
@@ -51,7 +51,7 @@ export default function MobileBottomNav({
   ];
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 py-2 px-4 shadow-lg md:hidden">
+    <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 py-2 px-4 shadow-lg md:hidden">
       <div className="max-w-md mx-auto flex items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -65,16 +65,16 @@ export default function MobileBottomNav({
               onClick={() => handleNav(item.target || item.id)}
               className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
                 isActive 
-                  ? 'text-slate-950 font-bold' 
+                  ? 'text-sky-600 font-bold' 
                   : 'text-slate-400 hover:text-slate-600'
               }`}
             >
               <div className={`p-1.5 rounded-2xl transition-all ${
-                isActive ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-500'
+                isActive ? 'bg-sky-50 text-sky-600 border border-sky-200 shadow-xs' : 'text-slate-500'
               }`}>
-                <Icon size={19} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
+                <Icon size={19} className={isActive ? 'stroke-[2.3]' : 'stroke-[1.8]'} />
               </div>
-              <span className={`text-[10px] font-semibold mt-0.5 ${isActive ? 'text-slate-950 font-bold' : 'text-slate-400'}`}>
+              <span className={`text-[10px] font-semibold mt-0.5 ${isActive ? 'text-sky-600 font-bold' : 'text-slate-500'}`}>
                 {item.label}
               </span>
             </button>

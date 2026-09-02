@@ -227,7 +227,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-slate-300 font-bold text-xs transition-all cursor-pointer shadow-sm"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer shadow-xs"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>All Groups</span>
@@ -237,18 +237,18 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           {/* Chat Button */}
           <button
             onClick={() => setIsChatModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-white font-bold text-xs transition-all cursor-pointer shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer shadow-xs"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-blue-400" />
+            <MessageSquare className="w-3.5 h-3.5 text-sky-600" />
             <span>Group Chat</span>
           </button>
 
           {/* Share */}
           <button
             onClick={() => setIsShareModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-white font-bold text-xs transition-all cursor-pointer shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer shadow-xs"
           >
-            <Share2 className="w-3.5 h-3.5 text-blue-400" />
+            <Share2 className="w-3.5 h-3.5 text-sky-600" />
             <span>Share</span>
           </button>
 
@@ -257,10 +257,10 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             <button
               onClick={handleSendReminders}
               disabled={actionLoading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 font-bold text-xs transition-all cursor-pointer shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs transition-all cursor-pointer shadow-xs"
               title="Send SMS Payment Reminders to Due Members"
             >
-              <Bell className="w-3.5 h-3.5" />
+              <Bell className="w-3.5 h-3.5 text-amber-600" />
               <span className="hidden sm:inline">SMS Reminders</span>
             </button>
           )}
@@ -269,7 +269,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           {isCreator && (
             <button
               onClick={() => setIsDeleteConfirmOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 font-bold text-xs transition-all cursor-pointer shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs transition-all cursor-pointer shadow-xs"
               title="Delete Group"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -279,7 +279,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
           <button
             onClick={fetchDetail}
-            className="p-2 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] border border-white/10 text-slate-400 hover:text-white transition-all cursor-pointer shadow-sm"
+            className="p-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-800 transition-all cursor-pointer shadow-xs"
             title="Refresh"
           >
             <RefreshCw className="w-3.5 h-3.5" />
@@ -288,81 +288,79 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
       </div>
 
       {reminderStatus && (
-        <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold text-center animate-in fade-in">
+        <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold text-center animate-in fade-in">
           {reminderStatus}
         </div>
       )}
 
-      {/* 💳 Hero Pot & Cycle Banner (Ezpay Mint Style) */}
-      <div className="relative overflow-hidden rounded-3xl sm:rounded-[2rem] bg-gradient-to-br from-[#00D09C] to-[#008F6B] p-6 sm:p-8 text-slate-950 shadow-[0_15px_35px_-5px_rgba(0,208,156,0.3)]">
-        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-white/20 blur-2xl pointer-events-none"></div>
-
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+      {/* 💳 Hero Pot & Cycle Banner (Clean Light Theme) */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           
           <div className="lg:col-span-8 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ${
                 isCompleted
-                  ? 'bg-slate-900 text-white'
+                  ? 'bg-slate-100 text-slate-700 border border-slate-200'
                   : group.status === 'ACTIVE'
-                  ? 'bg-slate-950 text-[#00D09C] font-bold shadow'
-                  : 'bg-white/30 text-slate-950 font-bold'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold'
+                  : 'bg-sky-50 text-sky-800 border border-sky-200 font-bold'
               }`}>
                 {isCompleted ? 'Cycle Completed' : group.status === 'ACTIVE' ? `Active Cycle • Round ${group.current_round} of ${group.members_count}` : 'Recruiting Group'}
               </span>
 
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-950/20 text-slate-950 border border-black/10">
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                 {group.frequency} Cycle
               </span>
 
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-950/20 text-slate-950 border border-black/10 capitalize">
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 capitalize">
                 {group.rotation_type.toLowerCase()}
               </span>
 
               <button
                 onClick={handleCopyCode}
-                className="inline-flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-950/25 text-slate-950 border border-black/15 hover:bg-slate-950/35 transition-all cursor-pointer"
+                className="inline-flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer"
                 title="Copy group code"
               >
-                {copiedCode ? <Check className="w-3 h-3 text-emerald-950" /> : <Copy className="w-3 h-3 text-slate-900" />}
+                {copiedCode ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-600" />}
                 <span>Code: {group.invite_code}</span>
               </button>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-950">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
               {group.name}
             </h1>
 
             {group.description && (
-              <p className="text-xs sm:text-sm text-slate-900 max-w-xl leading-relaxed font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 max-w-xl leading-relaxed font-normal">
                 {group.description}
               </p>
             )}
 
             {group.commitment_deposit > 0 && (
-              <div className="inline-flex items-center gap-1.5 text-xs text-slate-950 bg-slate-950/15 border border-black/10 px-3 py-1 rounded-xl font-bold">
-                <ShieldCheck className="w-4 h-4 text-slate-950 shrink-0" />
+              <div className="inline-flex items-center gap-1.5 text-xs text-slate-700 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl font-medium">
+                <ShieldCheck className="w-4 h-4 text-sky-600 shrink-0" />
                 <span>Security Deposit: <strong>GH₵{group.commitment_deposit}</strong> per saver</span>
               </div>
             )}
           </div>
 
           <div className="lg:col-span-4">
-            <div className="bg-slate-950/85 backdrop-blur-xl p-5 rounded-3xl border border-white/10 shadow-lg space-y-3 text-white">
-              <div className="text-[10px] uppercase font-bold text-slate-400">
+            <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+              <div className="text-[10px] uppercase font-bold text-slate-500">
                 Total Payout Pot per Turn
               </div>
-              <div className="text-3xl sm:text-4xl font-black text-[#00D09C] font-mono">
+              <div className="text-3xl sm:text-4xl font-bold text-sky-600 font-mono">
                 GH₵{group.total_pool?.toLocaleString()}
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 text-xs">
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 text-xs">
                 <div>
-                  <div className="text-[10px] text-slate-400">Contribution</div>
-                  <div className="font-bold text-white font-mono">GH₵{group.contribution_amount}</div>
+                  <div className="text-[10px] text-slate-500">Contribution</div>
+                  <div className="font-bold text-slate-900 font-mono">GH₵{group.contribution_amount}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[10px] text-slate-400">Savers</div>
-                  <div className="font-bold text-white">{group.enrolled_count} of {group.members_count}</div>
+                  <div className="text-[10px] text-slate-500">Savers</div>
+                  <div className="font-bold text-slate-900">{group.enrolled_count} of {group.members_count}</div>
                 </div>
               </div>
             </div>
@@ -372,19 +370,19 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
       </div>
 
       {/* ⚡ Action Bar */}
-      <div className="dark-card rounded-3xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="text-xs text-slate-300">
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="text-xs text-slate-600 font-medium">
           {isCompleted ? (
-            <span className="font-bold text-slate-200">All cycle rounds are completed.</span>
+            <span className="font-bold text-slate-800">All cycle rounds are completed.</span>
           ) : !isEnrolled ? (
             <span>{isFull ? 'This group is full.' : 'Join this group to participate in the cycle.'}</span>
           ) : enrolledMember?.has_paid_current_round ? (
-            <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4" />
+            <span className="text-emerald-700 font-bold flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               Round {group.current_round} contribution paid (GH₵{group.contribution_amount})
             </span>
           ) : (
-            <span className="text-amber-400 font-bold">
+            <span className="text-amber-700 font-bold">
               Round {group.current_round} payment due: GH₵{group.contribution_amount}
             </span>
           )}
@@ -392,14 +390,14 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
         <div className="flex flex-wrap items-center gap-2">
           {isCreator && (
-            <span className="px-3.5 py-2 rounded-2xl bg-blue-600/20 text-blue-300 font-bold border border-blue-500/30 text-xs flex items-center gap-1.5 shadow-sm">
+            <span className="px-3.5 py-2 rounded-2xl bg-sky-50 text-sky-700 font-bold border border-sky-200 text-xs flex items-center gap-1.5 shadow-xs">
               👑 Circle Leader
             </span>
           )}
 
           {isEnrolled && !isCreator && (
-            <span className="px-3.5 py-2 rounded-2xl bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 text-xs flex items-center gap-1.5 shadow-sm">
-              <CheckCircle2 size={13} />
+            <span className="px-3.5 py-2 rounded-2xl bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 text-xs flex items-center gap-1.5 shadow-xs">
+              <CheckCircle2 size={13} className="text-emerald-600" />
               <span>Enrolled Member</span>
             </span>
           )}
@@ -408,7 +406,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             <button
               onClick={handleJoinCircle}
               disabled={actionLoading}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-2xl shadow transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+              className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
             >
               <PlusCircle className="w-4 h-4 text-white" />
               <span>Join Group</span>
@@ -418,7 +416,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           {isEnrolled && !enrolledMember?.has_paid_current_round && !isCompleted && (
             <button
               onClick={() => openMoMoModalForUser(enrolledMember, false)}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <Smartphone className="w-4 h-4" />
               <span>Pay GH₵{group.contribution_amount}</span>
@@ -428,18 +426,18 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           {/* Group Chat Button */}
           <button
             onClick={() => setIsChatModalOpen(true)}
-            className="px-3.5 py-2.5 bg-[#1C233A] hover:bg-[#252E4B] text-slate-200 font-bold text-xs rounded-2xl border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-2xl border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            <MessageSquare className="w-4 h-4 text-blue-400" />
+            <MessageSquare className="w-4 h-4 text-sky-600" />
             <span>Chat</span>
           </button>
 
           {group.rotation_type === 'BIDDING' && isEnrolled && !isCompleted && (
             <button
               onClick={() => setIsBiddingModalOpen(true)}
-              className="px-3.5 py-2.5 bg-[#1C233A] hover:bg-[#252E4B] text-slate-200 font-bold text-xs rounded-2xl border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-2xl border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <Gavel className="w-4 h-4 text-indigo-400" />
+              <Gavel className="w-4 h-4 text-sky-600" />
               <span>Place Bid</span>
             </button>
           )}
@@ -447,9 +445,9 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           {group.rotation_type === 'BALLOT' && !isCompleted && (
             <button
               onClick={() => setIsBallotModalOpen(true)}
-              className="px-3.5 py-2.5 bg-[#1C233A] hover:bg-[#252E4B] text-slate-200 font-bold text-xs rounded-2xl border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-2xl border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <Shuffle className="w-4 h-4 text-amber-400" />
+              <Shuffle className="w-4 h-4 text-amber-600" />
               <span>Ballot Draw</span>
             </button>
           )}
@@ -458,7 +456,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             <button
               onClick={handleDisbursePot}
               disabled={actionLoading}
-              className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <Sparkles className="w-4 h-4 text-amber-300" />
               <span>Disburse Pot & Advance Cycle</span>
@@ -471,20 +469,20 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
       <RotationalTimeline group={group} />
 
       {/* 👥 Group Members Table with Saver Trust Scores */}
-      <div className="dark-card rounded-3xl overflow-hidden shadow-lg border border-white/5">
-        <div className="p-4 sm:p-5 border-b border-white/5 flex items-center justify-between">
+      <div className="bg-white rounded-3xl overflow-hidden shadow-xs border border-slate-200">
+        <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-blue-400" />
-            <h3 className="text-sm font-black text-white">Group Members in Rotation</h3>
+            <Users className="w-4 h-4 text-sky-600" />
+            <h3 className="text-sm font-bold text-slate-900">Group Members in Rotation</h3>
           </div>
-          <span className="text-xs text-slate-400 font-bold">
+          <span className="text-xs text-slate-500 font-semibold">
             {group.enrolled_count} of {group.members_count} Enrolled
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-[#0E1322] text-slate-400 font-bold uppercase tracking-wider text-[10px] border-b border-white/5">
+            <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
               <tr>
                 <th className="py-3 px-4">Turn</th>
                 <th className="py-3 px-4">Saver & Reliability</th>
@@ -494,7 +492,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-slate-100">
               {group.members?.map((member) => {
                 const isCurrentRecipient = member.payout_position === group.current_round;
                 const isCurrentUserRow = member.phone_number?.replace('+233', '0').replace(/\s+/g, '') === cleanUserPhone;
@@ -502,36 +500,36 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                 return (
                   <tr 
                     key={member.id} 
-                    className={`hover:bg-white/[0.02] transition-colors ${
-                      isCurrentUserRow ? 'bg-blue-600/10' : ''
+                    className={`hover:bg-slate-50/70 transition-colors ${
+                      isCurrentUserRow ? 'bg-sky-50/50' : ''
                     }`}
                   >
                     <td className="py-3 px-4 font-semibold">
                       {member.payout_position ? (
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black ${
-                          isCurrentRecipient ? 'bg-amber-400 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-[#1C233A] text-slate-300'
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                          isCurrentRecipient ? 'bg-amber-400 text-slate-950 shadow-xs' : 'bg-slate-100 text-slate-700'
                         }`}>
                           {member.payout_position}
                         </span>
                       ) : (
-                        <span className="text-slate-500">—</span>
+                        <span className="text-slate-400">—</span>
                       )}
                     </td>
 
                     <td className="py-3 px-4">
-                      <div className="font-bold text-white flex items-center gap-1.5 flex-wrap">
+                      <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
                         <span>{member.full_name}</span>
                         {isCurrentUserRow && (
-                          <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 font-black text-[9px] px-1.5 py-0.2 rounded-md">
+                          <span className="bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[9px] px-1.5 py-0.2 rounded">
                             YOU
                           </span>
                         )}
-                        <span className="inline-flex items-center gap-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[9px] font-black px-1.5 py-0.2 rounded">
-                          <Star size={9} className="fill-amber-400 text-amber-400" />
+                        <span className="inline-flex items-center gap-0.5 bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold px-1.5 py-0.2 rounded">
+                          <Star size={9} className="fill-amber-500 text-amber-500" />
                           <span>{member.trust_score || 100}% Trust</span>
                         </span>
                       </div>
-                      <div className="text-[10px] font-mono text-slate-400 mt-0.5">{member.phone_number}</div>
+                      <div className="text-[10px] font-mono text-slate-500 mt-0.5">{member.phone_number}</div>
                     </td>
 
                     <td className="py-3 px-4">
@@ -540,11 +538,11 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
                     <td className="py-3 px-4">
                       {member.has_paid_current_round ? (
-                        <span className="text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[11px] inline-flex items-center gap-1">
-                          <Check className="w-3 h-3" /> Paid
+                        <span className="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[11px] inline-flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-600" /> Paid
                         </span>
                       ) : (
-                        <span className="text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full text-[11px]">
+                        <span className="text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[11px]">
                           Due
                         </span>
                       )}
@@ -552,15 +550,15 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
                     <td className="py-3 px-4">
                       {member.has_received_payout ? (
-                        <span className="text-emerald-400 font-bold text-[11px] inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Received
+                        <span className="text-emerald-700 font-bold text-[11px] inline-flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Received
                         </span>
                       ) : isCurrentRecipient ? (
-                        <span className="text-slate-950 font-black text-[11px] bg-amber-400 px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]">
+                        <span className="text-slate-950 font-bold text-[11px] bg-amber-300 px-2 py-0.5 rounded-full shadow-xs">
                           Current Turn
                         </span>
                       ) : (
-                        <span className="text-slate-500 text-[11px]">Upcoming</span>
+                        <span className="text-slate-400 text-[11px]">Upcoming</span>
                       )}
                     </td>
 
@@ -568,12 +566,12 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                       {!member.has_paid_current_round && !isCompleted ? (
                         <button
                           onClick={() => openMoMoModalForUser(member, false)}
-                          className="px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-[11px] transition-all cursor-pointer shadow-xs"
+                          className="px-3.5 py-1 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl text-[11px] transition-all cursor-pointer shadow-xs active:scale-95"
                         >
                           Pay
                         </button>
                       ) : (
-                        <span className="text-slate-500 text-[11px]">Settled</span>
+                        <span className="text-slate-400 text-[11px]">Settled</span>
                       )}
                     </td>
                   </tr>
@@ -593,34 +591,34 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
       {/* 🗑️ Delete Confirmation Modal */}
       {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#04060A]/85 backdrop-blur-md">
-          <div className="dark-card w-full max-w-md rounded-3xl shadow-2xl border border-white/10 overflow-hidden p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden p-6 space-y-4">
             
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 border border-red-500/30">
+              <div className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-200">
                 {canDelete ? <Trash2 size={20} /> : <Lock size={20} />}
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">
+                <h3 className="text-base font-bold text-slate-900">
                   {canDelete ? "Delete Susu Group" : "Group Deletion Locked"}
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500 font-medium">
                   {group.name}
                 </p>
               </div>
             </div>
 
             {canDelete ? (
-              <div className="space-y-2 text-xs text-slate-300">
+              <div className="space-y-2 text-xs text-slate-600">
                 <p>
                   Are you sure you want to delete this Susu group? This will permanently remove the group.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2 text-xs text-slate-300">
-                <div className="p-3 bg-red-500/10 rounded-2xl border border-red-500/30 text-red-300 text-xs space-y-1">
+              <div className="space-y-2 text-xs text-slate-600">
+                <div className="p-3 bg-red-50 rounded-2xl border border-red-200 text-red-700 text-xs space-y-1">
                   <p className="font-bold">Cannot delete active group.</p>
-                  <p className="text-[11px] text-slate-300">
+                  <p className="text-[11px] text-slate-600">
                     This group has active cycle rounds in progress. It cannot be deleted until all rounds and payouts finish to protect members' funds.
                   </p>
                 </div>
@@ -630,7 +628,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             <div className="flex items-center gap-2 pt-2">
               <button
                 onClick={() => setIsDeleteConfirmOpen(false)}
-                className="flex-1 py-2.5 px-4 bg-[#1C233A] hover:bg-[#252E4B] text-slate-300 text-xs font-bold rounded-2xl transition-colors cursor-pointer border border-white/5"
+                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-2xl transition-colors cursor-pointer border border-slate-200"
               >
                 {canDelete ? "Cancel" : "Close"}
               </button>
@@ -639,7 +637,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                 <button
                   onClick={handleDeleteGroup}
                   disabled={actionLoading}
-                  className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-2xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-2xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 size={14} />}
                   <span>Confirm Delete</span>
