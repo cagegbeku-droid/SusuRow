@@ -21,8 +21,8 @@
     box-sizing: border-box;
   }
 
-  html, body, #root {
-    background-color: #FFFFFF !important;
+  html, body, #root, .min-h-screen {
+    background-color: #F8FAFC !important;
     color: #0F172A !important;
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
