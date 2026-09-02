@@ -10,6 +10,7 @@ import { CreateCircleModal } from './components/CreateCircleModal';
 import { JoinCodeModal } from './components/JoinCodeModal';
 import { SusuCalculator } from './components/SusuCalculator';
 import { TermsModal } from './components/TermsModal';
+import { FAQModal } from './components/FAQModal';
 import { MarketplacePage } from './pages/MarketplacePage';
 import { CircleDetailPage } from './pages/CircleDetailPage';
 import { MyCirclesPage } from './pages/MyCirclesPage';
@@ -37,6 +38,7 @@ function AppContent() {
   const [isJoinCodeModalOpen, setIsJoinCodeModalOpen] = useState(false);
   const [isCalculatorModalOpen, setIsCalculatorModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [isFAQModalOpen, setIsFAQModalOpen] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -149,6 +151,7 @@ function AppContent() {
         onOpenJoinCodeModal={() => setIsJoinCodeModalOpen(true)}
         onOpenCalculator={() => setIsCalculatorModalOpen(true)}
         onOpenReferralModal={handleOpenReferralModal}
+        onOpenFAQModal={() => setIsFAQModalOpen(true)}
       />
 
       {/* Main Content */}
@@ -316,6 +319,10 @@ function AppContent() {
       <TermsModal
         isOpen={isTermsModalOpen}
         onClose={() => setIsTermsModalOpen(false)}
+      />
+      <FAQModal
+        isOpen={isFAQModalOpen}
+        onClose={() => setIsFAQModalOpen(false)}
       />
 
     </div>

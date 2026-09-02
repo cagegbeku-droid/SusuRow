@@ -1,100 +1,78 @@
 import React from 'react';
 import { 
   Home, 
-  Layers, 
-  PlusCircle, 
-  User, 
-  Sparkles 
+  Compass, 
+  LayoutGrid, 
+  User 
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
 export const BottomNav = ({ activeView, setActiveView, onOpenCreateModal }) => {
   const { isAuthenticated, openAuthModal } = useUser();
 
+  const handleNav = (targetView) => {
+    if ((targetView === 'my-circles' || targetView === 'profile') && !isAuthenticated) {
+      openAuthModal();
+      return;
+    }
+    setActiveView(targetView);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const navItems = [
     {
       id: 'marketplace',
-      label: 'Explore',
+      label: 'Portfolio',
       icon: Home
     },
     {
-      id: 'my-circles',
-      label: 'My Groups',
-      icon: Layers,
-      authRequired: true
+      id: 'explore',
+      label: 'Explore',
+      icon: Compass,
+      target: 'marketplace'
     },
     {
-      id: 'create',
-      label: 'Create',
-      icon: PlusCircle,
-      isAction: true
+      id: 'my-circles',
+      label: 'More',
+      icon: LayoutGrid,
+      target: 'my-circles'
     },
     {
       id: 'profile',
       label: 'Profile',
       icon: User,
-      authRequired: true
+      target: 'profile'
     }
   ];
-
-  const handleNav = (item) => {
-    if (item.isAction) {
-      if (!isAuthenticated) {
-        openAuthModal();
-        return;
-      }
-      onOpenCreateModal();
-      return;
-    }
-
-    if (item.authRequired && !isAuthenticated) {
-      openAuthModal();
-      return;
-    }
-
-    setActiveView(item.id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
 
   return (
     <nav 
       aria-label="Mobile Navigation"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0E1424]/95 backdrop-blur-xl border-t border-white/10 px-4 py-2"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 py-2 shadow-lg"
     >
       <div className="flex items-center justify-around max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeView === item.id;
-
-          if (item.isAction) {
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNav(item)}
-                className="flex flex-col items-center justify-center -mt-5 cursor-pointer group"
-              >
-                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#00D09C] to-[#00B789] text-slate-950 flex items-center justify-center shadow-[0_4px_20px_rgba(0,208,156,0.4)] group-active:scale-95 transition-transform">
-                  <PlusCircle size={24} className="stroke-[2.5]" />
-                </div>
-                <span className="text-[10px] font-bold text-slate-400 mt-1">New</span>
-              </button>
-            );
-          }
+          const isActive = (item.id === 'marketplace' && activeView === 'marketplace') ||
+                           (item.id === 'my-circles' && activeView === 'my-circles') ||
+                           (item.id === 'profile' && activeView === 'profile');
 
           return (
             <button
               key={item.id}
-              onClick={() => handleNav(item)}
+              onClick={() => handleNav(item.target || item.id)}
               className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
                 isActive 
-                  ? 'text-[#00D09C]' 
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'text-slate-950 font-bold' 
+                  : 'text-slate-400 hover:text-slate-600'
               }`}
             >
-              <div className={`p-1 rounded-xl transition-colors ${isActive ? 'bg-[#00D09C]/10' : ''}`}>
-                <Icon size={20} className={isActive ? 'stroke-[2.5]' : 'stroke-2'} />
+              <div className={`p-1.5 rounded-2xl transition-all ${
+                isActive ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-500'
+              }`}>
+                <Icon size={19} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
               </div>
-              <span className={`text-[10px] font-bold mt-0.5 ${isActive ? 'text-[#00D09C]' : 'text-slate-400'}`}>
+              <span className={`text-[10px] font-semibold mt-0.5 ${isActive ? 'text-slate-950 font-bold' : 'text-slate-400'}`}>
                 {item.label}
               </span>
             </button>

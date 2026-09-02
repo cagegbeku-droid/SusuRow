@@ -1,23 +1,18 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-mint: #00D09C;
-  --color-brand-mint-hover: #00B789;
-  --color-brand-mint-light: #E6FAF4;
-  --color-brand-mint-dark: #008764;
+  --color-brand-blue: #0284C7;
+  --color-brand-green: #059669;
+  --color-brand-gold: #D97706;
+  --color-brand-purple: #7C3AED;
 
-  --color-dark-bg: #080C16;
-  --color-dark-surface: #0E1424;
-  --color-dark-card: #131A2E;
-  --color-dark-card-hover: #18223C;
-  --color-dark-border: rgba(255, 255, 255, 0.08);
+  --color-app-bg: #FFFFFF;
+  --color-app-surface: #F8FAFC;
+  --color-app-card: #FFFFFF;
+  --color-app-border: #F1F5F9;
 
-  --color-accent-blue: #3B82F6;
-  --color-accent-emerald: #00D09C;
-  --color-accent-gold: #F59E0B;
-
-  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -26,10 +21,9 @@
     box-sizing: border-box;
   }
 
-  /* Default Dark Mode */
   html, body, #root {
-    background-color: #080C16;
-    color: #F8FAFC;
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden !important;
@@ -39,166 +33,109 @@
     padding: 0;
     font-size: 15px;
     line-height: 1.5;
-    transition: background-color 0.25s ease, color 0.25s ease;
-  }
-
-  /* Light Mode Base Override */
-  html.light, 
-  html.light body, 
-  html.light #root {
-    background-color: #F4F7F9 !important;
-    color: #0F172A !important;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
-    color: #FFFFFF;
-    transition: color 0.25s ease;
-  }
-
-  html.light h1,
-  html.light h2,
-  html.light h3,
-  html.light h4,
-  html.light h5,
-  html.light h6 {
+    letter-spacing: -0.02em;
     color: #0F172A !important;
+    font-weight: 700;
   }
 }
 
-/* ========================================================
-   Ezpay Card & Surface Utilities (Dual Light & Dark Theme)
-   ======================================================== */
-
-/* Dark Mode Card */
-.dark-card {
-  background-color: #131A2E;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+/* Minimalist Clean Light Banking Card System */
+.dark-card,
+.light-card {
+  background-color: #FFFFFF !important;
+  border: 1px solid #F1F5F9 !important;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04) !important;
+  color: #0F172A !important;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.dark-card-hover:hover {
-  background-color: #18223C;
-  border-color: rgba(0, 208, 156, 0.35);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 208, 156, 0.15);
-}
-
-/* Light Mode Card Adaptations */
-html.light .dark-card {
-  background-color: #FFFFFF !important;
-  border: 1px solid #E2E8F0 !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
-  color: #0F172A !important;
-}
-
-html.light .dark-card-hover:hover {
-  background-color: #FFFFFF !important;
-  border-color: #00D09C !important;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px -5px rgba(0, 208, 156, 0.2) !important;
-}
-
-/* Light Mode Header & Navigation */
-html.light header {
-  background-color: rgba(255, 255, 255, 0.95) !important;
-  border-bottom-color: #E2E8F0 !important;
-  color: #0F172A !important;
-}
-
-html.light nav {
-  background-color: #F1F5F9 !important;
+.dark-card-hover:hover,
+.light-card-hover:hover {
   border-color: #E2E8F0 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08) !important;
 }
 
-/* Light Mode Text Adapters */
-html.light .text-white {
+/* Clean Header & Navigation Bar */
+header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-bottom: 1px solid #F1F5F9 !important;
   color: #0F172A !important;
 }
 
-html.light .text-slate-200,
-html.light .text-slate-300 {
+/* Light Surface Elements */
+.bg-\[\#131A2E\],
+.bg-\[\#141A2D\],
+.bg-\[\#0E1424\],
+.bg-\[\#0E1322\],
+.bg-\[\#111827\],
+.bg-\[\#161F33\],
+.bg-\[\#080C16\],
+.bg-\[\#0A0E1A\] {
+  background-color: #F8FAFC !important;
+  border-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+/* Clean Form Controls */
+input,
+select,
+textarea {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  background-color: #FFFFFF !important;
+  border-color: #0284C7 !important;
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Text readability overrides */
+.text-white {
+  color: #0F172A !important;
+}
+
+.text-slate-200,
+.text-slate-300 {
   color: #334155 !important;
 }
 
-html.light .text-slate-400 {
+.text-slate-400 {
   color: #64748B !important;
 }
 
-html.light .text-slate-500 {
+.text-slate-500 {
   color: #94A3B8 !important;
 }
 
-/* Light Mode Inner Wells & Nested Surfaces */
-html.light .bg-\[\#131A2E\],
-html.light .bg-\[\#141A2D\],
-html.light .bg-\[\#0E1424\],
-html.light .bg-\[\#0E1322\],
-html.light .bg-\[\#111827\],
-html.light .bg-\[\#161F33\] {
-  background-color: #F8FAFC !important;
-  border-color: #E2E8F0 !important;
-  color: #0F172A !important;
-}
-
-/* Light Mode Inputs, Dropdowns & Modals */
-html.light input,
-html.light select,
-html.light textarea {
-  background-color: #FFFFFF !important;
-  color: #0F172A !important;
-  border-color: #CBD5E1 !important;
-}
-
-html.light input::placeholder,
-html.light textarea::placeholder {
-  color: #94A3B8 !important;
-}
-
-html.light footer {
-  background-color: #FFFFFF !important;
-  border-top-color: #E2E8F0 !important;
-  color: #0F172A !important;
-}
-
-/* Ezpay Signature Mint Buttons */
-.ezpay-mint-btn {
-  background: linear-gradient(135deg, #00D09C 0%, #00B789 100%);
-  color: #05140F;
-  font-weight: 800;
-  transition: all 0.2s ease;
-}
-
-.ezpay-mint-btn:hover {
-  background: linear-gradient(135deg, #00E4AB 0%, #00C896 100%);
-  box-shadow: 0 4px 20px rgba(0, 208, 156, 0.35);
-}
-
-/* Custom Sleek Scrollbars */
+/* Sleek Minimalist Scrollbars */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #080C16;
-}
-
-html.light ::-webkit-scrollbar-track {
-  background: #F1F5F9;
+  background: #F8FAFC;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #18223C;
+  background: #CBD5E1;
   border-radius: 9999px;
 }
 
-html.light ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-}
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #00D09C;
+  background: #94A3B8;
 }

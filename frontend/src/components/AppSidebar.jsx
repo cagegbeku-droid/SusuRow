@@ -467,39 +467,6 @@ export default function AppSidebar({
             </a>
           </div>
 
-          {/* Light / Dark Theme Mode Switch */}
-          <div className="bg-[#141A2D] border border-white/5 rounded-3xl p-3.5 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {isDark ? (
-                  <Moon size={16} className="text-[#00D09C]" />
-                ) : (
-                  <Sun size={16} className="text-amber-500" />
-                )}
-                <span className="text-xs font-bold text-white">
-                  {isDark ? 'Dark Theme' : 'Light Theme'}
-                </span>
-              </div>
-              <button
-                onClick={toggleTheme}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
-                  isDark ? 'bg-[#00D09C]' : 'bg-slate-300'
-                }`}
-                role="switch"
-                aria-checked={isDark}
-              >
-                <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                    isDark ? 'translate-x-4' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-            <p className="text-[10px] text-slate-400">
-              Switch between Ezpay dark charcoal and bright light mode.
-            </p>
-          </div>
-
           {/* Senior / High-Legibility Mode Switch */}
           <div className="bg-[#141A2D] border border-white/5 rounded-3xl p-3.5 space-y-1.5">
             <div className="flex items-center justify-between">

@@ -1,9 +1,8 @@
 import React from 'react';
 import { 
+  Home, 
   Compass, 
-  Users, 
-  PlusCircle, 
-  Gift, 
+  LayoutGrid, 
   User 
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
@@ -14,104 +13,73 @@ export default function MobileBottomNav({
   onOpenCreateModal,
   onOpenReferralModal
 }) {
-  const { isAuthenticated, openAuthModal, user } = useUser();
+  const { isAuthenticated, openAuthModal } = useUser();
 
-  const handleMyCircles = () => {
-    if (!isAuthenticated) {
+  const handleNav = (targetView) => {
+    if ((targetView === 'my-circles' || targetView === 'profile') && !isAuthenticated) {
       openAuthModal();
-    } else {
-      setActiveView('my-circles');
+      return;
     }
+    setActiveView(targetView);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleProfile = () => {
-    if (!isAuthenticated) {
-      openAuthModal();
-    } else {
-      setActiveView('profile');
+  const navItems = [
+    {
+      id: 'marketplace',
+      label: 'Portfolio',
+      icon: Home
+    },
+    {
+      id: 'explore',
+      label: 'Explore',
+      icon: Compass,
+      target: 'marketplace'
+    },
+    {
+      id: 'my-circles',
+      label: 'More',
+      icon: LayoutGrid,
+      target: 'my-circles'
+    },
+    {
+      id: 'profile',
+      label: 'Profile',
+      icon: User,
+      target: 'profile'
     }
-  };
+  ];
 
   return (
-    <div className="fixed bottom-3 inset-x-0 z-40 md:hidden px-3 pointer-events-none w-full max-w-full flex justify-center">
-      <div className="w-full max-w-sm pointer-events-auto">
-        <nav className="bg-[#131A2E]/95 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] px-2 py-1.5 flex items-center justify-around">
-          
-          {/* Explore Groups */}
-          <button
-            onClick={() => setActiveView('marketplace')}
-            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all cursor-pointer ${
-              activeView === 'marketplace'
-                ? 'text-[#00D09C] font-bold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <div className={`p-1 rounded-xl transition-all ${
-              activeView === 'marketplace' ? 'bg-[#00D09C]/15 text-[#00D09C]' : ''
-            }`}>
-              <Compass size={18} />
-            </div>
-            <span className="text-[9px] font-bold mt-0.5">Explore</span>
-          </button>
+    <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-100 py-2 px-4 shadow-lg md:hidden">
+      <div className="max-w-md mx-auto flex items-center justify-around">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = (item.id === 'marketplace' && activeView === 'marketplace') ||
+                           (item.id === 'my-circles' && activeView === 'my-circles') ||
+                           (item.id === 'profile' && activeView === 'profile');
 
-          {/* My Groups */}
-          <button
-            onClick={handleMyCircles}
-            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all cursor-pointer ${
-              activeView === 'my-circles'
-                ? 'text-[#00D09C] font-bold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <div className={`p-1 rounded-xl transition-all ${
-              activeView === 'my-circles' ? 'bg-[#00D09C]/15 text-[#00D09C]' : ''
-            }`}>
-              <Users size={18} />
-            </div>
-            <span className="text-[9px] font-bold mt-0.5">My Groups</span>
-          </button>
-
-          {/* Floating Center Create Button (Ezpay Mint Style) */}
-          <button
-            onClick={onOpenCreateModal}
-            className="flex flex-col items-center justify-center -mt-5 cursor-pointer group shrink-0"
-            aria-label="Create Susu Group"
-          >
-            <div className="w-12 h-12 rounded-full bg-[#00D09C] text-slate-950 flex items-center justify-center shadow-[0_0_20px_rgba(0,208,156,0.5)] border-2 border-[#080C16] group-active:scale-95 transition-all">
-              <PlusCircle size={22} className="stroke-[2.5]" />
-            </div>
-            <span className="text-[8px] font-bold text-[#00D09C] mt-0.5 uppercase tracking-wider">New</span>
-          </button>
-
-          {/* Refer & Earn */}
-          <button
-            onClick={onOpenReferralModal}
-            className="flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
-          >
-            <div className="p-1 rounded-xl text-slate-300">
-              <Gift size={18} />
-            </div>
-            <span className="text-[9px] font-bold mt-0.5 text-slate-400">Refer</span>
-          </button>
-
-          {/* Profile & KYC */}
-          <button
-            onClick={handleProfile}
-            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all cursor-pointer ${
-              activeView === 'profile'
-                ? 'text-[#00D09C] font-bold'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <div className={`p-1 rounded-xl transition-all ${
-              activeView === 'profile' ? 'bg-[#00D09C]/15 text-[#00D09C]' : ''
-            }`}>
-              <User size={18} />
-            </div>
-            <span className="text-[9px] font-bold mt-0.5">Profile</span>
-          </button>
-
-        </nav>
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleNav(item.target || item.id)}
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all cursor-pointer ${
+                isActive 
+                  ? 'text-slate-950 font-bold' 
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <div className={`p-1.5 rounded-2xl transition-all ${
+                isActive ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-500'
+              }`}>
+                <Icon size={19} className={isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'} />
+              </div>
+              <span className={`text-[10px] font-semibold mt-0.5 ${isActive ? 'text-slate-950 font-bold' : 'text-slate-400'}`}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
