@@ -31,22 +31,15 @@ export default function Navbar({
     return user.full_name.trim().split(' ')[0];
   };
 
-  const getTierName = () => {
-    if (!user) return 'Achiever 🥉';
-    if (user.points >= 500) return 'Gold Achiever 🥇';
-    if (user.points >= 200) return 'Silver Achiever 🥈';
-    return 'Achiever 🥉';
-  };
-
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 sm:px-6 lg:px-8 py-3">
+    <header className="sticky top-0 z-40 w-full bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-3.5 shadow-xs">
       <div className="max-w-4xl mx-auto flex items-center justify-between">
         
-        {/* Left: User Greeting & Tier Status (Exact Screenshot Style) */}
+        {/* Left: User Greeting (Clean & Simple) */}
         <div className="flex items-center gap-3">
           <button
             onClick={onToggleSidebar}
-            className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
             aria-label="Open App Menu"
           >
             <Menu size={20} />
@@ -54,10 +47,10 @@ export default function Navbar({
 
           <div>
             <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-              Hi, {isAuthenticated ? getFirstName() : 'Welcome'}
+              {isAuthenticated ? `Hi, ${getFirstName()}` : 'Welcome to SusuRow'}
             </h1>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
-              <span>{getTierName()}</span>
+            <div className="text-xs text-slate-500 font-medium">
+              {isAuthenticated ? (user?.phone_number || 'Rotational Savings Member') : 'Rotational Savings Platform'}
             </div>
           </div>
         </div>
@@ -68,27 +61,24 @@ export default function Navbar({
           {/* Help Button (?) */}
           <button
             onClick={onOpenFAQModal}
-            className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border border-slate-200"
             title="Help & FAQs"
             aria-label="Help"
           >
             <HelpCircle size={18} />
           </button>
 
-          {/* Notifications Button (🔔 with badge) */}
+          {/* Notifications Button (🔔 - Clean without fake red badge) */}
           <button
             onClick={() => {
               if (!isAuthenticated) openAuthModal();
               else setActiveView('my-circles');
             }}
-            className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-slate-700 flex items-center justify-center transition-colors cursor-pointer relative"
+            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border border-slate-200"
             title="Notifications"
             aria-label="Notifications"
           >
             <Bell size={18} />
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
-              3
-            </span>
           </button>
 
           {/* Chat Button (💬) */}
@@ -97,7 +87,7 @@ export default function Navbar({
               if (!isAuthenticated) openAuthModal();
               else setActiveView('my-circles');
             }}
-            className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-slate-700 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border border-slate-200"
             title="Chat & Support"
             aria-label="Chat"
           >
@@ -125,10 +115,10 @@ export default function Navbar({
 
               {dropdownOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-56 rounded-2xl bg-white text-slate-800 shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-100"
+                  className="absolute right-0 mt-2 w-56 rounded-2xl bg-white text-slate-800 shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-100"
                   onClick={() => setDropdownOpen(false)}
                 >
-                  <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/80">
+                  <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50">
                     <p className="text-xs font-bold text-slate-900 truncate">{user?.full_name}</p>
                     <p className="text-[11px] font-mono text-slate-500 mt-0.5">{user?.phone_number || user?.email}</p>
                   </div>
@@ -170,9 +160,9 @@ export default function Navbar({
           ) : (
             <button
               onClick={openAuthModal}
-              className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white shadow-xs transition-all cursor-pointer flex items-center gap-1"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <LogIn size={13} />
+              <LogIn size={14} />
               <span>Sign In</span>
             </button>
           )}

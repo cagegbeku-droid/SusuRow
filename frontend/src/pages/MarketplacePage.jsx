@@ -2,13 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   PlusCircle, 
-  RotateCw, 
-  Sparkles, 
   Users, 
   Coins, 
-  TrendingUp, 
   KeyRound, 
-  Building2,
   ChevronRight
 } from 'lucide-react';
 import { HeroBanner } from '../components/HeroBanner';
@@ -56,12 +52,10 @@ export const MarketplacePage = ({
     fetchCircles();
   };
 
-  const realActiveGroups = circles.filter(c => c.status === 'ACTIVE');
-
   return (
     <div className="space-y-6 sm:space-y-8 pb-12">
       
-      {/* Hero / Portfolio Summary Banner */}
+      {/* Susu Savings Overview */}
       <HeroBanner
         stats={stats}
         openCreateModal={openCreateModal}
@@ -72,7 +66,7 @@ export const MarketplacePage = ({
       {/* 🔍 Search & Filters Bar */}
       <div className="space-y-3">
         
-        {/* Search Input */}
+        {/* Search Input with Bright, Clear Search Button */}
         <form onSubmit={handleSearchSubmit} className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -80,13 +74,13 @@ export const MarketplacePage = ({
             placeholder="Search Susu groups by name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-11 pr-24 py-3 rounded-2xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-xs"
+            className="w-full pl-11 pr-28 py-3.5 rounded-2xl bg-white border border-slate-200 text-slate-900 placeholder-slate-400 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-xs"
           />
           <button
             type="submit"
-            className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+            className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1"
           >
-            Search
+            <span>Search</span>
           </button>
         </form>
 
@@ -101,8 +95,8 @@ export const MarketplacePage = ({
                 onClick={() => setFrequencyFilter(freq)}
                 className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
                   frequencyFilter === freq
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 {freq === 'ALL' ? 'All Cycles' : freq.charAt(0) + freq.slice(1).toLowerCase()}
@@ -118,8 +112,8 @@ export const MarketplacePage = ({
                 onClick={() => setRotationFilter(scheme)}
                 className={`px-3.5 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
                   rotationFilter === scheme
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 {scheme === 'ALL' ? 'All Types' : scheme.charAt(0) + scheme.slice(1).toLowerCase()}
@@ -130,7 +124,7 @@ export const MarketplacePage = ({
         </div>
       </div>
 
-      {/* 📦 Susu Groups Grid / Investment Challenges */}
+      {/* 📦 Susu Groups Grid */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-base sm:text-lg font-bold text-slate-900">
@@ -141,8 +135,8 @@ export const MarketplacePage = ({
             onClick={openJoinCodeModal}
             className="text-xs font-semibold text-sky-600 hover:text-sky-700 flex items-center gap-1 cursor-pointer"
           >
-            <span>Have a code?</span>
-            <ChevronRight size={13} />
+            <span>Have an invite code?</span>
+            <ChevronRight size={14} />
           </button>
         </div>
 
@@ -156,8 +150,8 @@ export const MarketplacePage = ({
             ))}
           </div>
         ) : circles.length === 0 ? (
-          <div className="text-center py-12 px-4 rounded-3xl bg-white border border-slate-150 space-y-4 shadow-xs">
-            <div className="w-14 h-14 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center mx-auto shadow-xs">
+          <div className="text-center py-12 px-4 rounded-3xl bg-white border border-slate-200 space-y-4 shadow-xs">
+            <div className="w-14 h-14 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center mx-auto shadow-xs border border-sky-100">
               <Users size={28} />
             </div>
             <div className="space-y-1">
@@ -171,9 +165,9 @@ export const MarketplacePage = ({
                 if (!isAuthenticated) openAuthModal();
                 else openCreateModal();
               }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-sm transition-all cursor-pointer active:scale-95"
             >
-              <PlusCircle size={15} />
+              <PlusCircle size={16} />
               <span>Create New Group</span>
             </button>
           </div>
