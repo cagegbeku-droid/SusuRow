@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from sqlalchemy.orm import Session
 from database import get_db
-from models import User, OTPVerification, KYCStatus, UserTier, GroupMember, SusuGroup, GroupStatus
+from models import User, OTPVerification, KYCStatus, UserTier, GroupMember, SusuGroup, GroupStatus, ContributionPayment, PayoutDisbursement
 from schemas import (
     RegisterRequest,
     LoginRequest,
@@ -470,3 +470,55 @@ def delete_account(
     db.delete(current_user)
     db.commit()
     return {"success": True, "message": "Account deleted permanently."}
+
+
+@router.get("/transactions")
+def get_user_transactions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retrieves all historical contributions and pot payouts for the authenticated saver."""
+    members = db.query(GroupMember).filter(GroupMember.phone_number == current_user.phone_number).all()
+    if not members:
+        return []
+
+    member_ids = [m.id for m in members]
+    group_map = {}
+    for m in members:
+        g = db.query(SusuGroup).filter(SusuGroup.id == m.group_id).first()
+        group_map[m.group_id] = g.name if g else "Susu Group"
+
+    payments = db.query(ContributionPayment).filter(ContributionPayment.member_id.in_(member_ids)).all()
+    payouts = db.query(PayoutDisbursement).filter(PayoutDisbursement.member_id.in_(member_ids)).all()
+
+    history = []
+    for p in payments:
+        history.append({
+            "id": p.id,
+            "type": "CONTRIBUTION",
+            "group_id": p.group_id,
+            "group_name": group_map.get(p.group_id, "Susu Circle"),
+            "amount": p.amount,
+            "momo_provider": p.momo_provider,
+            "round_number": p.round_number,
+            "reference": p.transaction_reference,
+            "status": p.status,
+            "created_at": p.paid_at.isoformat() if p.paid_at else None
+        })
+
+    for po in payouts:
+        history.append({
+            "id": po.id,
+            "type": "PAYOUT",
+            "group_id": po.group_id,
+            "group_name": group_map.get(po.group_id, "Susu Circle"),
+            "amount": po.amount,
+            "momo_provider": current_user.primary_wallet_provider or "MTN",
+            "round_number": po.round_number,
+            "reference": po.transaction_reference,
+            "status": po.status,
+            "created_at": po.disbursed_at.isoformat() if po.disbursed_at else None
+        })
+
+    history.sort(key=lambda x: x["created_at"] or "", reverse=True)
+    return history

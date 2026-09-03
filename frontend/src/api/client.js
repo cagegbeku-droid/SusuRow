@@ -193,4 +193,9 @@ export const getPlatformStats = async () => {
   return res.data;
 };
 
+export const getUserTransactions = async () => {
+  const res = await api.get('/auth/transactions');
+  return res.data;
+};
+
 export default api;
