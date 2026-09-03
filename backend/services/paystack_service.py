@@ -243,6 +243,49 @@ class GhanaMoMoGateway:
         return {"success": True, "paid": True, "gateway": "SIMULATED"}
 
     @classmethod
+    async def resolve_momo_account(cls, phone_number: str, provider: str) -> Dict[str, Any]:
+        """
+        Queries Paystack / GhIPSS bank resolve to verify that the phone number
+        is an active Mobile Money account and retrieve the telecom registered name.
+        """
+        keys = cls.get_keys()
+        clean_phone = phone_number.replace("+233", "0").replace(" ", "").replace("-", "").strip()
+        if clean_phone.startswith("233"):
+            clean_phone = "0" + clean_phone[3:]
+
+        bank_code = cls._map_paystack_bank_code(provider)
+        if keys["PAYSTACK_SECRET_KEY"]:
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(
+                        f"https://api.paystack.co/bank/resolve?account_number={clean_phone}&bank_code={bank_code}",
+                        headers={"Authorization": f"Bearer {keys['PAYSTACK_SECRET_KEY']}"},
+                        timeout=10.0
+                    )
+                    data = resp.json()
+                    if data.get("status"):
+                        account_name = data.get("data", {}).get("account_name", "")
+                        return {
+                            "success": True,
+                            "resolved": True,
+                            "account_name": account_name,
+                            "account_number": clean_phone,
+                            "provider": provider
+                        }
+                    return {"success": False, "resolved": False, "error": data.get("message", "Could not resolve Mobile Money account")}
+            except Exception as e:
+                return {"success": False, "resolved": False, "error": str(e)}
+
+        return {
+            "success": True,
+            "resolved": True,
+            "account_name": f"Verified {provider} Subscriber",
+            "account_number": clean_phone,
+            "provider": provider,
+            "simulated": True
+        }
+
+    @classmethod
     def verify_paystack_webhook_signature(cls, payload_body: bytes, signature_header: str) -> bool:
         """
         Verifies Paystack HMAC SHA512 signature on incoming webhook.

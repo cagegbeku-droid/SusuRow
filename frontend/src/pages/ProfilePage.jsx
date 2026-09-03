@@ -19,7 +19,6 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   FileText,
-  Download,
   Printer,
   ExternalLink,
   MessageCircle,
@@ -28,8 +27,11 @@ import {
   BookOpen,
   Info,
   LogOut,
-  Sparkles,
-  DollarSign
+  Building,
+  Briefcase,
+  Users,
+  Settings as SettingsIcon,
+  RefreshCw
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { 
@@ -37,36 +39,43 @@ import {
   submitKYC, 
   setSecurityPIN, 
   configureWallets, 
-  deactivateAccount, 
-  deleteAccount,
-  getUserTransactions
+  getUserTransactions,
+  resolveMoMoAccount
 } from '../api/client';
 import { SignatureCanvas } from '../components/SignatureCanvas';
 
 export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) => {
   const { user, isAuthenticated, logout, openAuthModal, refreshProfile } = useUser();
-  const [activeTab, setActiveTab] = useState('identity'); // identity, kyc, wallets, statement, history, rules, help
+  
+  // Navigation: null = Main menu list (Screenshot 2); string = active subpage (Screenshots 1, 3, 4)
+  const [activeSubpage, setActiveSubpage] = useState(null); 
+  
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [avatarError, setAvatarError] = useState(false);
 
+  // MoMo live account resolution state
+  const [momoResolving, setMomoResolving] = useState(false);
+  const [resolvedAccountName, setResolvedAccountName] = useState(null);
+
   // Real transactions from backend
   const [transactions, setTransactions] = useState([]);
-  const [txFilter, setTxFilter] = useState('ALL'); // ALL, CONTRIBUTION, PAYOUT
+  const [txFilter, setTxFilter] = useState('ALL');
   const [txLoading, setTxLoading] = useState(false);
 
-  // Settings / Notifications state (saved locally or with profile)
+  // Notifications toggles (Screenshot 1)
   const [notifications, setNotifications] = useState(() => {
     try {
       const saved = localStorage.getItem('susurow_notifications_pref');
       return saved ? JSON.parse(saved) : {
+        pushNotifications: true,
         dueReminders: true,
         payoutAlerts: true,
         memberJoins: true
       };
     } catch {
-      return { dueReminders: true, payoutAlerts: true, memberJoins: true };
+      return { pushNotifications: true, dueReminders: true, payoutAlerts: true, memberJoins: true };
     }
   });
 
@@ -74,7 +83,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     const updated = { ...notifications, [key]: !notifications[key] };
     setNotifications(updated);
     localStorage.setItem('susurow_notifications_pref', JSON.stringify(updated));
-    triggerSuccess('Notification preference updated.');
+    triggerSuccess('Settings updated.');
   };
 
   // Form States
@@ -94,8 +103,6 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   });
 
   const [walletsForm, setWalletsForm] = useState({
-    contribution_provider: 'MTN',
-    contribution_phone: '',
     primary_wallet_provider: 'MTN',
     primary_wallet_number: '',
     bank_name: '',
@@ -122,8 +129,6 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       });
 
       setWalletsForm({
-        contribution_provider: user.momo_provider || 'MTN',
-        contribution_phone: user.phone_number || '',
         primary_wallet_provider: user.primary_wallet_provider || user.momo_provider || 'MTN',
         primary_wallet_number: user.primary_wallet_number || user.phone_number || '',
         bank_name: user.bank_name || '',
@@ -133,6 +138,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       });
 
       fetchTransactions();
+      handleResolveMoMo(user.phone_number, user.momo_provider || 'MTN');
     }
   }, [user]);
 
@@ -148,21 +154,67 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     }
   };
 
+  // Live MoMo resolution via Paystack/Telecom switch
+  const handleResolveMoMo = async (phoneNum, provider) => {
+    if (!phoneNum || phoneNum.replace(/[^\d]/g, '').length < 9) return;
+    try {
+      setMomoResolving(true);
+      const res = await resolveMoMoAccount({ phone_number: phoneNum, provider });
+      if (res?.success && res?.account_name) {
+        setResolvedAccountName(res.account_name);
+      }
+    } catch {
+      // Quiet fallback
+    } finally {
+      setMomoResolving(false);
+    }
+  };
+
+  // Automatic Ghana Card Hyphenation: GHA-XXXXXXXXX-X
+  const handleGhanaCardChange = (e) => {
+    let val = e.target.value.toUpperCase();
+    let clean = val.replace(/[^A-Z0-9]/g, '');
+    
+    if (!clean) {
+      setKycForm(prev => ({ ...prev, ghana_card_number: '' }));
+      return;
+    }
+
+    if (!clean.startsWith('GHA')) {
+      clean = 'GHA' + clean;
+    }
+
+    let formatted = '';
+    if (clean.length <= 3) {
+      formatted = clean;
+    } else {
+      formatted = clean.substring(0, 3) + '-';
+      const rest = clean.substring(3);
+      if (rest.length <= 9) {
+        formatted += rest;
+      } else {
+        formatted += rest.substring(0, 9) + '-' + rest.substring(9, 10);
+      }
+    }
+
+    setKycForm(prev => ({ ...prev, ghana_card_number: formatted }));
+  };
+
   if (!isAuthenticated || !user) {
     return (
-      <div className="py-20 text-center space-y-4 max-w-md mx-auto px-4">
+      <div className="py-24 text-center space-y-4 max-w-sm mx-auto px-4">
         <div className="w-16 h-16 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center mx-auto border border-sky-200 shadow-xs">
           <User size={32} />
         </div>
         <h2 className="text-xl font-bold text-slate-900">Sign In to View Profile</h2>
-        <p className="text-xs text-slate-500 leading-relaxed">
-          Manage your verified Ghana Card identity, contribution & payout wallets, security PIN, and official savings statement.
+        <p className="text-xs text-slate-500">
+          Manage your verified identity, wallets, and savings statement.
         </p>
         <button
           onClick={openAuthModal}
           className="px-6 py-3 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-xs cursor-pointer transition-all active:scale-95"
         >
-          Sign In with Phone or Google
+          Sign In / Create Account
         </button>
       </div>
     );
@@ -180,7 +232,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       return;
     }
     if (!personalForm.phone_number.trim() || personalForm.phone_number.replace(/[^\d]/g, '').length < 9) {
-      setErrorMsg('A valid Ghanaian phone number is compulsory (e.g. 024 123 4567).');
+      setErrorMsg('Valid phone number is required.');
       return;
     }
 
@@ -189,9 +241,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     try {
       await updateProfile(personalForm);
       await refreshProfile();
-      triggerSuccess('Personal information saved successfully.');
+      triggerSuccess('Personal information saved.');
+      handleResolveMoMo(personalForm.phone_number, personalForm.momo_provider);
     } catch (err) {
-      setErrorMsg(err.response?.data?.detail || 'Failed to update personal details.');
+      setErrorMsg(err.response?.data?.detail || 'Failed to update details.');
     } finally {
       setLoading(false);
     }
@@ -200,11 +253,11 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   const handleSubmitKYC = async (e) => {
     e.preventDefault();
     if (!kycForm.ghana_card_number.trim()) {
-      setErrorMsg('Please enter your Ghana Card Number (GHA-XXXXXXXXX-X).');
+      setErrorMsg('Please enter your Ghana Card PIN.');
       return;
     }
     if (!kycForm.next_of_kin_name.trim() || !kycForm.next_of_kin_phone.trim()) {
-      setErrorMsg('Emergency Contact (Next of Kin) name and phone are compulsory.');
+      setErrorMsg('Emergency Contact (Next of Kin) name and phone are required.');
       return;
     }
 
@@ -213,9 +266,9 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     try {
       await submitKYC(kycForm);
       await refreshProfile();
-      triggerSuccess('Ghana Card KYC submitted and verified successfully!');
+      triggerSuccess('Ghana Card KYC submitted and approved!');
     } catch (err) {
-      setErrorMsg(err.response?.data?.detail || 'KYC verification submission failed.');
+      setErrorMsg(err.response?.data?.detail || 'KYC submission failed.');
     } finally {
       setLoading(false);
     }
@@ -224,17 +277,17 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   const handleWalletsSubmit = async (e) => {
     e.preventDefault();
     if (!walletsForm.primary_wallet_number.trim()) {
-      setErrorMsg('Please enter your primary payout phone or bank account number.');
+      setErrorMsg('Please enter your payout phone or bank account number.');
       return;
     }
 
     if (walletsForm.pin) {
       if (walletsForm.pin !== walletsForm.confirm_pin) {
-        setErrorMsg('PINs do not match. Please re-enter your 4-digit PIN.');
+        setErrorMsg('PINs do not match.');
         return;
       }
       if (!/^\d{4}$/.test(walletsForm.pin)) {
-        setErrorMsg('PIN must be exactly 4 numeric digits.');
+        setErrorMsg('PIN must be 4 numeric digits.');
         return;
       }
     }
@@ -254,7 +307,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       }
 
       await refreshProfile();
-      triggerSuccess('Contribution & Payout Wallets configured successfully!');
+      triggerSuccess('Wallets configured successfully!');
       setWalletsForm(prev => ({ ...prev, pin: '', confirm_pin: '' }));
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'Failed to save wallet configuration.');
@@ -272,10 +325,12 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
   const isVerifiedKYC = user.kyc_status === 'VERIFIED';
 
-  const filteredTransactions = transactions.filter(t => {
-    if (txFilter === 'ALL') return true;
-    return t.type === txFilter;
-  });
+  const maskedPhone = (phone) => {
+    if (!phone) return '*** ****';
+    const clean = phone.replace(/[^\d]/g, '');
+    if (clean.length < 4) return phone;
+    return `*** ${clean.slice(-4)}`;
+  };
 
   const totalContributions = transactions
     .filter(t => t.type === 'CONTRIBUTION')
@@ -285,514 +340,56 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     .filter(t => t.type === 'PAYOUT')
     .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-  const handlePrintStatement = () => {
-    window.print();
-  };
+  const filteredTransactions = transactions.filter(t => {
+    if (txFilter === 'ALL') return true;
+    return t.type === txFilter;
+  });
 
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-20 animate-in fade-in duration-150">
-      
-      {/* 🧭 Top Navigation */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold transition-all cursor-pointer shadow-xs"
-        >
-          <ArrowLeft size={14} />
-          <span>Back to Marketplace</span>
-        </button>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-slate-700 bg-white px-3.5 py-1.5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-1.5">
-            <Sparkles size={13} className="text-amber-500" />
-            <span>{user.points || 50} Reward Points</span>
-          </span>
+  // ==========================================
+  // SUBPAGE 1: SETTINGS / NOTIFICATIONS (Screenshot 1)
+  // ==========================================
+  if (activeSubpage === 'settings') {
+    return (
+      <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveSubpage(null)}
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <h2 className="text-lg font-bold text-slate-900">Settings</h2>
         </div>
-      </div>
 
-      {/* 👤 User Identity Card (Header) */}
-      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-          
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-sky-600 text-white font-bold text-2xl flex items-center justify-center shadow-xs overflow-hidden shrink-0 ring-4 ring-sky-50">
-              {user.avatar_url && !avatarError ? (
-                <img 
-                  src={user.avatar_url} 
-                  alt={user.full_name} 
-                  onError={() => setAvatarError(true)}
-                  className="w-full h-full object-cover" 
-                />
-              ) : (
-                <span>{getInitials(user.full_name)}</span>
-              )}
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-bold text-slate-900">
-                  {user.full_name || 'Ghana Saver'}
-                </h1>
-
-                {isVerifiedKYC ? (
-                  <span className="text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                    <ShieldCheck size={12} className="text-emerald-600" />
-                    <span>Ghana Card Verified ✓</span>
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                    <AlertCircle size={12} className="text-amber-600" />
-                    <span>Identity Unverified</span>
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
-                <span>{user.phone_number || 'No Phone Linked'}</span>
-                <span>•</span>
-                <span>{user.momo_provider || 'MTN'} MoMo</span>
-                <span>•</span>
-                <span className="text-amber-600 font-bold">{user.trust_score || 100}% Trust</span>
-              </div>
-            </div>
+        <div className="space-y-4">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Notifications
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onOpenReferralModal}
-              className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-2xl border border-slate-200 cursor-pointer transition-colors shadow-xs"
-            >
-              Refer Friends
-            </button>
-            <button
-              onClick={logout}
-              className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs rounded-2xl border border-red-200 cursor-pointer transition-colors shadow-xs flex items-center gap-1.5"
-            >
-              <LogOut size={13} />
-              <span>Sign Out</span>
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      {/* 📑 Profile Subsections Navigation Bar */}
-      <div className="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-xs overflow-x-auto scrollbar-none">
-        <div className="flex items-center gap-1 min-w-max">
-          {[
-            { id: 'identity', label: 'Identity & Info', icon: User },
-            { id: 'kyc', label: 'Trust & KYC', icon: ShieldCheck },
-            { id: 'wallets', label: 'Wallets & Payouts', icon: Wallet },
-            { id: 'alerts', label: 'Alerts & Settings', icon: Bell },
-            { id: 'history', label: 'Transaction History', icon: ArrowDownLeft },
-            { id: 'statement', label: 'Savings Statement', icon: FileText },
-            { id: 'rules', label: 'Rules & Legal', icon: BookOpen },
-            { id: 'help', label: 'Help & Support', icon: MessageCircle }
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
+          <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs">
+            <div className="p-4 flex items-center justify-between">
+              <span className="text-sm font-semibold text-slate-900">Push Notifications</span>
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                  isActive
-                    ? 'bg-sky-50 text-sky-700 border border-sky-200 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                onClick={() => toggleNotification('pushNotifications')}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                  notifications.pushNotifications ? 'bg-sky-500' : 'bg-slate-200'
                 }`}
               >
-                <Icon size={14} className={isActive ? 'text-sky-600' : 'text-slate-400'} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Alert Messages */}
-      {saveSuccess && (
-        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in fade-in shadow-xs">
-          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-          <span>{saveSuccess}</span>
-        </div>
-      )}
-
-      {errorMsg && (
-        <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2 animate-in fade-in shadow-xs">
-          <AlertCircle size={16} className="text-red-500 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {/* 1. IDENTITY & PERSONAL INFO */}
-      {activeTab === 'identity' && (
-        <div className="bg-white rounded-3xl p-6 space-y-5 border border-slate-200 shadow-xs">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Personal & Identity Information</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Your legal name and mobile money contact details registered with SusuRow.
-            </p>
-          </div>
-
-          <form onSubmit={handleUpdatePersonal} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Full Legal Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Your Full Legal Name"
-                  value={personalForm.full_name}
-                  onChange={(e) => setPersonalForm({ ...personalForm, full_name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Phone Number (Compulsory) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="024 123 4567"
-                  value={personalForm.phone_number}
-                  onChange={(e) => setPersonalForm({ ...personalForm, phone_number: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-mono font-bold text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Primary Mobile Money Network
-                </label>
-                <select
-                  value={personalForm.momo_provider}
-                  onChange={(e) => setPersonalForm({ ...personalForm, momo_provider: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                >
-                  <option value="MTN">MTN Mobile Money (*170#)</option>
-                  <option value="TELECEL">Telecel Cash (*110#)</option>
-                  <option value="AT">AT Money (*110#)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Email Address (Optional)
-                </label>
-                <input
-                  type="email"
-                  placeholder="your.email@gmail.com"
-                  value={personalForm.email}
-                  onChange={(e) => setPersonalForm({ ...personalForm, email: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                />
-              </div>
-
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95"
-              >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <span>Save Personal Info</span>}
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  notifications.pushNotifications ? 'translate-x-6' : 'translate-x-1'
+                }`} />
               </button>
             </div>
-          </form>
-        </div>
-      )}
 
-      {/* 2. TRUST & IDENTITY (KYC) */}
-      {activeTab === 'kyc' && (
-        <div className="bg-white rounded-3xl p-6 space-y-5 border border-slate-200 shadow-xs">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Trust & Identity Verification (Ghana Card)</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Essential to prevent group default. Your Ghana Card ID and emergency contact protect communal savings.
-            </p>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-100 flex items-start gap-3">
-            <Shield className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
-            <div className="space-y-0.5">
-              <p className="text-xs font-bold text-slate-900">MoMo Name Match Guarantee</p>
-              <p className="text-[11px] text-slate-600 leading-relaxed">
-                SusuRow automatically confirms that your Ghana Card legal name matches your Mobile Money SIM registration before cycle pots are disbursed.
-              </p>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmitKYC} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
+            <div className="p-4 flex items-center justify-between">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Ghana Card PIN <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="GHA-712345678-9"
-                  value={kycForm.ghana_card_number}
-                  onChange={(e) => setKycForm({ ...kycForm, ghana_card_number: e.target.value.toUpperCase() })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-mono font-bold text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Emergency Contact (Next of Kin) Full Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Emergency Contact Name"
-                  value={kycForm.next_of_kin_name}
-                  onChange={(e) => setKycForm({ ...kycForm, next_of_kin_name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Emergency Contact Phone Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="024 123 4567"
-                  value={kycForm.next_of_kin_phone}
-                  onChange={(e) => setKycForm({ ...kycForm, next_of_kin_phone: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-mono font-bold text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Relationship to Emergency Contact
-                </label>
-                <select
-                  value={kycForm.next_of_kin_relation}
-                  onChange={(e) => setKycForm({ ...kycForm, next_of_kin_relation: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                >
-                  <option value="Spouse">Spouse / Partner</option>
-                  <option value="Sibling">Brother / Sister</option>
-                  <option value="Parent">Parent (Mother / Father)</option>
-                  <option value="Child">Child (Son / Daughter)</option>
-                  <option value="Relative">Other Relative</option>
-                </select>
-              </div>
-
-            </div>
-
-            {/* Signature Canvas */}
-            <div className="pt-2">
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Digital Signature (Draw with finger or mouse)
-              </label>
-              <SignatureCanvas
-                initialSignature={kycForm.signature_data}
-                onSave={(sigData) => setKycForm({ ...kycForm, signature_data: sigData })}
-              />
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95"
-              >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <span>Submit & Verify Ghana Card</span>}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* 3. WALLETS & PAYOUTS */}
-      {activeTab === 'wallets' && (
-        <div className="bg-white rounded-3xl p-6 space-y-6 border border-slate-200 shadow-xs">
-          
-          {/* Contribution Wallets Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Contribution Wallets</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  How you pay into your circles. Saves primary MoMo number used for round payments.
-                </p>
-              </div>
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
-                Inbound
-              </span>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white font-black text-xs flex items-center justify-center shadow-xs">
-                  {user.momo_provider === 'TELECEL' ? 'TEL' : user.momo_provider === 'AT' ? 'AT' : 'MTN'}
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-900">{user.momo_provider || 'MTN'} Mobile Money</p>
-                  <p className="text-xs font-mono text-slate-500">{user.phone_number}</p>
-                </div>
-              </div>
-              <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                <Check size={12} /> Active
-              </span>
-            </div>
-          </div>
-
-          <hr className="border-slate-100" />
-
-          {/* Payout Wallets Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Payout Wallets</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Where your lump sum pot goes. Verified personal MoMo or Bank account to receive payouts.
-                </p>
-              </div>
-              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                Outbound
-              </span>
-            </div>
-
-            <form onSubmit={handleWalletsSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Payout Destination Provider
-                  </label>
-                  <select
-                    value={walletsForm.primary_wallet_provider}
-                    onChange={(e) => setWalletsForm({ ...walletsForm, primary_wallet_provider: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                  >
-                    <option value="MTN">MTN Mobile Money (*170#)</option>
-                    <option value="TELECEL">Telecel Cash (*110#)</option>
-                    <option value="AT">AT Money (*110#)</option>
-                    <option value="BANK">Ghana Commercial Bank Account</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Payout MoMo Phone / Bank Account <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="024 123 4567"
-                    value={walletsForm.primary_wallet_number}
-                    onChange={(e) => setWalletsForm({ ...walletsForm, primary_wallet_number: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-mono font-bold text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                  />
-                </div>
-
-                {walletsForm.primary_wallet_provider === 'BANK' && (
-                  <>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Bank Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. GCB, Ecobank, Stanbic, Absa"
-                        value={walletsForm.bank_name}
-                        onChange={(e) => setWalletsForm({ ...walletsForm, bank_name: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">Bank Account Number</label>
-                      <input
-                        type="text"
-                        placeholder="Account Number"
-                        value={walletsForm.bank_account_number}
-                        onChange={(e) => setWalletsForm({ ...walletsForm, bank_account_number: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-mono text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    4-Digit Security PIN {user.has_security_pin ? '(Update PIN)' : '(Create PIN)'}
-                  </label>
-                  <input
-                    type="password"
-                    maxLength={4}
-                    placeholder="••••"
-                    value={walletsForm.pin}
-                    onChange={(e) => setWalletsForm({ ...walletsForm, pin: e.target.value.replace(/[^\d]/g, '') })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-mono font-bold tracking-widest text-center text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Confirm 4-Digit PIN
-                  </label>
-                  <input
-                    type="password"
-                    maxLength={4}
-                    placeholder="••••"
-                    value={walletsForm.confirm_pin}
-                    onChange={(e) => setWalletsForm({ ...walletsForm, confirm_pin: e.target.value.replace(/[^\d]/g, '') })}
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-mono font-bold tracking-widest text-center text-slate-900 focus:ring-2 focus:ring-sky-500 focus:outline-none"
-                  />
-                </div>
-
-              </div>
-
-              <div className="pt-2 flex justify-end">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95"
-                >
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : <span>Save Payout Wallets & PIN</span>}
-                </button>
-              </div>
-            </form>
-          </div>
-
-        </div>
-      )}
-
-      {/* 4. ALERTS & NOTIFICATIONS */}
-      {activeTab === 'alerts' && (
-        <div className="bg-white rounded-3xl p-6 space-y-5 border border-slate-200 shadow-xs">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Notifications & Alerts Settings</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Control SMS and in-app alerts for rotation payments and cycle payouts.
-            </p>
-          </div>
-
-          <div className="space-y-3 divide-y divide-slate-100">
-            
-            <div className="pt-3 flex items-center justify-between">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-slate-900">Round Due Reminders</h4>
-                <p className="text-[11px] text-slate-500">
-                  Receive SMS & push alert 24 hours before your circle payment is due.
-                </p>
+                <span className="text-sm font-semibold text-slate-900 block">Round Due Reminders</span>
+                <span className="text-[11px] text-slate-500">24 hours before contribution</span>
               </div>
               <button
                 onClick={() => toggleNotification('dueReminders')}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  notifications.dueReminders ? 'bg-sky-600' : 'bg-slate-200'
+                  notifications.dueReminders ? 'bg-sky-500' : 'bg-slate-200'
                 }`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -801,17 +398,15 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               </button>
             </div>
 
-            <div className="pt-3 flex items-center justify-between">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-slate-900">Payout Alerts</h4>
-                <p className="text-[11px] text-slate-500">
-                  Instant notification when the full rotation pot lands in your Mobile Money wallet.
-                </p>
+            <div className="p-4 flex items-center justify-between">
+              <div>
+                <span className="text-sm font-semibold text-slate-900 block">Payout Alerts</span>
+                <span className="text-[11px] text-slate-500">When pot arrives in MoMo</span>
               </div>
               <button
                 onClick={() => toggleNotification('payoutAlerts')}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  notifications.payoutAlerts ? 'bg-sky-600' : 'bg-slate-200'
+                  notifications.payoutAlerts ? 'bg-sky-500' : 'bg-slate-200'
                 }`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -819,385 +414,917 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                 }`} />
               </button>
             </div>
-
-            <div className="pt-3 flex items-center justify-between">
-              <div className="space-y-0.5">
-                <h4 className="text-xs font-bold text-slate-900">New Member Joins</h4>
-                <p className="text-[11px] text-slate-500">
-                  Alert when a peer saver joins or completes enrollment in your groups.
-                </p>
-              </div>
-              <button
-                onClick={() => toggleNotification('memberJoins')}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  notifications.memberJoins ? 'bg-sky-600' : 'bg-slate-200'
-                }`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  notifications.memberJoins ? 'translate-x-6' : 'translate-x-1'
-                }`} />
-              </button>
-            </div>
-
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* 5. TRANSACTION HISTORY */}
-      {activeTab === 'history' && (
-        <div className="bg-white rounded-3xl p-6 space-y-5 border border-slate-200 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-bold text-slate-900">Transaction History</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                All contributions paid into groups and pot payouts received.
-              </p>
-            </div>
+  // ==========================================
+  // SUBPAGE 2: PAYMENT METHODS (Contribution Wallets - Screenshot 4)
+  // ==========================================
+  if (activeSubpage === 'payment_methods') {
+    return (
+      <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveSubpage(null)}
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Payment Methods</h2>
+            <p className="text-xs text-slate-500">Manage payment methods used for transactions</p>
+          </div>
+        </div>
 
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200">
-              {['ALL', 'CONTRIBUTION', 'PAYOUT'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setTxFilter(tab)}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    txFilter === tab
-                      ? 'bg-white text-slate-900 shadow-xs border border-slate-200/60'
-                      : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  {tab === 'ALL' ? 'All' : tab === 'CONTRIBUTION' ? 'Contributions' : 'Pot Payouts'}
-                </button>
-              ))}
+        {/* Existing Card Display (Screenshot 4 style) */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center gap-4">
+          <div className="w-12 h-9 rounded-lg bg-amber-400 text-slate-950 font-black text-[10px] flex items-center justify-center border border-amber-500/30 shrink-0">
+            {user.momo_provider || 'MTN'}
+          </div>
+          <div className="border-l border-slate-200 pl-4 flex-1">
+            <span className="font-mono text-sm font-bold text-slate-900 tracking-wider">
+              {maskedPhone(user.phone_number)}
+            </span>
+            <div className="text-[11px] text-slate-500">
+              {resolvedAccountName ? `Account: ${resolvedAccountName}` : `${user.momo_provider || 'MTN'} Mobile Money`}
             </div>
           </div>
-
-          {txLoading ? (
-            <div className="py-12 text-center space-y-2">
-              <Loader2 className="w-6 h-6 animate-spin text-sky-600 mx-auto" />
-              <p className="text-xs text-slate-400">Loading transaction ledger...</p>
-            </div>
-          ) : filteredTransactions.length === 0 ? (
-            <div className="p-8 text-center space-y-2 rounded-2xl bg-slate-50 border border-slate-100">
-              <Info className="w-6 h-6 text-slate-400 mx-auto" />
-              <h4 className="text-xs font-bold text-slate-800">No Transactions Yet</h4>
-              <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                Your contributions and rotational payouts will appear here automatically as rounds proceed.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
-                  <tr>
-                    <th className="py-3 px-3.5">Type</th>
-                    <th className="py-3 px-3.5">Group</th>
-                    <th className="py-3 px-3.5">Amount</th>
-                    <th className="py-3 px-3.5">Network</th>
-                    <th className="py-3 px-3.5">Reference</th>
-                    <th className="py-3 px-3.5">Status</th>
-                    <th className="py-3 px-3.5 text-right">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredTransactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-slate-50/60">
-                      <td className="py-3 px-3.5 font-bold">
-                        {tx.type === 'CONTRIBUTION' ? (
-                          <span className="inline-flex items-center gap-1 text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full text-[10px] border border-sky-200">
-                            <ArrowUpRight size={11} /> Contribution
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] border border-emerald-200">
-                            <ArrowDownLeft size={11} /> Pot Payout
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3.5 font-semibold text-slate-900">{tx.group_name}</td>
-                      <td className="py-3 px-3.5 font-bold font-mono text-slate-900">
-                        {tx.type === 'CONTRIBUTION' ? '-' : '+'}GH₵{Number(tx.amount).toFixed(2)}
-                      </td>
-                      <td className="py-3 px-3.5 text-slate-600">{tx.momo_provider}</td>
-                      <td className="py-3 px-3.5 font-mono text-[10px] text-slate-500">{tx.reference}</td>
-                      <td className="py-3 px-3.5">
-                        <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] border border-emerald-200">
-                          {tx.status || 'CONFIRMED'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3.5 text-right text-slate-500 font-mono text-[11px]">
-                        {tx.created_at ? new Date(tx.created_at).toLocaleDateString() : 'Recent'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <span className="w-2 h-2 rounded-full bg-emerald-500" title="Active"></span>
         </div>
-      )}
 
-      {/* 6. SAVINGS STATEMENT (PRINTABLE & DOWNLOADABLE) */}
-      {activeTab === 'statement' && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 space-y-6 border border-slate-200 shadow-xs print:shadow-none print:border-none">
+        {/* Edit / Link MoMo Phone Form */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-xs">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Update Contribution Number</h3>
           
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <form onSubmit={handleUpdatePersonal} className="space-y-3">
             <div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-sky-600 text-white font-black text-sm flex items-center justify-center">
-                  ₵
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">SusuRow Official Savings Statement</h3>
-                  <p className="text-[11px] text-slate-500 font-medium">Coratech Global Digital Financial Services • Ghana</p>
-                </div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Network Provider</label>
+              <select
+                value={personalForm.momo_provider}
+                onChange={(e) => setPersonalForm({ ...personalForm, momo_provider: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900"
+              >
+                <option value="MTN">MTN Mobile Money (*170#)</option>
+                <option value="TELECEL">Telecel Cash (*110#)</option>
+                <option value="AT">AT Money (*110#)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  required
+                  placeholder="024 123 4567"
+                  value={personalForm.phone_number}
+                  onChange={(e) => setPersonalForm({ ...personalForm, phone_number: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleResolveMoMo(personalForm.phone_number, personalForm.momo_provider)}
+                  disabled={momoResolving}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[10px] font-bold cursor-pointer transition-colors"
+                >
+                  {momoResolving ? 'Checking...' : 'Verify'}
+                </button>
               </div>
+              {resolvedAccountName && (
+                <p className="text-[11px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                  <CheckCircle2 size={12} /> Telecom Name: {resolvedAccountName}
+                </p>
+              )}
             </div>
 
             <button
-              onClick={handlePrintStatement}
-              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95 self-start sm:self-auto"
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95"
             >
-              <Printer size={14} />
-              <span>Print / Save as PDF</span>
+              {loading ? 'Saving...' : 'Save Payment Method'}
             </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // SUBPAGE 3: WITHDRAWAL METHODS (Payout Wallets)
+  // ==========================================
+  if (activeSubpage === 'withdrawal_methods') {
+    return (
+      <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveSubpage(null)}
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Withdrawal Methods</h2>
+            <p className="text-xs text-slate-500">Where your lump sum pot goes</p>
+          </div>
+        </div>
+
+        {/* Existing Payout Display */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center gap-4">
+          <div className="w-12 h-9 rounded-lg bg-emerald-500 text-white font-black text-[10px] flex items-center justify-center shrink-0">
+            {walletsForm.primary_wallet_provider === 'BANK' ? 'BANK' : walletsForm.primary_wallet_provider}
+          </div>
+          <div className="border-l border-slate-200 pl-4 flex-1">
+            <span className="font-mono text-sm font-bold text-slate-900 tracking-wider">
+              {maskedPhone(walletsForm.primary_wallet_number)}
+            </span>
+            <div className="text-[11px] text-slate-500">
+              {walletsForm.primary_wallet_provider === 'BANK' ? (walletsForm.bank_name || 'Bank Account') : `${walletsForm.primary_wallet_provider} Mobile Money`}
+            </div>
+          </div>
+          <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+            Payout Wallet
+          </span>
+        </div>
+
+        {/* Update Payout Form */}
+        <form onSubmit={handleWalletsSubmit} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-xs">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Configure Payout Wallet</h3>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Destination Provider</label>
+            <select
+              value={walletsForm.primary_wallet_provider}
+              onChange={(e) => setWalletsForm({ ...walletsForm, primary_wallet_provider: e.target.value })}
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900"
+            >
+              <option value="MTN">MTN Mobile Money (*170#)</option>
+              <option value="TELECEL">Telecel Cash (*110#)</option>
+              <option value="AT">AT Money (*110#)</option>
+              <option value="BANK">Bank Account</option>
+            </select>
           </div>
 
-          {/* Statement Header Card */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              {walletsForm.primary_wallet_provider === 'BANK' ? 'Account Number' : 'MoMo Phone Number'}
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="024 123 4567"
+              value={walletsForm.primary_wallet_number}
+              onChange={(e) => setWalletsForm({ ...walletsForm, primary_wallet_number: e.target.value })}
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900"
+            />
+          </div>
+
+          {walletsForm.primary_wallet_provider === 'BANK' && (
             <div>
-              <span className="text-[10px] font-bold uppercase text-slate-400">Account Holder</span>
-              <p className="text-sm font-bold text-slate-900 mt-0.5">{user.full_name}</p>
-              <p className="font-mono text-slate-600 mt-0.5">{user.phone_number}</p>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Bank Name</label>
+              <input
+                type="text"
+                placeholder="e.g. GCB, Ecobank, Absa"
+                value={walletsForm.bank_name}
+                onChange={(e) => setWalletsForm({ ...walletsForm, bank_name: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900"
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                4-Digit PIN {user.has_security_pin ? '(Change)' : '(New)'}
+              </label>
+              <input
+                type="password"
+                maxLength={4}
+                placeholder="••••"
+                value={walletsForm.pin}
+                onChange={(e) => setWalletsForm({ ...walletsForm, pin: e.target.value.replace(/[^\d]/g, '') })}
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold tracking-widest text-center text-slate-900"
+              />
             </div>
             <div>
-              <span className="text-[10px] font-bold uppercase text-slate-400">Identity Status</span>
-              <p className="text-sm font-bold text-emerald-700 mt-0.5">
-                {isVerifiedKYC ? 'Ghana Card Verified ✓' : 'Unverified'}
-              </p>
-              <p className="font-mono text-slate-600 mt-0.5">{user.ghana_card_number || 'No ID on file'}</p>
-            </div>
-            <div>
-              <span className="text-[10px] font-bold uppercase text-slate-400">Statement Date</span>
-              <p className="text-sm font-bold text-slate-900 mt-0.5">{new Date().toLocaleDateString()}</p>
-              <p className="text-slate-500 mt-0.5">Proof of Rotational Credit</p>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Confirm PIN</label>
+              <input
+                type="password"
+                maxLength={4}
+                placeholder="••••"
+                value={walletsForm.confirm_pin}
+                onChange={(e) => setWalletsForm({ ...walletsForm, confirm_pin: e.target.value.replace(/[^\d]/g, '') })}
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold tracking-widest text-center text-slate-900"
+              />
             </div>
           </div>
 
-          {/* Totals Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-2xl bg-sky-50/70 border border-sky-100">
-              <span className="text-[10px] font-bold uppercase text-sky-800">Total Contributions Paid</span>
-              <p className="text-2xl font-bold font-mono text-sky-700 mt-1">
-                GH₵{totalContributions.toFixed(2)}
-              </p>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95"
+          >
+            {loading ? 'Saving...' : 'Save Withdrawal Wallet'}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // SUBPAGE 4: TRUST & IDENTITY (KYC - Screenshot 3)
+  // ==========================================
+  if (activeSubpage === 'kyc') {
+    return (
+      <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveSubpage(null)}
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <h2 className="text-lg font-bold text-slate-900">KYC Verification</h2>
+        </div>
+
+        {/* Approved Banner if verified (Screenshot 3 style) */}
+        {isVerifiedKYC ? (
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center space-y-3 shadow-xs">
+            <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
+              <Check size={32} className="stroke-[3]" />
             </div>
-            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-100">
-              <span className="text-[10px] font-bold uppercase text-emerald-800">Total Pot Payouts Received</span>
-              <p className="text-2xl font-bold font-mono text-emerald-700 mt-1">
-                GH₵{totalPayouts.toFixed(2)}
-              </p>
+            <div>
+              <h3 className="text-lg font-black text-slate-900">Approved</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Your account has been verified with Ghana Card</p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+            <AlertCircle size={20} className="text-amber-600 shrink-0" />
+            <div className="text-xs text-amber-800 font-medium">
+              Complete your Ghana Card verification to participate in rotating pot payouts.
+            </div>
+          </div>
+        )}
+
+        {/* Status Rows with Checkmarks (Screenshot 3 style) */}
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs">
+          
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <User size={16} className="text-slate-400" />
+              <span className="text-xs font-semibold text-slate-800">Personal Information</span>
+            </div>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${user.full_name ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+              <Check size={12} className="stroke-[3]" />
             </div>
           </div>
 
-          {/* Statement Items Table */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-900">Verified Cycle Ledger</h4>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ShieldCheck size={16} className="text-slate-400" />
+              <div>
+                <span className="text-xs font-semibold text-slate-800 block">Identity Verification</span>
+                <span className="text-[10px] font-mono text-slate-500">{user.ghana_card_number || 'GHA-XXXXXXXXX-X'}</span>
+              </div>
+            </div>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isVerifiedKYC ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+              <Check size={12} className="stroke-[3]" />
+            </div>
+          </div>
+
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Users size={16} className="text-slate-400" />
+              <span className="text-xs font-semibold text-slate-800">Emergency Contact (Next of Kin)</span>
+            </div>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${user.next_of_kin_name ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+              <Check size={12} className="stroke-[3]" />
+            </div>
+          </div>
+
+          <div className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Smartphone size={16} className="text-slate-400" />
+              <div>
+                <span className="text-xs font-semibold text-slate-800 block">MoMo Name Match</span>
+                <span className="text-[10px] text-slate-500">Confirmed via Telecom Network</span>
+              </div>
+            </div>
+            <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+              <Check size={12} className="stroke-[3]" />
+            </div>
+          </div>
+
+        </div>
+
+        {/* KYC Form with Automatic Hyphenation */}
+        <form onSubmit={handleSubmitKYC} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-xs">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            {isVerifiedKYC ? 'Update Ghana Card & Contact' : 'Submit Ghana Card & Contact'}
+          </h3>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Ghana Card PIN (Auto-hyphenated)
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="GHA-712345678-9"
+              value={kycForm.ghana_card_number}
+              onChange={handleGhanaCardChange}
+              maxLength={15}
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900 tracking-wider"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Emergency Contact Full Name</label>
+            <input
+              type="text"
+              required
+              placeholder="Full Legal Name"
+              value={kycForm.next_of_kin_name}
+              onChange={(e) => setKycForm({ ...kycForm, next_of_kin_name: e.target.value })}
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone</label>
+              <input
+                type="tel"
+                required
+                placeholder="024 123 4567"
+                value={kycForm.next_of_kin_phone}
+                onChange={(e) => setKycForm({ ...kycForm, next_of_kin_phone: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Relationship</label>
+              <select
+                value={kycForm.next_of_kin_relation}
+                onChange={(e) => setKycForm({ ...kycForm, next_of_kin_relation: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900"
+              >
+                <option value="Spouse">Spouse</option>
+                <option value="Sibling">Sibling</option>
+                <option value="Parent">Parent</option>
+                <option value="Child">Child</option>
+                <option value="Relative">Relative</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Digital Signature</label>
+            <SignatureCanvas
+              initialSignature={kycForm.signature_data}
+              onSave={(sigData) => setKycForm({ ...kycForm, signature_data: sigData })}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95"
+          >
+            {loading ? 'Submitting...' : 'Submit Verification'}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // SUBPAGE 5: REQUEST STATEMENT (PDF / Printable)
+  // ==========================================
+  if (activeSubpage === 'statement') {
+    return (
+      <div className="max-w-2xl mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setActiveSubpage(null)}
+              className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Request Statement</h2>
+              <p className="text-xs text-slate-500">Official proof of rotational savings</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => window.print()}
+            className="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <Printer size={14} />
+            <span>Print PDF</span>
+          </button>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">SusuRow Ghana Savings Statement</h3>
+              <p className="text-xs text-slate-500">Coratech Global Financial Services</p>
+            </div>
+            <div className="text-right text-xs">
+              <span className="font-mono font-bold text-slate-900">{new Date().toLocaleDateString()}</span>
+              <p className="text-[10px] text-emerald-600 font-bold">Verified Ledger</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div>
+              <span className="text-[10px] uppercase text-slate-400 font-bold">Saver</span>
+              <p className="font-bold text-slate-900">{user.full_name}</p>
+              <p className="font-mono text-slate-500">{user.phone_number}</p>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase text-slate-400 font-bold">Ghana Card</span>
+              <p className="font-mono font-bold text-slate-900">{user.ghana_card_number || 'N/A'}</p>
+              <p className="text-emerald-600 font-bold text-[11px]">{isVerifiedKYC ? 'Verified ✓' : 'Unverified'}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 bg-sky-50 rounded-xl border border-sky-100">
+              <span className="text-[10px] uppercase text-sky-700 font-bold">Total Contributions</span>
+              <p className="text-lg font-bold font-mono text-sky-800">GH₵{totalContributions.toFixed(2)}</p>
+            </div>
+            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+              <span className="text-[10px] uppercase text-emerald-700 font-bold">Total Payouts Won</span>
+              <p className="text-lg font-bold font-mono text-emerald-800">GH₵{totalPayouts.toFixed(2)}</p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-slate-50 text-slate-600 text-[10px] uppercase border-b border-slate-200">
+                <tr>
+                  <th className="p-2.5">Date</th>
+                  <th className="p-2.5">Group</th>
+                  <th className="p-2.5">Type</th>
+                  <th className="p-2.5 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {transactions.length === 0 ? (
                   <tr>
-                    <th className="py-2.5 px-3">Date</th>
-                    <th className="py-2.5 px-3">Activity</th>
-                    <th className="py-2.5 px-3">Circle Name</th>
-                    <th className="py-2.5 px-3">Reference</th>
-                    <th className="py-2.5 px-3 text-right">Amount (GHS)</th>
+                    <td colSpan={4} className="p-4 text-center text-slate-400 font-sans text-xs">
+                      No recorded transactions yet.
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-mono">
-                  {transactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-6 text-center text-slate-400 text-xs font-sans">
-                        No transactions recorded for this period.
+                ) : (
+                  transactions.map(t => (
+                    <tr key={t.id}>
+                      <td className="p-2.5 text-slate-500">{t.created_at ? new Date(t.created_at).toLocaleDateString() : 'N/A'}</td>
+                      <td className="p-2.5 text-slate-900 font-sans">{t.group_name}</td>
+                      <td className="p-2.5 text-slate-700">{t.type}</td>
+                      <td className="p-2.5 text-right font-bold text-slate-900">
+                        {t.type === 'CONTRIBUTION' ? '-' : '+'}GH₵{Number(t.amount).toFixed(2)}
                       </td>
                     </tr>
-                  ) : (
-                    transactions.map((t) => (
-                      <tr key={t.id}>
-                        <td className="py-2.5 px-3 text-slate-500">
-                          {t.created_at ? new Date(t.created_at).toLocaleDateString() : 'N/A'}
-                        </td>
-                        <td className="py-2.5 px-3 font-sans font-bold">
-                          {t.type === 'CONTRIBUTION' ? 'Round Contribution' : 'Pot Disbursement'}
-                        </td>
-                        <td className="py-2.5 px-3 font-sans text-slate-800">{t.group_name}</td>
-                        <td className="py-2.5 px-3 text-slate-500 text-[10px]">{t.reference}</td>
-                        <td className="py-2.5 px-3 text-right font-bold text-slate-900">
-                          {t.type === 'CONTRIBUTION' ? '-' : '+'}GH₵{Number(t.amount).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-
-          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
-            <span>Verified by SusuRow Cryptographic Ledger • Coratech Global</span>
-            <span>Bank of Ghana Mobile Money ROSCA Standards</span>
-          </div>
-
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* 7. SUSU RULES & LEGAL */}
-      {activeTab === 'rules' && (
-        <div className="bg-white rounded-3xl p-6 space-y-6 border border-slate-200 shadow-xs">
+  // ==========================================
+  // SUBPAGE 6: ALL TRANSACTIONS
+  // ==========================================
+  if (activeSubpage === 'transactions') {
+    return (
+      <div className="max-w-2xl mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setActiveSubpage(null)}
+              className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <h2 className="text-lg font-bold text-slate-900">All Transactions</h2>
+          </div>
+
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+            {['ALL', 'CONTRIBUTION', 'PAYOUT'].map(f => (
+              <button
+                key={f}
+                onClick={() => setTxFilter(f)}
+                className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer transition-colors ${
+                  txFilter === f ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'
+                }`}
+              >
+                {f === 'ALL' ? 'All' : f === 'CONTRIBUTION' ? 'Paid' : 'Payouts'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs overflow-hidden">
+          {txLoading ? (
+            <div className="p-8 text-center text-slate-400 text-xs">Loading transactions...</div>
+          ) : filteredTransactions.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs">No transactions recorded yet.</div>
+          ) : (
+            filteredTransactions.map(t => (
+              <div key={t.id} className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                    t.type === 'CONTRIBUTION' ? 'bg-sky-50 text-sky-600' : 'bg-emerald-50 text-emerald-600'
+                  }`}>
+                    {t.type === 'CONTRIBUTION' ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900">{t.group_name}</h4>
+                    <p className="text-[10px] text-slate-500 font-mono">{t.reference} • {t.momo_provider}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-mono font-bold text-xs text-slate-900">
+                    {t.type === 'CONTRIBUTION' ? '-' : '+'}GH₵{Number(t.amount).toFixed(2)}
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    {t.created_at ? new Date(t.created_at).toLocaleDateString() : 'Recent'}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // SUBPAGE 7: LEGAL (Susu Constitution)
+  // ==========================================
+  if (activeSubpage === 'legal') {
+    return (
+      <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveSubpage(null)}
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <h2 className="text-lg font-bold text-slate-900">Legal & Constitution</h2>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 text-xs text-slate-700 shadow-xs">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Susu Rules, Constitution & Default Policy</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Plain-language operating principles that protect every saver's funds.
+            <h4 className="font-bold text-slate-900">Rotational Fairness</h4>
+            <p className="text-slate-500 mt-1">
+              Turns progress in strict sequential, random ballot, or bidding order. No participant may withdraw ahead of their allocated round.
             </p>
           </div>
 
-          <div className="space-y-4 text-xs text-slate-700">
-            
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <h4 className="font-bold text-slate-900 text-sm">1. Rotational Fairness & Turn Protection</h4>
-              <p className="text-slate-600 leading-relaxed">
-                In Sequential groups, turns progress 1, 2, 3... to N in exact order. In Ballot groups, a transparent cryptographic draw assigns turns. In Bidding groups, members bid discounts to win immediate pots. No member can jump their turn or withdraw ahead of schedule.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1.5">
-              <h4 className="font-bold text-amber-900 text-sm">2. Commitment Escrow Deposit</h4>
-              <p className="text-amber-800 leading-relaxed">
-                Some circles require an upfront Security Deposit. This deposit is locked safely in the smart escrow pot until the final round completes, at which point it is automatically returned to the saver in full.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-red-50/70 border border-red-200 space-y-1.5">
-              <h4 className="font-bold text-red-900 text-sm">3. Default Policy & Late Payment Penalties</h4>
-              <p className="text-red-800 leading-relaxed">
-                If a member fails to contribute on their due date:
-              </p>
-              <ul className="list-disc pl-5 space-y-1 text-red-700 text-[11px]">
-                <li><strong>24-Hour Grace Period:</strong> Automated SMS reminders are dispatched.</li>
-                <li><strong>Deposit Forfeiture:</strong> If unpaid after 24h, the member's upfront commitment deposit covers the missing amount for the winner.</li>
-                <li><strong>Emergency Contact Recovery:</strong> The member's Next of Kin and guarantor are alerted.</li>
-                <li><strong>Trust Score Penalty:</strong> The member's trust score drops, barring them from joining new circles.</li>
-              </ul>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <h4 className="font-bold text-slate-900 text-sm">4. Data Privacy & Bank of Ghana Standards</h4>
-              <p className="text-slate-600 leading-relaxed">
-                SusuRow encrypts all personal identification numbers and Mobile Money credentials with Bank of Ghana compliant security protocols. Your funds never sit in private unmonitored accounts.
-              </p>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* 8. HELP CENTER & SUPPORT */}
-      {activeTab === 'help' && (
-        <div className="bg-white rounded-3xl p-6 space-y-6 border border-slate-200 shadow-xs">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Help Center & Support Desk</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Instant answers and direct access to the Coratech Global support team.
+          <div className="border-t border-slate-100 pt-3">
+            <h4 className="font-bold text-slate-900">Default Policy</h4>
+            <p className="text-slate-500 mt-1">
+              If a member is 24h late on contribution, upfront commitment deposits are utilized to cover the winner pot, and the emergency contact is notified.
             </p>
           </div>
 
-          {/* Quick Contact Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            
-            <a
-              href="https://wa.me/233241234567?text=Hello%20SusuRow%20Support"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 transition-colors flex flex-col justify-between cursor-pointer"
-            >
-              <div className="flex items-center justify-between">
-                <MessageCircle size={20} className="text-emerald-600" />
-                <ExternalLink size={12} className="text-emerald-500" />
-              </div>
-              <div className="mt-3">
-                <p className="text-xs font-bold">WhatsApp Support</p>
-                <p className="text-[10px] text-emerald-700">Chat with support team</p>
-              </div>
-            </a>
-
-            <a
-              href="tel:+233241234567"
-              className="p-4 rounded-2xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-900 transition-colors flex flex-col justify-between cursor-pointer"
-            >
-              <div className="flex items-center justify-between">
-                <Phone size={20} className="text-sky-600" />
-                <ExternalLink size={12} className="text-sky-500" />
-              </div>
-              <div className="mt-3">
-                <p className="text-xs font-bold">Helpline (Ghana)</p>
-                <p className="text-[10px] text-sky-700">Mon - Sat: 8am - 6pm</p>
-              </div>
-            </a>
-
-            <a
-              href="mailto:support@coratechglobal.com"
-              className="p-4 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-900 transition-colors flex flex-col justify-between cursor-pointer"
-            >
-              <div className="flex items-center justify-between">
-                <Mail size={20} className="text-slate-600" />
-                <ExternalLink size={12} className="text-slate-400" />
-              </div>
-              <div className="mt-3">
-                <p className="text-xs font-bold">Email Support</p>
-                <p className="text-[10px] text-slate-500">support@coratechglobal.com</p>
-              </div>
-            </a>
-
+          <div className="border-t border-slate-100 pt-3">
+            <h4 className="font-bold text-slate-900">Data Privacy</h4>
+            <p className="text-slate-500 mt-1">
+              Compliant with the Data Protection Act of Ghana. Credentials and identities are stored with end-to-end encryption.
+            </p>
           </div>
+        </div>
+      </div>
+    );
+  }
 
-          {/* FAQs Accordion */}
-          <div className="space-y-3 pt-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Frequently Asked Questions</h3>
+  // ==========================================
+  // SUBPAGE 8: GET HELP
+  // ==========================================
+  if (activeSubpage === 'help') {
+    return (
+      <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveSubpage(null)}
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <h2 className="text-lg font-bold text-slate-900">Get Help</h2>
+        </div>
 
-            <div className="space-y-2 text-xs">
-              <details className="group rounded-2xl border border-slate-200 bg-slate-50 p-3.5 [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex cursor-pointer items-center justify-between font-bold text-slate-900">
-                  <span>How does Susu rotational savings work?</span>
-                  <ChevronRight size={14} className="transition group-open:rotate-90 text-slate-400" />
-                </summary>
-                <p className="mt-2 text-[11px] text-slate-600 leading-relaxed">
-                  A group of peer savers pool a fixed contribution (e.g. GH₵200) every cycle (daily, weekly, monthly). In each round, one member takes home the entire lump sum (e.g. GH₵2,000) with zero loan interest until all members have taken their turn.
-                </p>
-              </details>
+        <div className="space-y-3">
+          <details className="bg-white rounded-2xl border border-slate-200 p-4 text-xs group shadow-xs">
+            <summary className="font-bold text-slate-900 cursor-pointer flex justify-between items-center">
+              <span>How does Susu rotational savings work?</span>
+              <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-400" />
+            </summary>
+            <p className="text-slate-500 mt-2 leading-relaxed">
+              Members contribute a set amount each cycle. Every round, one member receives the entire collective pot until all members have had their turn.
+            </p>
+          </details>
 
-              <details className="group rounded-2xl border border-slate-200 bg-slate-50 p-3.5 [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex cursor-pointer items-center justify-between font-bold text-slate-900">
-                  <span>What is the difference between Sequential, Ballot, and Bidding?</span>
-                  <ChevronRight size={14} className="transition group-open:rotate-90 text-slate-400" />
-                </summary>
-                <p className="mt-2 text-[11px] text-slate-600 leading-relaxed">
-                  Sequential pays members in fixed registration order. Ballot draws turns randomly using verifiable random lottery. Bidding lets members auction a discount if they need urgent funds early.
-                </p>
-              </details>
+          <details className="bg-white rounded-2xl border border-slate-200 p-4 text-xs group shadow-xs">
+            <summary className="font-bold text-slate-900 cursor-pointer flex justify-between items-center">
+              <span>How do I receive my pot?</span>
+              <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-400" />
+            </summary>
+            <p className="text-slate-500 mt-2 leading-relaxed">
+              When all contributions for your round are collected, the system automatically disburses the full pot directly to your verified Mobile Money wallet.
+            </p>
+          </details>
 
-              <details className="group rounded-2xl border border-slate-200 bg-slate-50 p-3.5 [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex cursor-pointer items-center justify-between font-bold text-slate-900">
-                  <span>How are my payouts disbursed?</span>
-                  <ChevronRight size={14} className="transition group-open:rotate-90 text-slate-400" />
-                </summary>
-                <p className="mt-2 text-[11px] text-slate-600 leading-relaxed">
-                  When all contributions for a round are received, the full pot is automatically sent directly to your registered Mobile Money wallet (MTN, Telecel, or AT Money) via automated payment rails.
-                </p>
-              </details>
+          <details className="bg-white rounded-2xl border border-slate-200 p-4 text-xs group shadow-xs">
+            <summary className="font-bold text-slate-900 cursor-pointer flex justify-between items-center">
+              <span>What if someone doesn't pay?</span>
+              <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-400" />
+            </summary>
+            <p className="text-slate-500 mt-2 leading-relaxed">
+              Circles utilize security escrow deposits and automatic SMS recovery to protect the recipient's payout.
+            </p>
+          </details>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // SUBPAGE 9: CONTACT US
+  // ==========================================
+  if (activeSubpage === 'contact') {
+    return (
+      <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveSubpage(null)}
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <h2 className="text-lg font-bold text-slate-900">Contact Us</h2>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs">
+          <a
+            href="https://wa.me/233241234567?text=Hello%20SusuRow%20Support"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <MessageCircle size={18} className="text-emerald-600" />
+              <div>
+                <h4 className="text-xs font-bold text-slate-900">WhatsApp Support</h4>
+                <p className="text-[11px] text-slate-500">Live chat with Coratech team</p>
+              </div>
             </div>
-          </div>
+            <ChevronRight size={14} className="text-slate-400" />
+          </a>
 
+          <a
+            href="tel:+233241234567"
+            className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <Phone size={18} className="text-sky-600" />
+              <div>
+                <h4 className="text-xs font-bold text-slate-900">Ghanaian Helpline</h4>
+                <p className="text-[11px] text-slate-500">+233 (0) 24 123 4567</p>
+              </div>
+            </div>
+            <ChevronRight size={14} className="text-slate-400" />
+          </a>
+
+          <a
+            href="mailto:support@coratechglobal.com"
+            className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <Mail size={18} className="text-slate-600" />
+              <div>
+                <h4 className="text-xs font-bold text-slate-900">Email Desk</h4>
+                <p className="text-[11px] text-slate-500">support@coratechglobal.com</p>
+              </div>
+            </div>
+            <ChevronRight size={14} className="text-slate-400" />
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // MAIN PROFILE MENU LIST (Screenshot 2 exact style)
+  // ==========================================
+  return (
+    <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+      
+      {/* Top Bar with Back Button */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={onBack}
+          className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          title="Back to Marketplace"
+        >
+          <ArrowLeft size={16} />
+        </button>
+        <h2 className="text-lg font-bold text-slate-900">Profile & Settings</h2>
+        <div className="w-9"></div>
+      </div>
+
+      {/* User Identity Card (Header) */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center gap-4">
+        <div className="w-14 h-14 rounded-2xl bg-sky-600 text-white font-bold text-xl flex items-center justify-center shadow-xs overflow-hidden shrink-0">
+          {user.avatar_url && !avatarError ? (
+            <img 
+              src={user.avatar_url} 
+              alt={user.full_name} 
+              onError={() => setAvatarError(true)}
+              className="w-full h-full object-cover" 
+            />
+          ) : (
+            <span>{getInitials(user.full_name)}</span>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0 space-y-0.5">
+          <h3 className="text-sm font-bold text-slate-900 truncate">
+            {user.full_name || 'Ghana Saver'}
+          </h3>
+          <p className="text-xs font-mono text-slate-500 truncate">
+            {user.phone_number || user.email || 'No Phone Linked'}
+          </p>
+          <div className="flex items-center gap-2 pt-0.5">
+            {isVerifiedKYC ? (
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                <ShieldCheck size={11} /> Ghana Card Verified ✓
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                KYC Pending
+              </span>
+            )}
+            <span className="text-[10px] text-slate-400 font-mono">{user.trust_score || 100}% Trust</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Success Notification */}
+      {saveSuccess && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in fade-in shadow-xs">
+          <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+          <span>{saveSuccess}</span>
         </div>
       )}
+
+      {/* Profile Menu Groups (Screenshot 2 exact style) */}
+      <div className="space-y-4">
+        
+        {/* Section 1: Wallets & Identity */}
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs">
+          
+          <button
+            onClick={() => setActiveSubpage('kyc')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5">
+              <ShieldCheck size={18} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">Trust & Identity (KYC)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {isVerifiedKYC && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Verified</span>}
+              <ChevronRight size={15} className="text-slate-400" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => setActiveSubpage('payment_methods')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5">
+              <CreditCard size={18} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">Payment Methods</span>
+            </div>
+            <ChevronRight size={15} className="text-slate-400" />
+          </button>
+
+          <button
+            onClick={() => setActiveSubpage('withdrawal_methods')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5">
+              <Wallet size={18} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">Withdrawal Methods</span>
+            </div>
+            <ChevronRight size={15} className="text-slate-400" />
+          </button>
+
+        </div>
+
+        {/* Section 2: Statements & Ledger */}
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs">
+          
+          <button
+            onClick={() => setActiveSubpage('statement')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5">
+              <FileText size={18} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">Request Statement</span>
+            </div>
+            <ChevronRight size={15} className="text-slate-400" />
+          </button>
+
+          <button
+            onClick={() => setActiveSubpage('transactions')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5">
+              <ArrowDownLeft size={18} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">All Transactions</span>
+            </div>
+            <ChevronRight size={15} className="text-slate-400" />
+          </button>
+
+        </div>
+
+        {/* Section 3: Settings, Legal, Help */}
+        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs">
+          
+          <button
+            onClick={() => setActiveSubpage('settings')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5">
+              <SettingsIcon size={18} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">Settings</span>
+            </div>
+            <ChevronRight size={15} className="text-slate-400" />
+          </button>
+
+          <button
+            onClick={() => setActiveSubpage('legal')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5">
+              <BookOpen size={18} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">Legal</span>
+            </div>
+            <ChevronRight size={15} className="text-slate-400" />
+          </button>
+
+          <button
+            onClick={() => setActiveSubpage('help')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5">
+              <Info size={18} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">Get Help</span>
+            </div>
+            <ChevronRight size={15} className="text-slate-400" />
+          </button>
+
+          <button
+            onClick={() => setActiveSubpage('contact')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5">
+              <Phone size={18} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">Contact Us</span>
+            </div>
+            <ChevronRight size={15} className="text-slate-400" />
+          </button>
+
+        </div>
+
+        {/* Section 4: Sign Out (Screenshot 2 red text style) */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs">
+          <button
+            onClick={logout}
+            className="w-full p-4 flex items-center gap-3.5 text-left text-red-600 hover:bg-red-50 transition-colors cursor-pointer rounded-2xl"
+          >
+            <LogOut size={18} className="text-red-600" />
+            <span className="text-xs font-bold">Sign out</span>
+          </button>
+        </div>
+
+      </div>
 
     </div>
   );

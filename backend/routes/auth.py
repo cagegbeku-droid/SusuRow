@@ -22,7 +22,9 @@ from schemas import (
     sanitize_ghana_phone
 )
 from services.sms_service import GhanaSMSService
+from services.paystack_service import GhanaMoMoGateway
 from auth import create_access_token, get_current_user, hash_password, verify_password
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication & Profile Hierarchy"])
 
@@ -522,3 +524,20 @@ def get_user_transactions(
 
     history.sort(key=lambda x: x["created_at"] or "", reverse=True)
     return history
+
+
+class ResolveMoMoRequest(BaseModel):
+    phone_number: str
+    provider: str = "MTN"
+
+
+@router.post("/resolve-momo")
+async def resolve_momo_account(payload: ResolveMoMoRequest):
+    """
+    Verifies that a phone number is an active Mobile Money account with the telecom provider (MTN, Telecel, AT)
+    and resolves the official registered account holder name.
+    """
+    clean_phone = sanitize_ghana_phone(payload.phone_number)
+    provider = payload.provider or detect_momo_provider(clean_phone)
+    result = await GhanaMoMoGateway.resolve_momo_account(clean_phone, provider)
+    return result

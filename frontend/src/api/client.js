@@ -198,4 +198,9 @@ export const getUserTransactions = async () => {
   return res.data;
 };
 
+export const resolveMoMoAccount = async (payload) => {
+  const res = await api.post('/auth/resolve-momo', payload);
+  return res.data;
+};
+
 export default api;
