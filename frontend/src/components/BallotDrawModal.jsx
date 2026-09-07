@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { X, Shuffle, Sparkles, CheckCircle2, Loader2, Trophy } from 'lucide-react';
 import { executeBallotDraw } from '../api/client';
+import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
+  const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [loading, setLoading] = useState(false);
   const [shuffled, setShuffled] = useState(false);
   const [drawResults, setDrawResults] = useState([]);
@@ -36,7 +38,10 @@ export const BallotDrawModal = ({ isOpen, onClose, group, onDrawComplete }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200"
+    >
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
         
         {/* Header */}

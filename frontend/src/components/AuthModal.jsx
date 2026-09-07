@@ -16,11 +16,13 @@ import {
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { resolveMoMoAccount } from '../api/client';
+import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 const GOOGLE_CLIENT_ID = "912069601596-uv6jcts8q2t1bg7sc4h8maju1odnd720.apps.googleusercontent.com";
 
 export default function AuthModal({ isOpen, onClose }) {
   const { registerWithPassword, loginWithPassword, loginWithGoogle, requestOtp, verifyAndLogin } = useUser();
+  const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [tab, setTab] = useState('login'); // 'login' | 'register' | 'otp'
   
   // Form fields
@@ -211,7 +213,10 @@ export default function AuthModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200"
+    >
       <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 flex flex-col">
         
         {/* Header */}

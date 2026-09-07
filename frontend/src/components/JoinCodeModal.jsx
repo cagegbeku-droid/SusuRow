@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { X, KeyRound, Loader2, ArrowRight } from 'lucide-react';
 import { getGroupByCode } from '../api/client';
+import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 export const JoinCodeModal = ({ isOpen, onClose, onCircleFound }) => {
+  const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -27,7 +29,10 @@ export const JoinCodeModal = ({ isOpen, onClose, onCircleFound }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs"
+    >
       <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
         
         {/* Header */}

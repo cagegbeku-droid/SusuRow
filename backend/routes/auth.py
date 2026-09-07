@@ -74,74 +74,96 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     """Registers a new saver account with Phone Number and Password."""
     clean_phone = sanitize_ghana_phone(payload.phone_number)
     
-    existing = db.query(User).filter(User.phone_number == clean_phone).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An account with this phone number already exists. Please sign in."
+    try:
+        existing = db.query(User).filter(User.phone_number == clean_phone).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An account with this phone number already exists. Please sign in."
+            )
+        
+        provider = payload.momo_provider or detect_momo_provider(clean_phone)
+        pwd_hash = hash_password(payload.password)
+        
+        user = User(
+            id=str(uuid.uuid4()),
+            phone_number=clean_phone,
+            full_name=payload.full_name.strip(),
+            username=payload.username.strip() if payload.username else f"saver_{clean_phone[-4:]}",
+            email=payload.email.strip() if payload.email else None,
+            momo_provider=provider,
+            momo_account_name=payload.full_name.strip(),
+            primary_wallet_provider=provider,
+            primary_wallet_number=clean_phone,
+            hashed_password=pwd_hash,
+            tier=UserTier.BRONZE.value,
+            points=50,
+            trust_score=100,
+            is_verified=False,
+            kyc_status=KYCStatus.UNVERIFIED.value,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
-    
-    provider = payload.momo_provider or detect_momo_provider(clean_phone)
-    pwd_hash = hash_password(payload.password)
-    
-    user = User(
-        id=str(uuid.uuid4()),
-        phone_number=clean_phone,
-        full_name=payload.full_name.strip(),
-        username=payload.username.strip() if payload.username else f"saver_{clean_phone[-4:]}",
-        email=payload.email.strip() if payload.email else None,
-        momo_provider=provider,
-        primary_wallet_provider=provider,
-        primary_wallet_number=clean_phone,
-        hashed_password=pwd_hash,
-        tier=UserTier.BRONZE.value,
-        points=50,
-        trust_score=100,
-        is_verified=False,
-        kyc_status=KYCStatus.UNVERIFIED.value,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
 
-    token = create_access_token(data={"sub": user.id, "phone": user.phone_number})
-    return AuthResponse(
-        access_token=token,
-        token_type="bearer",
-        user=_build_user_profile(user)
-    )
+        token = create_access_token(data={"sub": user.id, "phone": user.phone_number})
+        return AuthResponse(
+            access_token=token,
+            token_type="bearer",
+            user=_build_user_profile(user)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration failed: {str(e)}"
+        )
 
 
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     """Logs in an existing saver using Phone Number and Password."""
-    clean_phone = sanitize_ghana_phone(payload.phone_number)
-    user = db.query(User).filter(User.phone_number == clean_phone).first()
-    
-    if not user or not user.hashed_password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid phone number or password."
-        )
-    
-    if not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid phone number or password."
-        )
+    try:
+        clean_phone = sanitize_ghana_phone(payload.phone_number)
+        user = db.query(User).filter(User.phone_number == clean_phone).first()
+        
+        if not user or not user.hashed_password:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="No account found with this phone number or incorrect password. If you are new to SusuRow, please tap 'Create Account'."
+            )
+        
+        if not verify_password(payload.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect password. Please try again or use SMS Code to sign in."
+            )
 
-    if not user.is_active:
-        user.is_active = True
-        db.commit()
+        if not user.is_active:
+            user.is_active = True
+            db.commit()
 
-    token = create_access_token(data={"sub": user.id, "phone": user.phone_number})
-    return AuthResponse(
-        access_token=token,
-        token_type="bearer",
-        user=_build_user_profile(user)
-    )
+        token = create_access_token(data={"sub": user.id, "phone": user.phone_number})
+        return AuthResponse(
+            access_token=token,
+            token_type="bearer",
+            user=_build_user_profile(user)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login service temporarily unavailable: {str(e)}"
+        )
 
 
 @router.post("/google", response_model=AuthResponse)

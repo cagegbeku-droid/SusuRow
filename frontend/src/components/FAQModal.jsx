@@ -12,6 +12,8 @@ import {
   Phone
 } from 'lucide-react';
 
+import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
+
 const FAQ_DATA = [
   {
     category: "Rotational Susu Basics",
@@ -50,6 +52,7 @@ const FAQ_DATA = [
 ];
 
 export const FAQModal = ({ isOpen, onClose, onOpenLiveChat }) => {
+  const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [searchTerm, setSearchTerm] = useState('');
   const [openIndex, setOpenIndex] = useState(null);
 
@@ -68,7 +71,10 @@ export const FAQModal = ({ isOpen, onClose, onOpenLiveChat }) => {
   })).filter(cat => cat.items.length > 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs"
+    >
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
         
         {/* Header */}

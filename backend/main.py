@@ -42,6 +42,7 @@ def auto_migrate_schema():
         ("users", "signature_data", "TEXT"),
         ("users", "primary_wallet_provider", "VARCHAR(20) DEFAULT 'MTN'"),
         ("users", "primary_wallet_number", "VARCHAR(30)"),
+        ("users", "momo_account_name", "VARCHAR(120)"),
         ("users", "bank_name", "VARCHAR(100)"),
         ("users", "bank_account_number", "VARCHAR(50)"),
         ("users", "bank_branch", "VARCHAR(50)"),

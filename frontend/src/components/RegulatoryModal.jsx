@@ -1,11 +1,16 @@
 import React from 'react';
 import { X, ShieldCheck, Award, FileText, CheckCircle2, Building, ExternalLink } from 'lucide-react';
+import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 export const RegulatoryModal = ({ isOpen, onClose }) => {
+  const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs"
+    >
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
         
         {/* Header */}

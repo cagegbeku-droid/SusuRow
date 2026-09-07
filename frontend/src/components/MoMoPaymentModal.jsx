@@ -11,6 +11,7 @@ import {
   Clock 
 } from 'lucide-react';
 import { initiatePayment, verifyPayment } from '../api/client';
+import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 export const MoMoPaymentModal = ({
   isOpen,
@@ -20,6 +21,7 @@ export const MoMoPaymentModal = ({
   isEscrow = false,
   onPaymentSuccess
 }) => {
+  const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [momoProvider, setMomoProvider] = useState(member?.momo_provider || 'MTN');
   const [phoneNumber, setPhoneNumber] = useState(member?.phone_number || '');
   const [amount] = useState(
@@ -86,7 +88,10 @@ export const MoMoPaymentModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150"
+    >
       <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
         
         {/* Header */}

@@ -16,9 +16,11 @@ import {
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { createGroup } from '../api/client';
+import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
   const { user } = useUser();
+  const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -68,7 +70,10 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs"
+    >
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}

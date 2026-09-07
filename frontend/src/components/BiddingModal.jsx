@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { X, Gavel, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
 import { submitBid } from '../api/client';
+import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 export const BiddingModal = ({ isOpen, onClose, group, member, onBidSuccess }) => {
+  const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [bidAmount, setBidAmount] = useState(member?.bid_amount || 0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -29,7 +31,10 @@ export const BiddingModal = ({ isOpen, onClose, group, member, onBidSuccess }) =
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200"
+    >
       <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
         
         {/* Header */}

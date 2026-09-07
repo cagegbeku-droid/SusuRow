@@ -48,6 +48,28 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   
   // Navigation: null = Main menu list; string = active subpage
   const [activeSubpage, setActiveSubpage] = useState(null); 
+  const closedByPopStateRef = React.useRef(false);
+
+  useEffect(() => {
+    if (!activeSubpage) return;
+
+    closedByPopStateRef.current = false;
+    const stateId = `subpage_${activeSubpage}_${Date.now()}`;
+    window.history.pushState({ subpageId: stateId }, '');
+
+    const handlePopState = () => {
+      closedByPopStateRef.current = true;
+      setActiveSubpage(null);
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      if (!closedByPopStateRef.current && window.history.state?.subpageId === stateId) {
+        window.history.back();
+      }
+    };
+  }, [activeSubpage]);
   
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(null);

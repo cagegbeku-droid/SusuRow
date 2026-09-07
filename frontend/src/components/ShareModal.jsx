@@ -12,6 +12,8 @@ import {
   Sparkles
 } from 'lucide-react';
 
+import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
+
 export const ShareModal = ({
   isOpen,
   onClose,
@@ -22,6 +24,7 @@ export const ShareModal = ({
   contributionAmount,
   frequency
 }) => {
+  const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -58,7 +61,10 @@ export const ShareModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200"
+    >
       <div className="bg-white rounded-3xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200 flex flex-col">
         
         {/* Header */}

@@ -11,8 +11,10 @@ import {
 } from 'lucide-react';
 import { getGroupMessages, sendGroupMessage } from '../api/client';
 import { useUser } from '../context/UserContext';
+import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 export const GroupChatModal = ({ isOpen, onClose, group }) => {
+  const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const { user, isAuthenticated, openAuthModal } = useUser();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -75,7 +77,10 @@ export const GroupChatModal = ({ isOpen, onClose, group }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs">
+    <div 
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs"
+    >
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-[80vh]">
         
         {/* Header */}

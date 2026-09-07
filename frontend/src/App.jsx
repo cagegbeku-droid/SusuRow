@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UserProvider, useUser } from './context/UserContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Navbar from './components/Navbar';
@@ -74,6 +74,30 @@ function AppContent() {
     setCurrentTab('detail');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const tabPopRef = React.useRef(false);
+
+  useEffect(() => {
+    if (currentTab === 'marketplace') return;
+
+    tabPopRef.current = false;
+    const stateId = `tab_${currentTab}_${Date.now()}`;
+    window.history.pushState({ tabId: stateId }, '');
+
+    const handlePopState = () => {
+      tabPopRef.current = true;
+      setCurrentTab('marketplace');
+      setSelectedGroupId(null);
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      if (!tabPopRef.current && window.history.state?.tabId === stateId) {
+        window.history.back();
+      }
+    };
+  }, [currentTab]);
 
   const handleBackToMarketplace = () => {
     setCurrentTab('marketplace');
