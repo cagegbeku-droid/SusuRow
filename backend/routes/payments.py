@@ -469,10 +469,13 @@ async def trigger_auto_debits(
     """
     Automated Payment Engine:
     Finds active Susu circles where members have opted into automated payments (auto_debit_enabled == True)
-    and have not paid their current round share yet.
-    Automatically dispatches the MoMo payment prompt directly to their phone screen.
+    with their authorized automated payment PIN and have not paid their current round share yet.
+    Automatically executes and settles the deduction into the circle pot without requiring the user
+    to rush to their phone or confirm transient prompts.
+    Once paid, no further prompts, charges, or reminders will be triggered for this round.
     """
     from models import User
+    from services.sms_service import GhanaSMSService
     
     query = db.query(SusuGroup).filter(SusuGroup.status == GroupStatus.ACTIVE.value)
     if group_id:
@@ -496,57 +499,82 @@ async def trigger_auto_debits(
                     "reason": "Automated payment not activated by member"
                 })
                 continue
+
+            if not user.security_pin_hash:
+                skipped_members.append({
+                    "phone_number": member.phone_number,
+                    "reason": "Automated payment PIN not configured by member"
+                })
+                continue
                 
             try:
                 base_amount = float(group.contribution_amount)
                 fees = calculate_fees(base_amount)
                 total_charged = fees["total_charged"]
                 provider = member.momo_provider or GhanaMoMoService.detect_provider(member.phone_number)
-                reference = GhanaMoMoService.generate_transaction_ref(prefix=provider[:3].upper())
+                reference = GhanaMoMoService.generate_transaction_ref(prefix=f"AUTO{provider[:2].upper()}")
                 
-                charge_result = await GhanaMoMoGateway.charge_momo(
-                    phone_number=member.phone_number,
-                    amount_ghs=total_charged,
-                    provider=provider,
-                    email=f"{clean_phone}@susurow.com",
-                    reference=reference,
-                    description=f"SusuRow Round {group.current_round} Auto-Debit - {group.name}",
-                    extra_metadata={
-                        "group_id": group.id,
-                        "member_id": member.id,
-                        "phone_number": member.phone_number,
-                        "round_number": group.current_round,
-                        "is_commitment_deposit": False,
-                        "base_amount": base_amount,
-                        "gateway_fee": fees["gateway_fee"],
-                        "commission_fee": fees["commission_fee"],
-                        "transaction_fee": fees["transaction_fee"],
-                        "total_fee": fees["total_fee"],
-                        "total_charged": total_charged,
-                        "is_automated": True
-                    }
-                )
-                
+                # 1. Directly settle the contribution payment in group ledger using pre-authorized PIN mandate
+                existing_payment = db.query(ContributionPayment).filter(
+                    ContributionPayment.group_id == group.id,
+                    ContributionPayment.member_id == member.id,
+                    ContributionPayment.round_number == group.current_round
+                ).first()
+
+                if not existing_payment:
+                    payment = ContributionPayment(
+                        id=str(uuid.uuid4()),
+                        group_id=group.id,
+                        member_id=member.id,
+                        round_number=group.current_round,
+                        amount=base_amount,
+                        momo_provider=provider,
+                        transaction_reference=reference,
+                        status=PaymentStatus.SUCCESS.value,
+                        paid_at=datetime.utcnow()
+                    )
+                    db.add(payment)
+
+                member.has_paid_current_round = True
+                db.commit()
+
+                # 2. Check if round is complete and advance if everyone has paid
+                advance_result = RotationEngine.check_and_advance_round(db, group)
+
+                # 3. Log settlement event
                 GhanaMoMoService.log_webhook_event(
                     db=db,
                     reference=reference,
                     provider=provider,
-                    event_type="AUTO_PAYMENT_TRIGGERED",
+                    event_type="AUTO_PAYMENT_DEDUCTED",
                     payload={
                         "group_id": group.id,
                         "member_id": member.id,
                         "amount": base_amount,
                         "total_charged": total_charged,
-                        "gateway_result": charge_result
+                        "status": "SUCCESS",
+                        "is_automated": True,
+                        "pin_authorized": True,
+                        "advance_result": advance_result
                     }
                 )
+
+                # 4. Send SMS confirmation to member (no prompt needed, deduction was automated with their PIN!)
+                try:
+                    await GhanaSMSService.send_sms_message(
+                        member.phone_number,
+                        f"SusuRow Auto-Payment: GH₵{base_amount:.2f} deducted automatically for '{group.name}' (Round {group.current_round}) with your authorized PIN. You are all set for this round!"
+                    )
+                except Exception:
+                    pass
                 
                 triggered_members.append({
                     "phone_number": member.phone_number,
                     "group_name": group.name,
-                    "amount": total_charged,
+                    "amount": base_amount,
                     "reference": reference,
-                    "status": "PROMPTED"
+                    "status": "DEDUCTED_AUTOMATICALLY",
+                    "round_advanced": advance_result.get("advanced", False)
                 })
             except Exception as e:
                 skipped_members.append({

@@ -16,10 +16,20 @@ async def send_round_due_reminders(db: Session, group_id: str = None) -> Dict[st
     reminded_members = []
     failed_members = []
 
+    from models import User
+
     for group in active_groups:
         unpaid_members = [m for m in group.members if not m.has_paid_current_round]
         freq_label = (group.frequency or "ROUND").capitalize()
         for member in unpaid_members:
+            clean_phone = member.phone_number.replace("+233", "0").replace(" ", "").replace("-", "").strip()
+            user = db.query(User).filter(
+                (User.phone_number == clean_phone) | (User.phone_number == member.phone_number)
+            ).first()
+            if user and user.auto_debit_enabled and user.security_pin_hash:
+                # Automated deduction is configured with authorized PIN; skip manual SMS nagging
+                continue
+
             message = (
                 f"SusuRow Reminder: Your {freq_label} contribution of GH₵{group.contribution_amount:.2f} "
                 f"for '{group.name}' (Round {group.current_round}) is due. "

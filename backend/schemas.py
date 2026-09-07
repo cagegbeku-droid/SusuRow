@@ -209,6 +209,7 @@ class AutoDebitRequest(BaseModel):
     enabled: bool
     frequency: str = "WEEKLY" # DAILY, WEEKLY, MONTHLY
     time: str = "08:00"
+    pin: Optional[str] = None # 4-digit automated deduction authorization PIN
 
 
 class AuthResponse(BaseModel):

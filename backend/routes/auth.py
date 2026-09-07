@@ -466,8 +466,25 @@ def configure_auto_debit(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Configures scheduled recurring auto-debit top-up."""
-    current_user.auto_debit_enabled = payload.enabled
+    """Configures scheduled recurring auto-debit top-up with authorized 4-digit PIN."""
+    if payload.enabled:
+        if payload.pin:
+            clean_pin = payload.pin.strip()
+            if len(clean_pin) != 4 or not clean_pin.isdigit():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Automated payment PIN must be exactly 4 digits (e.g. 0000)."
+                )
+            current_user.security_pin_hash = hash_password(clean_pin)
+        elif not current_user.security_pin_hash:
+            raise HTTPException(
+                status_code=400,
+                detail="Please enter a 4-digit PIN to authorize automated deductions when payment is due."
+            )
+        current_user.auto_debit_enabled = True
+    else:
+        current_user.auto_debit_enabled = False
+
     current_user.auto_debit_frequency = payload.frequency
     current_user.auto_debit_time = payload.time
     

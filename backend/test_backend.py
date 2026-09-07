@@ -344,9 +344,15 @@ def test_fee_breakdown_calculation(client):
 
 def test_auto_debit_opt_in_and_trigger(client):
     """
-    Tests that a user can choose whether to activate automated payments.
-    When activated, trigger-auto-debits pushes prompts automatically.
+    Tests that:
+    1. Automated payment requires a 4-digit PIN to authorize automated deductions.
+    2. When enabled, trigger-auto-debits executes deduction automatically into the pot.
+    3. Once paid, no reminders or further debits trigger for the rest of the round.
     """
+    from auth import create_access_token
+    from models import User
+    from database import get_db
+
     # 1. Create circle
     res = client.post("/api/groups", json={
         "name": "Auto Debit Circle",
@@ -375,6 +381,63 @@ def test_auto_debit_opt_in_and_trigger(client):
     assert trigger_before.status_code == 200
     assert trigger_before.json()["triggered_count"] == 0
     assert trigger_before.json()["skipped_count"] == 2
+
+    # 4. User registers and logs in
+    reg_res = client.post("/api/auth/register", json={
+        "phone_number": "0208880002",
+        "password": "SecurePassword2026!",
+        "full_name": "Kofi Auto",
+        "momo_provider": "TELECEL"
+    })
+    assert reg_res.status_code == 200
+    token = reg_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 5. Enabling without PIN or invalid PIN fails
+    invalid_pin_res = client.post("/api/auth/auto-debit", json={
+        "enabled": True,
+        "frequency": "WEEKLY",
+        "time": "08:00",
+        "pin": "12" # Less than 4 digits
+    }, headers=headers)
+    assert invalid_pin_res.status_code == 400
+
+    # 6. Enabling with valid 4-digit PIN succeeds
+    valid_pin_res = client.post("/api/auth/auto-debit", json={
+        "enabled": True,
+        "frequency": "WEEKLY",
+        "time": "08:00",
+        "pin": "1234"
+    }, headers=headers)
+    assert valid_pin_res.status_code == 200
+    assert valid_pin_res.json()["auto_debit_enabled"] == True
+    assert valid_pin_res.json()["has_security_pin"] == True
+
+    # 7. Trigger auto-debit: system automatically deducts with authorized PIN without requiring phone prompt
+    trigger_after = client.post(f"/api/payments/trigger-auto-debits?group_id={group_id}")
+    assert trigger_after.status_code == 200
+    assert trigger_after.json()["triggered_count"] == 1
+    assert trigger_after.json()["triggered_members"][0]["status"] == "DEDUCTED_AUTOMATICALLY"
+    assert trigger_after.json()["triggered_members"][0]["phone_number"] == "0208880002"
+
+    # 8. Check member state: has_paid_current_round is now True
+    group_detail = client.get(f"/api/groups/{group_id}")
+    kofi_member = next(m for m in group_detail.json()["members"] if m["phone_number"] == "0208880002")
+    assert kofi_member["has_paid_current_round"] == True
+
+    # 9. Trigger auto-debits again in same round: Kofi is NOT charged again!
+    trigger_again = client.post(f"/api/payments/trigger-auto-debits?group_id={group_id}")
+    assert trigger_again.status_code == 200
+    # Kofi is excluded because he already paid!
+    kofi_in_triggered = any(m["phone_number"] == "0208880002" for m in trigger_again.json()["triggered_members"])
+    assert kofi_in_triggered == False
+
+    # 10. Check due reminders: Kofi is excluded from reminders since he already paid
+    remind_res = client.post(f"/api/reminders/send-due-reminders?group_id={group_id}")
+    assert remind_res.status_code == 200
+    kofi_reminded = any(m["phone_number"] == "0208880002" for m in remind_res.json()["reminded_members"])
+    assert kofi_reminded == False
+
 
 
 

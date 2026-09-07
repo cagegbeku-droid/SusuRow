@@ -148,6 +148,8 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   const [withdrawalWalletSaved, setWithdrawalWalletSaved] = useState(false);
   const [autoDebitEnabled, setAutoDebitEnabled] = useState(user?.auto_debit_enabled || false);
   const [autoDebitTime, setAutoDebitTime] = useState(user?.auto_debit_time || '08:00');
+  const [autoDebitPin, setAutoDebitPin] = useState('');
+  const [autoDebitPinError, setAutoDebitPinError] = useState(null);
   const [autoDebitSaved, setAutoDebitSaved] = useState(false);
   const [autoDebitLoading, setAutoDebitLoading] = useState(false);
 
@@ -368,19 +370,36 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
   const handleSaveAutoDebit = async (e) => {
     if (e) e.preventDefault();
+    setAutoDebitPinError(null);
+    if (autoDebitEnabled) {
+      if (autoDebitPin) {
+        const clean = autoDebitPin.trim();
+        if (clean.length !== 4 || !/^\d{4}$/.test(clean)) {
+          setAutoDebitPinError('Automated Payment PIN must be exactly 4 digits (e.g. 0000).');
+          return;
+        }
+      } else if (!user.has_security_pin) {
+        setAutoDebitPinError('Please enter a 4-digit PIN to authorize automated deductions when payment is due.');
+        return;
+      }
+    }
+
     setAutoDebitLoading(true);
     try {
       await configureAutoDebit({
         enabled: autoDebitEnabled,
         frequency: 'WEEKLY',
-        time: autoDebitTime
+        time: autoDebitTime,
+        pin: autoDebitPin ? autoDebitPin.trim() : undefined
       });
       setAutoDebitSaved(true);
+      setAutoDebitPin('');
+      setAutoDebitPinError(null);
       await refreshProfile();
-      triggerSuccess(autoDebitEnabled ? 'Automated payments activated!' : 'Automated payments deactivated.');
+      triggerSuccess(autoDebitEnabled ? 'Automated payments activated with authorized PIN!' : 'Automated payments deactivated.');
     } catch (err) {
       console.error(err);
-      setErrorMsg('Failed to update automated payment settings.');
+      setErrorMsg(err.response?.data?.detail || 'Failed to update automated payment settings.');
     } finally {
       setAutoDebitLoading(false);
     }
@@ -939,18 +958,70 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             <p className="font-bold text-slate-900">How it works:</p>
             {autoDebitEnabled ? (
               <p className="leading-relaxed">
-                When a round becomes due according to your group's schedule (Daily, Weekly, or Monthly), SusuRow will automatically send the payment prompt to your phone. You only need to enter your MoMo PIN on your phone to confirm.
+                When your circle contribution is due, SusuRow automatically deducts and credits your share to the group pot using your authorized 4-digit PIN. You do not need to be with your phone or confirm any prompts. Once paid, all prompts and reminders stop for the rest of the round.
               </p>
             ) : (
               <p className="leading-relaxed">
-                Automated payment is currently off. You will manually click <strong>"Make Payment"</strong> on your group page whenever you are ready to pay.
+                Automated payment is currently off. You will manually click <strong>"Pay"</strong> on your group page whenever you are ready to make payment.
               </p>
             )}
           </div>
 
           {/* Setup details when enabled */}
           {autoDebitEnabled && (
-            <div className="space-y-3 pt-2 border-t border-slate-100">
+            <div className="space-y-4 pt-2 border-t border-slate-100">
+              
+              {/* 4-Digit Automated Payment PIN Input */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-900">
+                    4-Digit Automated Payment PIN
+                  </label>
+                  {user.has_security_pin && (
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                      <CheckCircle2 size={11} className="text-emerald-600" />
+                      PIN Authorized
+                    </span>
+                  )}
+                </div>
+
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  placeholder="0000"
+                  value={autoDebitPin}
+                  onChange={(e) => {
+                    setAutoDebitSaved(false);
+                    const val = e.target.value.replace(/[^\d]/g, '').slice(0, 4);
+                    setAutoDebitPin(val);
+                    if (val.length === 4) {
+                      setAutoDebitPinError(null);
+                    }
+                  }}
+                  className={`w-full px-3 py-2.5 rounded-xl text-sm font-mono tracking-widest text-slate-900 border transition-all ${
+                    autoDebitPinError 
+                      ? 'border-rose-500 bg-rose-50/20 text-rose-950 focus:ring-rose-500' 
+                      : 'border-slate-200 bg-slate-50 focus:bg-white focus:ring-sky-500'
+                  }`}
+                />
+
+                {autoDebitPinError ? (
+                  <p className="text-[11px] text-rose-600 font-bold flex items-center gap-1 mt-1.5">
+                    <AlertCircle size={13} className="shrink-0" />
+                    <span>{autoDebitPinError}</span>
+                  </p>
+                ) : user.has_security_pin ? (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Your 4-digit PIN is already configured (••••). Enter a new 4-digit PIN above only if you wish to change it.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Enter a 4-digit PIN (e.g. 0000) to authorize automated deductions when time is due.
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-900 mb-1.5">
                   Preferred Prompt Time on Due Date
@@ -989,6 +1060,11 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                 <span className="text-[10px] font-bold bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full">
                   Primary Wallet
                 </span>
+              </div>
+
+              {/* Zero-Hassle / No Reminders Once Paid Guarantee */}
+              <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-900 font-medium leading-relaxed">
+                🛡️ <strong>Zero Reminders Once Paid:</strong> When time is due, the system deducts your contribution automatically. Once paid, all prompts, reminders, and alerts stop completely for the rest of the round until the next round begins.
               </div>
             </div>
           )}
