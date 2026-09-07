@@ -127,6 +127,7 @@ class UserProfile(BaseModel):
     has_signature: bool = False
 
     # Financial Rails
+    momo_account_name: Optional[str] = None
     primary_wallet_provider: str = "MTN"
     primary_wallet_number: Optional[str] = None
     bank_name: Optional[str] = None

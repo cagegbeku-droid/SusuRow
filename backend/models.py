@@ -85,6 +85,7 @@ class User(Base):
     signature_data = Column(Text, nullable=True) # Base64 digital signature for pot payouts
     
     # Financial Channels & Multi-Rail Wallets
+    momo_account_name = Column(String(120), nullable=True) # Resolved telecom subscriber name
     primary_wallet_provider = Column(String(20), default="MTN", nullable=False) # MTN, TELECEL, AT, BANK
     primary_wallet_number = Column(String(30), nullable=True)
     bank_name = Column(String(100), nullable=True)

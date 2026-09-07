@@ -26,44 +26,44 @@ export const RotationalTimeline = ({ group }) => {
   const getProviderBadge = (provider) => {
     switch (provider) {
       case 'MTN':
-        return <span className="bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 text-[10px] font-black px-2 py-0.5 rounded-full">MTN</span>;
+        return <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full">MTN</span>;
       case 'TELECEL':
-        return <span className="bg-red-500/20 text-red-300 border border-red-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">Telecel</span>;
+        return <span className="bg-red-100 text-red-900 border border-red-300 text-[10px] font-black px-2 py-0.5 rounded-full">Telecel</span>;
       case 'AT':
-        return <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-black px-2 py-0.5 rounded-full">AT</span>;
+        return <span className="bg-sky-100 text-sky-900 border border-sky-300 text-[10px] font-black px-2 py-0.5 rounded-full">AT</span>;
       default:
-        return <span className="bg-white/10 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">{provider}</span>;
+        return <span className="bg-slate-100 text-slate-800 border border-slate-300 text-[10px] font-bold px-2 py-0.5 rounded-full">{provider}</span>;
     }
   };
 
   return (
-    <div className="dark-card rounded-3xl p-5 sm:p-6 shadow-lg border border-white/5 space-y-6">
+    <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-6">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
         <div>
           <div className="flex items-center space-x-2">
-            <h3 className="text-base sm:text-lg font-black text-white font-display">Rotational Cycle Timeline</h3>
-            <span className="bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-bold px-2.5 py-0.5 rounded-full">
+            <h3 className="text-base sm:text-lg font-black text-slate-900 font-display">Rotational Cycle Timeline</h3>
+            <span className="bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold px-2.5 py-0.5 rounded-full">
               {isCompleted ? 'Completed' : `Round ${currentRound} of ${group.members_count}`}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-600 mt-0.5">
             Turn-by-turn payout schedule and lump-sum pot distribution state.
           </p>
         </div>
 
         {/* Current Round Live Pot status */}
         {!isCompleted && (
-          <div className="flex items-center space-x-3 bg-[#0E1322] border border-white/10 px-4 py-2.5 rounded-2xl">
+          <div className="flex items-center space-x-3 bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl">
             <div className="text-right">
-              <div className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Current Pot</div>
-              <div className="text-sm font-black text-amber-400 font-mono">GH₵{group.total_pool?.toLocaleString()}</div>
+              <div className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Current Pot</div>
+              <div className="text-sm font-black text-slate-900 font-mono">GH₵{group.total_pool?.toLocaleString()}</div>
             </div>
-            <div className="h-7 w-px bg-white/10"></div>
+            <div className="h-7 w-px bg-slate-200"></div>
             <div className="text-left">
-              <div className="text-[10px] font-bold text-slate-400">Paid</div>
-              <div className="text-xs font-black text-white">{paidCount} of {totalMembers}</div>
+              <div className="text-[10px] font-bold text-slate-500">Paid</div>
+              <div className="text-xs font-black text-slate-900">{paidCount} of {totalMembers}</div>
             </div>
           </div>
         )}
@@ -84,10 +84,10 @@ export const RotationalTimeline = ({ group }) => {
               key={member.id}
               className={`relative rounded-2xl transition-all p-4 border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
                 isCurrent
-                  ? 'bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-[#141A2D] border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.25)] ring-1 ring-blue-500/40'
+                  ? 'bg-sky-50/80 border-sky-300 ring-1 ring-sky-300 shadow-sm'
                   : isPast
-                  ? 'bg-emerald-950/20 border-emerald-500/20 text-slate-300'
-                  : 'bg-[#0E1322] border-white/5 opacity-75 hover:opacity-100'
+                  ? 'bg-emerald-50/50 border-emerald-200 text-slate-800'
+                  : 'bg-slate-50/70 border-slate-200 opacity-80 hover:opacity-100'
               }`}
             >
               {/* Left: Step Icon & Member Info */}
@@ -96,15 +96,15 @@ export const RotationalTimeline = ({ group }) => {
                 {/* Step Position Icon */}
                 <div className="relative shrink-0">
                   {isPast ? (
-                    <div className="w-9 h-9 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                    <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center border border-emerald-300">
                       <CheckCircle2 size={20} />
                     </div>
                   ) : isCurrent ? (
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center font-black text-sm shadow-[0_0_12px_rgba(245,158,11,0.5)]">
+                    <div className="w-9 h-9 rounded-full bg-amber-400 text-slate-900 flex items-center justify-center font-black text-sm shadow-sm">
                       <Sparkles size={16} />
                     </div>
                   ) : (
-                    <div className="w-9 h-9 rounded-full bg-[#1C233A] text-slate-400 flex items-center justify-center font-bold text-xs border border-white/5">
+                    <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs border border-slate-300">
                       <span>#{position}</span>
                     </div>
                   )}
@@ -113,19 +113,19 @@ export const RotationalTimeline = ({ group }) => {
                 {/* Member Details */}
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-bold text-white">{member.full_name}</span>
+                    <span className="text-sm font-bold text-slate-900">{member.full_name}</span>
                     {getProviderBadge(member.momo_provider)}
                     {isCurrent && (
-                      <span className="bg-amber-400 text-slate-950 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow">
+                      <span className="bg-amber-400 text-slate-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
                         Current Turn
                       </span>
                     )}
                   </div>
                   
-                  <div className="flex items-center space-x-3 text-xs text-slate-400 font-mono mt-0.5">
+                  <div className="flex items-center space-x-3 text-xs text-slate-600 font-mono mt-0.5">
                     <span>{member.phone_number}</span>
                     {member.bid_amount > 0 && (
-                      <span className="text-amber-400 font-bold">
+                      <span className="text-amber-700 font-bold">
                         • Bid: GH₵{member.bid_amount}
                       </span>
                     )}
@@ -134,12 +134,12 @@ export const RotationalTimeline = ({ group }) => {
               </div>
 
               {/* Right: Status / Amount */}
-              <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end space-x-4 border-t sm:border-t-0 pt-2 sm:pt-0 border-white/5">
+              <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end space-x-4 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
                 {isPast ? (
                   <div className="text-right">
-                    <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 justify-end">
+                    <div className="text-xs font-bold text-emerald-700 flex items-center gap-1 justify-end">
                       <span>Received Pot:</span>
-                      <strong className="text-sm font-black text-white font-mono">GH₵{payoutRecord?.amount || group.total_pool}</strong>
+                      <strong className="text-sm font-black text-slate-900 font-mono">GH₵{payoutRecord?.amount || group.total_pool}</strong>
                     </div>
                     {payoutRecord && (
                       <div className="text-[10px] font-mono text-slate-500">
@@ -149,20 +149,20 @@ export const RotationalTimeline = ({ group }) => {
                   </div>
                 ) : isCurrent ? (
                   <div className="text-right">
-                    <div className="text-xs font-bold text-blue-300">
-                      Receiving Pot: <span className="text-sm font-black text-amber-400 font-mono">GH₵{group.total_pool?.toLocaleString()}</span>
+                    <div className="text-xs font-bold text-sky-800">
+                      Receiving Pot: <span className="text-sm font-black text-slate-900 font-mono">GH₵{group.total_pool?.toLocaleString()}</span>
                     </div>
-                    <div className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                    <div className="text-[11px] font-semibold text-slate-600 mt-0.5">
                       {paidCount === totalMembers ? (
-                        <span className="text-emerald-400 font-bold">✓ All members paid. Ready for disbursement!</span>
+                        <span className="text-emerald-700 font-bold">✓ All members paid. Ready for disbursement!</span>
                       ) : (
                         <span>{paidCount} of {totalMembers} paid for Round {currentRound}</span>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div className="text-right text-xs text-slate-400">
-                    <div className="font-semibold text-slate-300">Turn #{position}</div>
+                  <div className="text-right text-xs text-slate-600">
+                    <div className="font-semibold text-slate-800">Turn #{position}</div>
                     <div className="text-[11px] font-mono">Pot: GH₵{group.total_pool?.toLocaleString()}</div>
                   </div>
                 )}

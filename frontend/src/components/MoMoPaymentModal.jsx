@@ -6,10 +6,9 @@ import {
   AlertCircle, 
   Loader2, 
   CheckCircle2, 
-  Delete,
-  Lock,
-  RefreshCw,
-  Clock
+  Lock, 
+  RefreshCw, 
+  Clock 
 } from 'lucide-react';
 import { initiatePayment, verifyPayment } from '../api/client';
 
@@ -23,30 +22,17 @@ export const MoMoPaymentModal = ({
 }) => {
   const [momoProvider, setMomoProvider] = useState(member?.momo_provider || 'MTN');
   const [phoneNumber, setPhoneNumber] = useState(member?.phone_number || '');
-  const [amount, setAmount] = useState(
+  const [amount] = useState(
     isEscrow ? (group?.commitment_deposit || 0) : (group?.contribution_amount || 0)
   );
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [txRef, setTxRef] = useState(null);
-  const [paymentStatus, setPaymentStatus] = useState(null); // 'PROMPTED' | 'SUCCESS' | 'FAILED' | 'PENDING'
+  const [paymentStatus, setPaymentStatus] = useState(null); // 'PROMPTED' | 'SUCCESS' | 'FAILED'
   const [statusMessage, setStatusMessage] = useState(null);
   const [error, setError] = useState(null);
 
   if (!isOpen || !group || !member) return null;
-
-  const handleKeypadPress = (key) => {
-    if (paymentStatus === 'PROMPTED') return;
-    if (key === 'del') {
-      const str = String(amount);
-      setAmount(str.length > 1 ? Number(str.slice(0, -1)) : 0);
-    } else {
-      const str = amount === 0 ? String(key) : String(amount) + String(key);
-      if (Number(str) <= 50000) {
-        setAmount(Number(str));
-      }
-    }
-  };
 
   const handlePay = async (e) => {
     if (e) e.preventDefault();
@@ -100,38 +86,37 @@ export const MoMoPaymentModal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#04060A]/85 backdrop-blur-md animate-in fade-in duration-150">
-      <div className="dark-card w-full max-w-sm rounded-3xl shadow-2xl border border-white/10 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
         
         {/* Header */}
-        <div className="bg-[#0E1322] p-4 sm:p-5 border-b border-white/5 flex items-center justify-between">
+        <div className="bg-slate-50 p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm">
+            <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-sm">
               ₵
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Mobile Money Payment</h3>
-              <p className="text-[11px] text-slate-400 font-mono">Round {group.current_round} • {group.name}</p>
+              <h3 className="text-sm font-bold text-slate-900">Mobile Money Payment</h3>
+              <p className="text-xs text-slate-600 font-mono font-bold">Round {group.current_round} • {group.name}</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#141A2D] text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/5"
+            className="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-700 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer shadow-xs"
           >
             <X size={16} />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="p-4 sm:p-5 space-y-4">
+        <div className="p-5 space-y-4">
           
-          {/* Status Alert Banners */}
+          {/* Status Prompts */}
           {paymentStatus === 'PROMPTED' && (
-            <div className="p-3.5 bg-blue-500/10 rounded-2xl border border-blue-500/30 text-blue-300 text-xs space-y-2 text-center">
-              <Clock className="w-6 h-6 text-blue-400 mx-auto" />
-              <p className="font-bold">Prompt Dispatched to {phoneNumber}</p>
-              <p className="text-[11px] text-slate-300 leading-relaxed">
+            <div className="p-4 bg-sky-50 rounded-2xl border border-sky-200 text-sky-900 text-xs space-y-2 text-center">
+              <Clock className="w-6 h-6 text-sky-700 mx-auto" />
+              <p className="font-bold text-slate-900 text-sm">Prompt Dispatched to {phoneNumber}</p>
+              <p className="text-xs text-slate-700 leading-relaxed font-medium">
                 {momoProvider === 'MTN' && 'Please check your phone screen to enter your MoMo PIN, or dial *170# > Approvals.'}
                 {momoProvider === 'TELECEL' && 'Please check your phone screen or dial *110# to approve the payment.'}
                 {momoProvider === 'AT' && 'Please approve the prompt on your phone screen.'}
@@ -141,13 +126,13 @@ export const MoMoPaymentModal = ({
                 type="button"
                 onClick={handleCheckStatus}
                 disabled={verifying}
-                className="w-full mt-2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full mt-2 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 {verifying ? (
-                  <RefreshCw size={14} className="animate-spin" />
+                  <RefreshCw size={14} className="animate-spin text-white" />
                 ) : (
                   <>
-                    <ShieldCheck size={14} />
+                    <ShieldCheck size={14} className="text-white" />
                     <span>Check Payment Status</span>
                   </>
                 )}
@@ -156,40 +141,40 @@ export const MoMoPaymentModal = ({
           )}
 
           {paymentStatus === 'SUCCESS' && (
-            <div className="p-3.5 bg-emerald-500/10 rounded-2xl border border-emerald-500/30 text-emerald-300 text-xs space-y-1 text-center">
-              <CheckCircle2 className="w-7 h-7 mx-auto text-emerald-400 mb-1" />
-              <p className="font-bold text-sm">Payment Verified & Settled!</p>
-              <p className="text-[11px] text-slate-300">Your contribution has been recorded in the group ledger.</p>
+            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-900 text-xs space-y-1 text-center">
+              <CheckCircle2 className="w-7 h-7 mx-auto text-emerald-600 mb-1" />
+              <p className="font-bold text-sm text-slate-900">Payment Verified & Settled!</p>
+              <p className="text-xs text-slate-700 font-medium">Your contribution has been recorded in the group ledger.</p>
             </div>
           )}
 
           {error && (
-            <div className="p-3 bg-red-500/10 rounded-2xl border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
-              <AlertCircle size={15} className="shrink-0 text-red-400" />
+            <div className="p-3 bg-red-50 rounded-2xl border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0 text-red-500" />
               <span>{error}</span>
             </div>
           )}
 
           {statusMessage && paymentStatus !== 'PROMPTED' && paymentStatus !== 'SUCCESS' && (
-            <div className="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20 text-blue-300 text-xs text-center">
+            <div className="p-3 bg-sky-50 rounded-2xl border border-sky-200 text-sky-900 text-xs text-center font-medium">
               {statusMessage}
             </div>
           )}
 
           {/* Amount Display */}
-          <div className="bg-[#0E1322] rounded-2xl p-4 border border-white/5 text-center space-y-1">
-            <div className="text-[11px] uppercase font-bold text-slate-400">Amount to Pay</div>
-            <div className="text-3xl sm:text-4xl font-black text-white font-mono">
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center space-y-1">
+            <div className="text-[11px] uppercase font-bold text-slate-700">Amount to Pay</div>
+            <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">
               GH₵{amount.toLocaleString()}
             </div>
-            <div className="text-[11px] text-slate-400 font-medium">Secure Mobile Money (MTN • Telecel • AT)</div>
+            <div className="text-xs text-slate-600 font-bold">Secure Mobile Money (MTN • Telecel • AT)</div>
           </div>
 
           {/* Network Selector Pills */}
           {paymentStatus !== 'PROMPTED' && paymentStatus !== 'SUCCESS' && (
             <>
               <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-slate-300 px-1">
+                <label className="block text-xs font-bold text-slate-900 px-1">
                   Mobile Money Network
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -204,8 +189,8 @@ export const MoMoPaymentModal = ({
                       onClick={() => setMomoProvider(provider.id)}
                       className={`py-2 text-center rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                         momoProvider === provider.id
-                          ? 'border-blue-500 bg-blue-600 text-white shadow font-bold'
-                          : 'border-white/10 bg-[#0E1322] text-slate-300 hover:bg-white/5'
+                          ? 'border-sky-500 bg-sky-50 text-sky-800 shadow-xs ring-2 ring-sky-500/20'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       {provider.name}
@@ -219,13 +204,13 @@ export const MoMoPaymentModal = ({
                 type="button"
                 onClick={handlePay}
                 disabled={loading || amount <= 0}
-                className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                className="w-full py-3.5 px-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
                 ) : (
                   <>
-                    <Smartphone size={16} />
+                    <Smartphone size={16} className="text-white" />
                     <span>Send MoMo Prompt (GH₵{amount.toLocaleString()})</span>
                   </>
                 )}

@@ -8,11 +8,11 @@ import {
   ShieldCheck, 
   Check, 
   Coins, 
-  Lock,
-  Sparkles,
-  ArrowRight,
-  ArrowLeft,
-  Loader2
+  Lock, 
+  Sparkles, 
+  ArrowRight, 
+  ArrowLeft, 
+  Loader2 
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { createGroup } from '../api/client';
@@ -68,29 +68,29 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#04060A]/85 backdrop-blur-md">
-      <div className="dark-card w-full max-w-lg rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs">
+      <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 text-white p-5 sm:p-6 relative shrink-0">
+        <div className="bg-gradient-to-r from-sky-600 to-blue-700 text-white p-5 sm:p-6 relative shrink-0">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="absolute top-4 right-4 p-1.5 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
           
-          <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-300 uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-200 uppercase tracking-wider mb-1">
             <Sparkles size={13} />
             <span>Step {step} of 3</span>
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-black text-white">
+          <h2 className="text-xl sm:text-2xl font-bold text-white">
             {step === 1 && 'Group Basics & Schedule'}
             {step === 2 && 'Contributions & Pot'}
             {step === 3 && 'Turn Order & Security'}
           </h2>
-          <p className="text-xs text-blue-100 mt-0.5">
+          <p className="text-xs text-sky-100 mt-0.5">
             {step === 1 && 'Name your Susu group and select how often members contribute.'}
             {step === 2 && 'Set contribution amount and member capacity.'}
             {step === 3 && 'Choose how turns are assigned and optional security deposit.'}
@@ -98,13 +98,13 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
         </div>
 
         {/* Scrollable Form Content */}
-        <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1 bg-white">
           
           {/* STEP 1: Basic Info */}
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-900 mb-1">
                   Susu Group Name *
                 </label>
                 <input
@@ -113,12 +113,12 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                   placeholder="e.g. Accra Market Traders, Tech Savers Club"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-bold text-white placeholder-slate-500"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold text-slate-900 placeholder-slate-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-900 mb-1">
                   Group Description / Objective
                 </label>
                 <textarea
@@ -126,12 +126,12 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                   placeholder="Briefly state the goal (e.g. Weekly savings for shop restocking)..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs text-white placeholder-slate-500"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs font-medium text-slate-900 placeholder-slate-400"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-900 mb-1.5">
                   Cycle Contribution Schedule
                 </label>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -146,12 +146,12 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                       onClick={() => setFrequency(item.id)}
                       className={`p-3 text-left rounded-2xl border transition-all cursor-pointer ${
                         frequency === item.id
-                          ? 'border-blue-500 bg-blue-500/10 text-white ring-2 ring-blue-500/40 shadow-sm'
-                          : 'border-white/5 bg-[#0E1322] text-slate-400 hover:bg-white/5'
+                          ? 'border-sky-500 bg-sky-50 text-sky-900 ring-2 ring-sky-500/20 shadow-xs'
+                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
                       }`}
                     >
-                      <div className="text-xs font-bold">{item.label}</div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">{item.desc}</div>
+                      <div className="text-xs font-bold text-slate-900">{item.label}</div>
+                      <div className="text-[10px] text-slate-600 mt-0.5 font-medium">{item.desc}</div>
                     </button>
                   ))}
                 </div>
@@ -164,18 +164,18 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
             <div className="space-y-4">
               
               {/* Pot Preview Box */}
-              <div className="bg-[#0E1322] rounded-3xl p-4 border border-white/10 text-center space-y-1">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Total Pot per Turn</div>
-                <div className="text-3xl font-black text-amber-400 font-mono">
+              <div className="bg-sky-50 rounded-3xl p-4 border border-sky-200 text-center space-y-1">
+                <div className="text-[10px] uppercase font-bold text-sky-800">Total Pot per Turn</div>
+                <div className="text-3xl font-black text-sky-900 font-mono">
                   GH₵{totalPool.toLocaleString()}
                 </div>
-                <div className="text-[10px] text-slate-400">
+                <div className="text-xs text-sky-700 font-bold">
                   {membersCount} Savers × GH₵{contributionAmount} / {frequency.toLowerCase()}
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-900 mb-1">
                   Contribution per Saver (GH₵)
                 </label>
                 <input
@@ -185,7 +185,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                   step={10}
                   value={contributionAmount}
                   onChange={(e) => setContributionAmount(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono font-bold text-white"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono font-bold text-slate-900"
                 />
                 <div className="flex gap-2 mt-2">
                   {[50, 100, 200, 500, 1000].map((amt) => (
@@ -193,10 +193,10 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                       type="button"
                       key={amt}
                       onClick={() => setContributionAmount(amt)}
-                      className={`flex-1 py-1 text-[11px] font-bold rounded-xl border transition-all cursor-pointer ${
+                      className={`flex-1 py-1 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
                         contributionAmount === amt
-                          ? 'bg-blue-600 text-white border-blue-500'
-                          : 'bg-[#0E1322] text-slate-400 border-white/5 hover:text-white'
+                          ? 'bg-sky-600 text-white border-sky-500 shadow-xs'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       GH₵{amt}
@@ -207,10 +207,10 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-300">
+                  <label className="text-xs font-bold text-slate-900">
                     Member Capacity Limit
                   </label>
-                  <span className="text-xs font-black text-blue-400 font-mono">{membersCount} Savers</span>
+                  <span className="text-xs font-black text-sky-700 font-mono">{membersCount} Savers</span>
                 </div>
                 <input
                   type="range"
@@ -218,9 +218,9 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                   max={30}
                   value={membersCount}
                   onChange={(e) => setMembersCount(Number(e.target.value))}
-                  className="w-full h-2 bg-[#0E1322] rounded-lg cursor-pointer accent-blue-600"
+                  className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-sky-600"
                 />
-                <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-bold">
+                <div className="flex justify-between text-[10px] text-slate-600 mt-1 font-bold">
                   <span>2 Savers</span>
                   <span>15 Savers</span>
                   <span>30 Savers</span>
@@ -235,7 +235,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
             <div className="space-y-4">
               
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-900 mb-1.5">
                   Turn Assignment Scheme
                 </label>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -252,13 +252,13 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                         onClick={() => setRotationType(scheme.id)}
                         className={`p-3 text-left rounded-2xl border transition-all cursor-pointer ${
                           rotationType === scheme.id
-                            ? 'border-blue-500 bg-blue-500/10 text-white ring-2 ring-blue-500/40 shadow-sm'
-                            : 'border-white/5 bg-[#0E1322] text-slate-400 hover:bg-white/5'
+                            ? 'border-sky-500 bg-sky-50 text-sky-900 ring-2 ring-sky-500/20 shadow-xs'
+                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
                         }`}
                       >
-                        <Icon size={16} className={rotationType === scheme.id ? 'text-blue-400' : 'text-slate-500'} />
-                        <div className="text-xs font-bold mt-1.5">{scheme.title}</div>
-                        <div className="text-[10px] text-slate-500 mt-0.5">{scheme.desc}</div>
+                        <Icon size={16} className={rotationType === scheme.id ? 'text-sky-600' : 'text-slate-600'} />
+                        <div className="text-xs font-bold mt-1.5 text-slate-900">{scheme.title}</div>
+                        <div className="text-[10px] text-slate-600 mt-0.5 font-medium">{scheme.desc}</div>
                       </button>
                     );
                   })}
@@ -266,7 +266,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-900 mb-1">
                   Upfront Escrow Security Deposit (Optional GH₵)
                 </label>
                 <input
@@ -276,23 +276,23 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                   value={commitmentDeposit}
                   onChange={(e) => setCommitmentDeposit(Number(e.target.value))}
                   placeholder="0 (No deposit)"
-                  className="w-full px-4 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono font-bold text-white"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono font-bold text-slate-900"
                 />
-                <p className="text-[10px] text-slate-500 mt-1">
+                <p className="text-[10px] text-slate-600 mt-1 font-medium">
                   Held in escrow until all rounds complete to deter payment defaults.
                 </p>
               </div>
 
-              <div className="pt-2 flex items-center justify-between p-3.5 bg-[#0E1322] rounded-2xl border border-white/5">
+              <div className="pt-2 flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
                 <div>
-                  <span className="text-xs font-bold text-white">Private Group</span>
-                  <p className="text-[10px] text-slate-400">Only accessible via invite code</p>
+                  <span className="text-xs font-bold text-slate-900">Private Group</span>
+                  <p className="text-[10px] text-slate-600">Only accessible via invite code</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsPrivate(!isPrivate)}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
-                    isPrivate ? 'bg-blue-600' : 'bg-slate-700'
+                    isPrivate ? 'bg-sky-600' : 'bg-slate-300'
                   }`}
                 >
                   <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
@@ -307,12 +307,12 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
         </div>
 
         {/* Footer Navigation Controls */}
-        <div className="p-4 sm:p-5 border-t border-white/5 bg-[#0E1322] flex items-center justify-between gap-3 shrink-0">
+        <div className="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
           {step > 1 ? (
             <button
               type="button"
               onClick={() => setStep(step - 1)}
-              className="px-4 py-2.5 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] text-slate-300 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-white/5"
+              className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-slate-200 shadow-xs"
             >
               <ArrowLeft size={14} />
               <span>Back</span>
@@ -321,7 +321,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-2xl bg-[#141A2D] hover:bg-[#1C233A] text-slate-400 text-xs font-bold transition-all cursor-pointer border border-white/5"
+              className="px-4 py-2.5 rounded-2xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all cursor-pointer border border-slate-200 shadow-xs"
             >
               Cancel
             </button>
@@ -332,7 +332,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
               type="button"
               disabled={step === 1 && !name.trim()}
               onClick={() => setStep(step + 1)}
-              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center gap-1.5 shadow-[0_0_15px_rgba(59,130,246,0.4)] transition-all cursor-pointer"
+              className="px-5 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95"
             >
               <span>Continue</span>
               <ArrowRight size={14} />
@@ -342,7 +342,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
               type="button"
               disabled={loading || !name.trim()}
               onClick={handleSubmit}
-              className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center gap-1.5 shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all cursor-pointer active:scale-95"
+              className="px-6 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-white" />

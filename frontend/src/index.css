@@ -95,49 +95,86 @@ header {
   backdrop-filter: blur(4px) !important;
 }
 
-/* Clean Form Controls */
+/* Clean Form Controls - Ensure Text is Always Solid Black */
 input,
 select,
 textarea {
   background-color: #F8FAFC !important;
   color: #0F172A !important;
   border: 1px solid #E2E8F0 !important;
+  font-weight: 600 !important;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
   background-color: #FFFFFF !important;
+  color: #0F172A !important;
   border-color: #0284C7 !important;
   outline: none;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #94A3B8 !important;
+  color: #64748B !important;
 }
 
-/* Ensure Action Button Text Stays Crisp White */
-.bg-sky-600,
-.bg-sky-500,
-.bg-emerald-600,
-.bg-emerald-500,
-.bg-red-600,
-.bg-red-500,
-.bg-blue-600,
-.bg-blue-500 {
+/* Ensure ALL text in modals, cards, inputs, and tables is solid, readable black */
+.dark-card,
+.light-card,
+.bg-white,
+.bg-slate-50,
+.modal-body {
+  color: #0F172A !important;
+}
+
+/* Override any accidental white or faint grey text inside cards, modals, or inputs */
+.dark-card *:not(button.bg-sky-600 *):not(button.bg-sky-500 *):not(button.bg-blue-600 *):not(button.bg-blue-500 *):not(button.bg-emerald-600 *):not(button.bg-emerald-500 *):not(button.bg-red-600 *):not(button.bg-red-500 *):not(.badge-solid *),
+.bg-white *:not(button.bg-sky-600 *):not(button.bg-sky-500 *):not(button.bg-blue-600 *):not(button.bg-blue-500 *):not(button.bg-emerald-600 *):not(button.bg-emerald-500 *):not(button.bg-red-600 *):not(button.bg-red-500 *):not(.badge-solid *),
+.bg-slate-50 *:not(button.bg-sky-600 *):not(button.bg-sky-500 *):not(button.bg-blue-600 *):not(button.bg-blue-500 *):not(button.bg-emerald-600 *):not(button.bg-emerald-500 *):not(button.bg-red-600 *):not(button.bg-red-500 *):not(.badge-solid *) {
+  /* Prevent white text on light backgrounds */
+}
+
+.text-white:not(button *):not(button):not(.bg-sky-600 *):not(.bg-blue-600 *):not(.bg-emerald-600 *):not(.bg-red-600 *):not(.badge-solid *) {
+  color: #0F172A !important;
+}
+
+.text-slate-300:not(button *):not(.badge-solid *),
+.text-slate-200:not(button *):not(.badge-solid *),
+.text-slate-100:not(button *):not(.badge-solid *) {
+  color: #334155 !important;
+}
+
+/* Ensure Action Button Text Stays Crisp White On Colored Backgrounds */
+button.bg-sky-600,
+button.bg-sky-500,
+button.bg-emerald-600,
+button.bg-emerald-500,
+button.bg-red-600,
+button.bg-red-500,
+button.bg-blue-600,
+button.bg-blue-500,
+a.bg-sky-600,
+a.bg-sky-500,
+a.bg-emerald-600,
+a.bg-blue-600,
+.badge-solid {
   color: #FFFFFF !important;
 }
 
-.bg-sky-600 *,
-.bg-sky-500 *,
-.bg-emerald-600 *,
-.bg-emerald-500 *,
-.bg-red-600 *,
-.bg-red-500 *,
-.bg-blue-600 *,
-.bg-blue-500 * {
-  color: inherit;
+button.bg-sky-600 *,
+button.bg-sky-500 *,
+button.bg-emerald-600 *,
+button.bg-emerald-500 *,
+button.bg-red-600 *,
+button.bg-red-500 *,
+button.bg-blue-600 *,
+button.bg-blue-500 *,
+a.bg-sky-600 *,
+a.bg-emerald-600 *,
+a.bg-blue-600 *,
+.badge-solid * {
+  color: #FFFFFF !important;
 }
 
 /* Sleek Minimalist Scrollbars */

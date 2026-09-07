@@ -11,9 +11,11 @@ import {
   Eye, 
   EyeOff,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  Check
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import { resolveMoMoAccount } from '../api/client';
 
 const GOOGLE_CLIENT_ID = "912069601596-uv6jcts8q2t1bg7sc4h8maju1odnd720.apps.googleusercontent.com";
 
@@ -29,6 +31,10 @@ export default function AuthModal({ isOpen, onClose }) {
   const [otpCode, setOtpCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  // MoMo auto-resolution state
+  const [resolvingMoMo, setResolvingMoMo] = useState(false);
+  const [resolvedMoMoName, setResolvedMoMoName] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -42,34 +48,45 @@ export default function AuthModal({ isOpen, onClose }) {
     return () => clearTimeout(timer);
   }, [resendCountdown]);
 
-  // Auto-detect Ghana Mobile Network from prefix
-  useEffect(() => {
-    const clean = phoneNumber.replace(/[^\d]/g, '');
+  // Handle phone input with network auto-detection & automatic MoMo name resolution
+  const handlePhoneChange = async (val) => {
+    setPhoneNumber(val);
+    const clean = val.replace(/[^\d]/g, '');
+
+    let detected = momoProvider;
     if (clean.length >= 3) {
       const prefix = clean.substring(0, 3);
       if (['024', '054', '055', '059', '025', '053'].includes(prefix)) {
+        detected = 'MTN';
         setMomoProvider('MTN');
       } else if (['020', '050'].includes(prefix)) {
+        detected = 'TELECEL';
         setMomoProvider('TELECEL');
       } else if (['027', '057', '026', '056'].includes(prefix)) {
+        detected = 'AT';
         setMomoProvider('AT');
       }
     }
-  }, [phoneNumber]);
 
-  const parseJwt = (token) => {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
-      return JSON.parse(jsonPayload);
-    } catch (e) {
-      return null;
+    // When 10 digits, auto resolve the registered subscriber name from the telecom network!
+    if (clean.length === 10) {
+      try {
+        setResolvingMoMo(true);
+        const res = await resolveMoMoAccount({ phone_number: clean, provider: detected });
+        if (res?.success && res?.account_name) {
+          setResolvedMoMoName(res.account_name);
+          // Auto-fill full name on registration if not filled
+          if (tab === 'register' && (!fullName.trim() || fullName.startsWith('Saver '))) {
+            setFullName(res.account_name);
+          }
+        }
+      } catch {
+        // Quiet fallback
+      } finally {
+        setResolvingMoMo(false);
+      }
+    } else {
+      setResolvedMoMoName(null);
     }
   };
 
@@ -163,7 +180,7 @@ export default function AuthModal({ isOpen, onClose }) {
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
     if (!phoneNumber || phoneNumber.length < 9) {
-      setError('Please enter a valid Ghana phone number (e.g. 024 123 4567).');
+      setError('Please enter a valid Ghana phone number (e.g. 0599360626).');
       return;
     }
     setError(null);
@@ -194,31 +211,31 @@ export default function AuthModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#04060A]/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="dark-card rounded-[2rem] shadow-2xl max-w-md w-full overflow-hidden border border-white/10 flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 flex flex-col">
         
-        {/* Clean Modern Header */}
-        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 text-white p-6 relative">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-sky-600 to-blue-700 text-white p-6 relative">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="absolute top-4 right-4 p-1.5 rounded-full text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X size={18} />
           </button>
           
-          <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-300 uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-200 uppercase tracking-wider mb-1">
             <Sparkles size={13} />
-            <span>SusuRow Account</span>
+            <span>SusuRow Ghana</span>
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-black text-white">
+          <h2 className="text-xl sm:text-2xl font-bold text-white">
             {tab === 'login' && 'Sign In to SusuRow'}
             {tab === 'register' && 'Create Your Account'}
             {tab === 'otp' && 'Verify SMS Code'}
           </h2>
-          <p className="text-xs text-blue-100 mt-0.5">
-            {tab === 'login' && 'Access your rotating Susu groups and payout wallets.'}
-            {tab === 'register' && 'Save together in verified circles with 0% loan interest.'}
+          <p className="text-xs text-sky-100 mt-0.5">
+            {tab === 'login' && 'Access your rotating Susu circles and MoMo wallets.'}
+            {tab === 'register' && 'Save together in verified circles with 0% interest.'}
             {tab === 'otp' && `Enter the 6-digit code sent to ${phoneNumber}`}
           </p>
         </div>
@@ -226,23 +243,23 @@ export default function AuthModal({ isOpen, onClose }) {
         <div className="p-5 sm:p-6 space-y-4">
           
           {error && (
-            <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
-              <AlertCircle size={15} className="shrink-0 text-red-400" />
+            <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+              <AlertCircle size={15} className="shrink-0 text-red-500" />
               <span>{error}</span>
             </div>
           )}
 
           {tab !== 'otp' && (
             <>
-              {/* 🌟 1 SINGLE CLEAN GOOGLE BUTTON */}
+              {/* Google Button */}
               <button
                 type="button"
                 onClick={handleGoogleClick}
                 disabled={googleLoading || loading}
-                className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center justify-center gap-3 shadow-md transition-all cursor-pointer active:scale-95 border border-slate-200"
+                className="w-full py-2.5 px-4 rounded-2xl bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs flex items-center justify-center gap-3 shadow-xs transition-all cursor-pointer active:scale-95 border border-slate-200"
               >
                 {googleLoading ? (
-                  <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                  <RefreshCw className="w-4 h-4 animate-spin text-sky-600" />
                 ) : (
                   <>
                     <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
@@ -258,15 +275,15 @@ export default function AuthModal({ isOpen, onClose }) {
 
               {/* Clean Divider */}
               <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-white/10"></div>
-                <span className="flex-shrink mx-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                <div className="flex-grow border-t border-slate-200"></div>
+                <span className="flex-shrink mx-3 text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                   Or with phone number
                 </span>
-                <div className="flex-grow border-t border-white/10"></div>
+                <div className="flex-grow border-t border-slate-200"></div>
               </div>
 
-              {/* Clean 2-Option Segmented Control (Sign In / Register) */}
-              <div className="flex rounded-2xl bg-[#0E1322] p-1 border border-white/5">
+              {/* Segmented Control (Sign In / Register) */}
+              <div className="flex rounded-2xl bg-slate-100 p-1 border border-slate-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -275,8 +292,8 @@ export default function AuthModal({ isOpen, onClose }) {
                   }}
                   className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                     tab === 'login'
-                      ? 'bg-blue-600 text-white font-black shadow-xs'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Sign In
@@ -289,8 +306,8 @@ export default function AuthModal({ isOpen, onClose }) {
                   }}
                   className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                     tab === 'register'
-                      ? 'bg-blue-600 text-white font-black shadow-xs'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Create Account
@@ -303,33 +320,46 @@ export default function AuthModal({ isOpen, onClose }) {
           {tab === 'login' && (
             <form onSubmit={handleLogin} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-900 mb-1">
                   Ghana Phone Number
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-slate-400 pointer-events-none">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-slate-600 pointer-events-none">
                     +233
                   </span>
                   <input
                     type="tel"
                     required
-                    placeholder="024 123 4567"
+                    placeholder="0599360626"
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full pl-14 pr-3.5 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono font-bold text-white placeholder-slate-500"
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    className="w-full pl-14 pr-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono font-bold text-slate-900"
                   />
                 </div>
+
+                {resolvingMoMo && (
+                  <p className="text-[11px] text-slate-600 font-medium mt-1 flex items-center gap-1">
+                    <RefreshCw size={11} className="animate-spin text-sky-600" /> Resolving MoMo subscriber name...
+                  </p>
+                )}
+
+                {resolvedMoMoName && (
+                  <div className="p-2 mt-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                    <span>Subscriber: {resolvedMoMoName} ✓</span>
+                  </div>
+                )}
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-300">
+                  <label className="text-xs font-bold text-slate-900">
                     Password
                   </label>
                   <button
                     type="button"
                     onClick={handleSendOtp}
-                    className="text-[11px] font-bold text-blue-400 hover:underline cursor-pointer"
+                    className="text-xs font-bold text-sky-700 hover:underline cursor-pointer"
                   >
                     Use SMS Code Instead
                   </button>
@@ -341,12 +371,12 @@ export default function AuthModal({ isOpen, onClose }) {
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-3.5 pr-10 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-white placeholder-slate-500"
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold text-slate-900"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-800 cursor-pointer"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -356,7 +386,7 @@ export default function AuthModal({ isOpen, onClose }) {
               <button
                 type="submit"
                 disabled={loading || phoneNumber.length < 9 || password.length < 1}
-                className="w-full mt-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
+                className="w-full mt-2 py-3 px-4 rounded-2xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer active:scale-95"
               >
                 {loading ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -373,9 +403,42 @@ export default function AuthModal({ isOpen, onClose }) {
           {/* REGISTER FORM */}
           {tab === 'register' && (
             <form onSubmit={handleRegister} className="space-y-3.5">
+              
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Full Legal Name
+                <label className="block text-xs font-bold text-slate-900 mb-1">
+                  Ghana MoMo Phone Number
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-slate-600 pointer-events-none">
+                    +233
+                  </span>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="0599360626"
+                    value={phoneNumber}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    className="w-full pl-14 pr-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono font-bold text-slate-900"
+                  />
+                </div>
+
+                {resolvingMoMo && (
+                  <p className="text-[11px] text-slate-600 font-medium mt-1 flex items-center gap-1">
+                    <RefreshCw size={11} className="animate-spin text-sky-600" /> Resolving MoMo name from telecom network...
+                  </p>
+                )}
+
+                {resolvedMoMoName && (
+                  <div className="p-2.5 mt-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-1.5 animate-in fade-in">
+                    <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                    <span>Registered MoMo Name: {resolvedMoMoName} ✓</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-900 mb-1">
+                  Full Legal Name (as on MoMo/Ghana Card)
                 </label>
                 <input
                   type="text"
@@ -383,31 +446,12 @@ export default function AuthModal({ isOpen, onClose }) {
                   placeholder="Your Full Legal Name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-white placeholder-slate-500"
+                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold text-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
-                  Phone Number
-                </label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-slate-400 pointer-events-none">
-                    +233
-                  </span>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="024 123 4567"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="w-full pl-14 pr-3.5 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono font-bold text-white placeholder-slate-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-900 mb-1.5">
                   Mobile Money Network
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -422,8 +466,8 @@ export default function AuthModal({ isOpen, onClose }) {
                       onClick={() => setMomoProvider(p.id)}
                       className={`py-2 text-center rounded-2xl text-xs font-bold border transition-all cursor-pointer ${
                         momoProvider === p.id
-                          ? 'border-blue-500 bg-blue-500/10 text-blue-300 ring-2 ring-blue-500/40 font-black'
-                          : 'border-white/5 text-slate-400 hover:bg-white/5'
+                          ? 'border-sky-500 bg-sky-50 text-sky-800 ring-2 ring-sky-500/30 font-bold'
+                          : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       {p.label}
@@ -433,7 +477,7 @@ export default function AuthModal({ isOpen, onClose }) {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-slate-900 mb-1">
                   Create Password (min 4 characters)
                 </label>
                 <div className="relative">
@@ -443,22 +487,26 @@ export default function AuthModal({ isOpen, onClose }) {
                     placeholder="Create a secure password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-3.5 pr-10 py-2.5 rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium text-white placeholder-slate-500"
+                    className="w-full pl-3.5 pr-10 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold text-slate-900"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-800 cursor-pointer"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
 
+              <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
+                💡 This MoMo number will be your automated payment and pot payout wallet.
+              </p>
+
               <button
                 type="submit"
                 disabled={loading || phoneNumber.length < 9 || password.length < 4 || !fullName.trim()}
-                className="w-full mt-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
+                className="w-full mt-2 py-3 px-4 rounded-2xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer active:scale-95"
               >
                 {loading ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -472,51 +520,54 @@ export default function AuthModal({ isOpen, onClose }) {
             </form>
           )}
 
-          {/* OTP VERIFICATION FORM */}
+          {/* OTP FORM */}
           {tab === 'otp' && (
             <form onSubmit={handleVerifyOtp} className="space-y-4">
+              <div className="text-center space-y-1">
+                <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center mx-auto border border-sky-200">
+                  <Smartphone size={24} />
+                </div>
+                <h3 className="text-sm font-bold text-slate-900">Enter Verification Code</h3>
+                <p className="text-xs text-slate-600">
+                  A 6-digit SMS code was sent to <span className="font-mono font-bold text-slate-900">{phoneNumber}</span>
+                </p>
+              </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1 text-center">
-                  Enter 6-Digit SMS Code
-                </label>
                 <input
                   type="text"
-                  maxLength={6}
                   required
-                  placeholder="------"
+                  maxLength={6}
+                  placeholder="••••••"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/[^\d]/g, ''))}
-                  className="w-full py-3 text-center tracking-[0.4em] text-2xl font-black font-mono rounded-2xl bg-[#0E1322] border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500 text-amber-400"
+                  className="w-full py-3 rounded-2xl bg-slate-50 border border-slate-200 text-center font-mono text-2xl font-bold tracking-[0.5em] text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading || otpCode.length < 4}
-                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
+                className="w-full py-3 px-4 rounded-2xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer active:scale-95"
               >
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <span>Verify & Continue</span>}
               </button>
 
-              <div className="text-center text-xs text-slate-400 pt-1">
-                {resendCountdown > 0 ? (
-                  <span>Resend code in {resendCountdown}s</span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    className="text-blue-400 font-bold hover:underline cursor-pointer"
-                  >
-                    Resend Code
-                  </button>
-                )}
-                <span className="mx-2">•</span>
+              <div className="flex items-center justify-between text-xs pt-1">
                 <button
                   type="button"
                   onClick={() => setTab('login')}
-                  className="text-slate-400 hover:text-white cursor-pointer"
+                  className="text-slate-600 hover:text-slate-900 font-bold cursor-pointer"
                 >
-                  Back to Password Login
+                  Change Number
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={resendCountdown > 0}
+                  className="text-sky-700 hover:underline font-bold disabled:opacity-50 cursor-pointer"
+                >
+                  {resendCountdown > 0 ? `Resend code in ${resendCountdown}s` : 'Resend Code'}
                 </button>
               </div>
             </form>

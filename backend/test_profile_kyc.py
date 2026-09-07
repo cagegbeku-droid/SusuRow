@@ -112,3 +112,25 @@ def test_full_profile_kyc_flow(client):
     assert debit_profile["auto_debit_enabled"] == True
     assert debit_profile["auto_debit_frequency"] == "MONTHLY"
     assert debit_profile["auto_debit_time"] == "09:30"
+
+    # 8. Auto-Resolve MoMo Account and verify default payment/withdrawal sync
+    resolve_res = client.post(
+        "/api/auth/resolve-momo",
+        json={"phone_number": "0599360626"},
+        headers=headers
+    )
+    assert resolve_res.status_code == 200
+    resolve_data = resolve_res.json()
+    assert resolve_data["success"] is True
+    assert resolve_data["account_name"] is not None
+    assert len(resolve_data["account_name"]) > 0
+    assert resolve_data["provider"] == "MTN"
+
+    # Verify that calling /api/auth/me now reflects the resolved momo name and primary wallet
+    me_after_resolve = client.get("/api/auth/me", headers=headers)
+    assert me_after_resolve.status_code == 200
+    me_data = me_after_resolve.json()
+    assert me_data["momo_account_name"] == resolve_data["account_name"]
+    assert me_data["primary_wallet_number"] == "0599360626"
+    assert me_data["primary_wallet_provider"] == "MTN"
+

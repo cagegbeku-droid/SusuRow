@@ -1,5 +1,6 @@
 import uuid
 import re
+from typing import Optional
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from sqlalchemy.orm import Session
@@ -23,8 +24,9 @@ from schemas import (
 )
 from services.sms_service import GhanaSMSService
 from services.paystack_service import GhanaMoMoGateway
-from auth import create_access_token, get_current_user, hash_password, verify_password
+from auth import create_access_token, get_current_user, get_optional_current_user, hash_password, verify_password
 from pydantic import BaseModel
+
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication & Profile Hierarchy"])
 
@@ -54,6 +56,7 @@ def _build_user_profile(user: User) -> UserProfile:
         savings_goal=user.savings_goal,
         has_security_pin=bool(user.security_pin_hash),
         has_signature=bool(user.signature_data),
+        momo_account_name=getattr(user, "momo_account_name", None),
         primary_wallet_provider=user.primary_wallet_provider or user.momo_provider or "MTN",
         primary_wallet_number=user.primary_wallet_number or user.phone_number,
         bank_name=user.bank_name,
@@ -532,12 +535,27 @@ class ResolveMoMoRequest(BaseModel):
 
 
 @router.post("/resolve-momo")
-async def resolve_momo_account(payload: ResolveMoMoRequest):
+async def resolve_momo_account(
+    payload: ResolveMoMoRequest, 
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
     """
     Verifies that a phone number is an active Mobile Money account with the telecom provider (MTN, Telecel, AT)
-    and resolves the official registered account holder name.
+    and resolves the official registered account holder name. Automatically syncs this number as payment and
+    withdrawal wallet for the user.
     """
     clean_phone = sanitize_ghana_phone(payload.phone_number)
     provider = payload.provider or detect_momo_provider(clean_phone)
     result = await GhanaMoMoGateway.resolve_momo_account(clean_phone, provider)
+
+    target_user = current_user or db.query(User).filter(User.phone_number == clean_phone).first()
+    if target_user and result.get("success") and result.get("account_name"):
+        target_user.momo_account_name = result["account_name"]
+        target_user.momo_provider = provider
+        target_user.primary_wallet_provider = provider
+        target_user.primary_wallet_number = clean_phone
+        db.commit()
+
     return result
+

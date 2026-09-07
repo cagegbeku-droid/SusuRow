@@ -6,8 +6,8 @@ import {
   Loader2, 
   Sparkles, 
   User, 
-  Megaphone,
-  Clock
+  Megaphone, 
+  Clock 
 } from 'lucide-react';
 import { getGroupMessages, sendGroupMessage } from '../api/client';
 import { useUser } from '../context/UserContext';
@@ -22,7 +22,6 @@ export const GroupChatModal = ({ isOpen, onClose, group }) => {
 
   const cleanUserPhone = user?.phone_number?.replace('+233', '0').replace(/\s+/g, '');
   const cleanCreatorPhone = group?.creator_id?.replace('+233', '0').replace(/\s+/g, '');
-  const isCreator = cleanUserPhone === cleanCreatorPhone;
 
   const fetchMessages = async () => {
     if (!group?.id) return;
@@ -76,18 +75,18 @@ export const GroupChatModal = ({ isOpen, onClose, group }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#04060A]/85 backdrop-blur-md">
-      <div className="dark-card w-full max-w-md rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden flex flex-col h-[80vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-xs">
+      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-[80vh]">
         
         {/* Header */}
-        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+        <div className="bg-gradient-to-r from-sky-600 to-blue-700 text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center font-black">
               <MessageSquare size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-white">{group.name} Chat</h3>
-              <p className="text-[10px] text-blue-200">Activity Wall & Turn Coordination</p>
+              <h3 className="text-sm font-bold text-white">{group.name} Chat</h3>
+              <p className="text-[11px] text-sky-100">Activity Wall & Turn Coordination</p>
             </div>
           </div>
 
@@ -100,13 +99,13 @@ export const GroupChatModal = ({ isOpen, onClose, group }) => {
         </div>
 
         {/* Message Thread */}
-        <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#080B11]">
+        <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50">
           {messages.length === 0 ? (
             <div className="text-center py-16 text-slate-500 space-y-2">
-              <MessageSquare className="w-8 h-8 mx-auto text-slate-600" />
-              <p className="text-xs font-bold text-slate-400">No messages in this group yet</p>
+              <MessageSquare className="w-8 h-8 mx-auto text-slate-400" />
+              <p className="text-xs font-bold text-slate-700">No messages in this group yet</p>
               <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-                Say hello, cheer group members on, or request a turn swap!
+                Say hello, cheer group members on, or coordinate your payout turn!
               </p>
             </div>
           ) : (
@@ -117,10 +116,10 @@ export const GroupChatModal = ({ isOpen, onClose, group }) => {
                   key={msg.id}
                   className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                 >
-                  <div className="flex items-center gap-1.5 mb-0.5 px-1 text-[10px] text-slate-400">
-                    <span className="font-bold text-slate-300">{msg.sender_name}</span>
+                  <div className="flex items-center gap-1.5 mb-0.5 px-1 text-[10px] text-slate-600 font-bold">
+                    <span>{msg.sender_name}</span>
                     {msg.sender_phone === cleanCreatorPhone && (
-                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded font-black text-[9px]">
+                      <span className="bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.2 rounded font-black text-[9px]">
                         LEADER
                       </span>
                     )}
@@ -129,12 +128,12 @@ export const GroupChatModal = ({ isOpen, onClose, group }) => {
                   <div
                     className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-xs ${
                       isMe
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm rounded-tr-xs'
-                        : 'bg-[#141A2D] text-slate-200 border border-white/5 rounded-tl-xs'
+                        ? 'bg-sky-600 text-white shadow-xs rounded-tr-xs'
+                        : 'bg-white text-slate-900 border border-slate-200 shadow-xs rounded-tl-xs font-medium'
                     }`}
                   >
                     <p className="leading-relaxed whitespace-pre-wrap">{msg.message_text}</p>
-                    <div className="text-[9px] text-right mt-1 opacity-70 font-mono">
+                    <div className={`text-[9px] text-right mt-1 font-mono font-bold ${isMe ? 'text-sky-100' : 'text-slate-500'}`}>
                       {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
@@ -146,21 +145,21 @@ export const GroupChatModal = ({ isOpen, onClose, group }) => {
         </div>
 
         {/* Message Input Box */}
-        <form onSubmit={handleSend} className="p-3 border-t border-white/5 bg-[#0E1322] flex items-center gap-2 shrink-0">
+        <form onSubmit={handleSend} className="p-3 border-t border-slate-200 bg-white flex items-center gap-2 shrink-0">
           <input
             type="text"
             placeholder={isAuthenticated ? "Type a message..." : "Sign in to post..."}
             value={text}
             onChange={(e) => setText(e.target.value)}
             disabled={!isAuthenticated || sending}
-            className="flex-1 px-4 py-2.5 rounded-2xl bg-[#141A2D] border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-500 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sky-500 focus:bg-white"
           />
           <button
             type="submit"
             disabled={!text.trim() || sending}
-            className="w-10 h-10 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white flex items-center justify-center transition-all cursor-pointer shrink-0 shadow active:scale-95"
+            className="w-10 h-10 rounded-2xl bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-xs active:scale-95"
           >
-            {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            {sending ? <Loader2 size={16} className="animate-spin text-white" /> : <Send size={16} className="text-white" />}
           </button>
         </form>
 

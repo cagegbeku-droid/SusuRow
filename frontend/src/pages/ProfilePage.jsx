@@ -42,12 +42,11 @@ import {
   getUserTransactions,
   resolveMoMoAccount
 } from '../api/client';
-import { SignatureCanvas } from '../components/SignatureCanvas';
 
 export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) => {
   const { user, isAuthenticated, logout, openAuthModal, refreshProfile } = useUser();
   
-  // Navigation: null = Main menu list (Screenshot 2); string = active subpage (Screenshots 1, 3, 4)
+  // Navigation: null = Main menu list; string = active subpage
   const [activeSubpage, setActiveSubpage] = useState(null); 
   
   const [loading, setLoading] = useState(false);
@@ -57,14 +56,14 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
   // MoMo live account resolution state
   const [momoResolving, setMomoResolving] = useState(false);
-  const [resolvedAccountName, setResolvedAccountName] = useState(null);
+  const [resolvedAccountName, setResolvedAccountName] = useState(user?.momo_account_name || null);
 
   // Real transactions from backend
   const [transactions, setTransactions] = useState([]);
   const [txFilter, setTxFilter] = useState('ALL');
   const [txLoading, setTxLoading] = useState(false);
 
-  // Notifications toggles (Screenshot 1)
+  // Notifications toggles
   const [notifications, setNotifications] = useState(() => {
     try {
       const saved = localStorage.getItem('susurow_notifications_pref');
@@ -98,8 +97,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     ghana_card_number: '',
     next_of_kin_name: '',
     next_of_kin_phone: '',
-    next_of_kin_relation: 'Sibling',
-    signature_data: ''
+    next_of_kin_relation: 'Sibling'
   });
 
   const [walletsForm, setWalletsForm] = useState({
@@ -124,8 +122,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         ghana_card_number: user.ghana_card_number || '',
         next_of_kin_name: user.next_of_kin_name || '',
         next_of_kin_phone: user.next_of_kin_phone || '',
-        next_of_kin_relation: user.next_of_kin_relation || 'Sibling',
-        signature_data: user.signature_data || ''
+        next_of_kin_relation: user.next_of_kin_relation || 'Sibling'
       });
 
       setWalletsForm({
@@ -137,8 +134,13 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         confirm_pin: ''
       });
 
+      if (user.momo_account_name) {
+        setResolvedAccountName(user.momo_account_name);
+      } else if (user.phone_number) {
+        handleResolveMoMo(user.phone_number, user.momo_provider || 'MTN');
+      }
+
       fetchTransactions();
-      handleResolveMoMo(user.phone_number, user.momo_provider || 'MTN');
     }
   }, [user]);
 
@@ -162,11 +164,48 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       const res = await resolveMoMoAccount({ phone_number: phoneNum, provider });
       if (res?.success && res?.account_name) {
         setResolvedAccountName(res.account_name);
+        return res.account_name;
       }
     } catch {
       // Quiet fallback
     } finally {
       setMomoResolving(false);
+    }
+    return null;
+  };
+
+  // Handle phone change: auto detect network, auto resolve MoMo name, auto set as payment & withdrawal method
+  const handlePhoneInputChange = async (newPhone) => {
+    let clean = newPhone.replace(/[^\d]/g, '');
+    let detectedProvider = personalForm.momo_provider;
+
+    if (clean.startsWith('024') || clean.startsWith('054') || clean.startsWith('055') || clean.startsWith('059') || clean.startsWith('053')) {
+      detectedProvider = 'MTN';
+    } else if (clean.startsWith('020') || clean.startsWith('050')) {
+      detectedProvider = 'TELECEL';
+    } else if (clean.startsWith('026') || clean.startsWith('056') || clean.startsWith('027') || clean.startsWith('057')) {
+      detectedProvider = 'AT';
+    }
+
+    setPersonalForm(prev => ({
+      ...prev,
+      phone_number: newPhone,
+      momo_provider: detectedProvider
+    }));
+
+    // Auto set this phone number as payment & withdrawal method
+    setWalletsForm(prev => ({
+      ...prev,
+      primary_wallet_number: newPhone,
+      primary_wallet_provider: detectedProvider
+    }));
+
+    // If 10 digits, auto resolve the registered MoMo subscriber name
+    if (clean.length === 10) {
+      const resolvedName = await handleResolveMoMo(newPhone, detectedProvider);
+      if (resolvedName && (!personalForm.full_name || personalForm.full_name.startsWith('Saver '))) {
+        setPersonalForm(prev => ({ ...prev, full_name: resolvedName }));
+      }
     }
   };
 
@@ -207,7 +246,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           <User size={32} />
         </div>
         <h2 className="text-xl font-bold text-slate-900">Sign In to View Profile</h2>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-600">
           Manage your verified identity, wallets, and savings statement.
         </p>
         <button
@@ -232,7 +271,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       return;
     }
     if (!personalForm.phone_number.trim() || personalForm.phone_number.replace(/[^\d]/g, '').length < 9) {
-      setErrorMsg('Valid phone number is required.');
+      setErrorMsg('Valid 10-digit Ghanaian phone number is required (e.g. 0599360626).');
       return;
     }
 
@@ -240,8 +279,12 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     setErrorMsg(null);
     try {
       await updateProfile(personalForm);
+      await configureWallets({
+        primary_wallet_provider: personalForm.momo_provider,
+        primary_wallet_number: personalForm.phone_number
+      });
       await refreshProfile();
-      triggerSuccess('Personal information saved.');
+      triggerSuccess('Personal info saved. This MoMo number is now your active Payment & Withdrawal wallet.');
       handleResolveMoMo(personalForm.phone_number, personalForm.momo_provider);
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'Failed to update details.');
@@ -253,11 +296,11 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   const handleSubmitKYC = async (e) => {
     e.preventDefault();
     if (!kycForm.ghana_card_number.trim()) {
-      setErrorMsg('Please enter your Ghana Card PIN.');
+      setErrorMsg('Please enter your Ghana Card PIN (GHA-XXXXXXXXX-X).');
       return;
     }
     if (!kycForm.next_of_kin_name.trim() || !kycForm.next_of_kin_phone.trim()) {
-      setErrorMsg('Emergency Contact (Next of Kin) name and phone are required.');
+      setErrorMsg('Emergency Contact (Next of Kin) name and phone are compulsory.');
       return;
     }
 
@@ -266,7 +309,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     try {
       await submitKYC(kycForm);
       await refreshProfile();
-      triggerSuccess('Ghana Card KYC submitted and approved!');
+      triggerSuccess('Ghana Card KYC submitted and approved successfully!');
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'KYC submission failed.');
     } finally {
@@ -346,7 +389,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   });
 
   // ==========================================
-  // SUBPAGE 1: SETTINGS / NOTIFICATIONS (Screenshot 1)
+  // SUBPAGE 1: SETTINGS / NOTIFICATIONS
   // ==========================================
   if (activeSubpage === 'settings') {
     return (
@@ -354,7 +397,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveSubpage(null)}
-            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
           </button>
@@ -362,17 +405,17 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         </div>
 
         <div className="space-y-4">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
             Notifications
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs">
             <div className="p-4 flex items-center justify-between">
-              <span className="text-sm font-semibold text-slate-900">Push Notifications</span>
+              <span className="text-sm font-bold text-slate-900">Push Notifications</span>
               <button
                 onClick={() => toggleNotification('pushNotifications')}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  notifications.pushNotifications ? 'bg-sky-500' : 'bg-slate-200'
+                  notifications.pushNotifications ? 'bg-sky-600' : 'bg-slate-200'
                 }`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -383,13 +426,13 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
             <div className="p-4 flex items-center justify-between">
               <div>
-                <span className="text-sm font-semibold text-slate-900 block">Round Due Reminders</span>
-                <span className="text-[11px] text-slate-500">24 hours before contribution</span>
+                <span className="text-sm font-bold text-slate-900 block">Round Due Reminders</span>
+                <span className="text-xs text-slate-600">24 hours before contribution</span>
               </div>
               <button
                 onClick={() => toggleNotification('dueReminders')}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  notifications.dueReminders ? 'bg-sky-500' : 'bg-slate-200'
+                  notifications.dueReminders ? 'bg-sky-600' : 'bg-slate-200'
                 }`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -400,13 +443,13 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
             <div className="p-4 flex items-center justify-between">
               <div>
-                <span className="text-sm font-semibold text-slate-900 block">Payout Alerts</span>
-                <span className="text-[11px] text-slate-500">When pot arrives in MoMo</span>
+                <span className="text-sm font-bold text-slate-900 block">Payout Alerts</span>
+                <span className="text-xs text-slate-600">When pot arrives in MoMo</span>
               </div>
               <button
                 onClick={() => toggleNotification('payoutAlerts')}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  notifications.payoutAlerts ? 'bg-sky-500' : 'bg-slate-200'
+                  notifications.payoutAlerts ? 'bg-sky-600' : 'bg-slate-200'
                 }`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -421,7 +464,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   }
 
   // ==========================================
-  // SUBPAGE 2: PAYMENT METHODS (Contribution Wallets - Screenshot 4)
+  // SUBPAGE 2: PAYMENT METHODS (Contribution Wallets)
   // ==========================================
   if (activeSubpage === 'payment_methods') {
     return (
@@ -429,43 +472,43 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveSubpage(null)}
-            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
           </button>
           <div>
             <h2 className="text-lg font-bold text-slate-900">Payment Methods</h2>
-            <p className="text-xs text-slate-500">Manage payment methods used for transactions</p>
+            <p className="text-xs text-slate-600">Used for paying your circle contributions</p>
           </div>
         </div>
 
-        {/* Existing Card Display (Screenshot 4 style) */}
+        {/* Existing Card Display */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-9 rounded-lg bg-amber-400 text-slate-950 font-black text-[10px] flex items-center justify-center border border-amber-500/30 shrink-0">
+          <div className="w-12 h-9 rounded-lg bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center border border-amber-500/30 shrink-0">
             {user.momo_provider || 'MTN'}
           </div>
           <div className="border-l border-slate-200 pl-4 flex-1">
             <span className="font-mono text-sm font-bold text-slate-900 tracking-wider">
               {maskedPhone(user.phone_number)}
             </span>
-            <div className="text-[11px] text-slate-500">
+            <div className="text-xs font-bold text-slate-700">
               {resolvedAccountName ? `Account: ${resolvedAccountName}` : `${user.momo_provider || 'MTN'} Mobile Money`}
             </div>
           </div>
-          <span className="w-2 h-2 rounded-full bg-emerald-500" title="Active"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" title="Active"></span>
         </div>
 
         {/* Edit / Link MoMo Phone Form */}
         <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-xs">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Update Contribution Number</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Change MoMo Payment Number</h3>
           
           <form onSubmit={handleUpdatePersonal} className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Network Provider</label>
+              <label className="block text-xs font-bold text-slate-900 mb-1">Network Provider</label>
               <select
                 value={personalForm.momo_provider}
                 onChange={(e) => setPersonalForm({ ...personalForm, momo_provider: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
               >
                 <option value="MTN">MTN Mobile Money (*170#)</option>
                 <option value="TELECEL">Telecel Cash (*110#)</option>
@@ -474,38 +517,44 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
+              <label className="block text-xs font-bold text-slate-900 mb-1">Mobile Money Phone Number</label>
               <div className="relative">
                 <input
                   type="tel"
                   required
-                  placeholder="024 123 4567"
+                  placeholder="0599360626"
                   value={personalForm.phone_number}
-                  onChange={(e) => setPersonalForm({ ...personalForm, phone_number: e.target.value })}
+                  onChange={(e) => handlePhoneInputChange(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900"
                 />
                 <button
                   type="button"
                   onClick={() => handleResolveMoMo(personalForm.phone_number, personalForm.momo_provider)}
                   disabled={momoResolving}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[10px] font-bold cursor-pointer transition-colors"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold cursor-pointer transition-colors"
                 >
                   {momoResolving ? 'Checking...' : 'Verify'}
                 </button>
               </div>
+
               {resolvedAccountName && (
-                <p className="text-[11px] text-emerald-600 font-medium mt-1 flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Telecom Name: {resolvedAccountName}
-                </p>
+                <div className="p-2.5 mt-2 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                  <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
+                  <span>Registered MoMo Name: {resolvedAccountName} ✓</span>
+                </div>
               )}
             </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+              💡 This number is automatically saved as both your contribution wallet and your pot withdrawal wallet until you change it.
+            </p>
 
             <button
               type="submit"
               disabled={loading}
               className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95"
             >
-              {loading ? 'Saving...' : 'Save Payment Method'}
+              {loading ? 'Saving...' : 'Save Payment & Withdrawal Method'}
             </button>
           </form>
         </div>
@@ -522,44 +571,44 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveSubpage(null)}
-            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
           </button>
           <div>
             <h2 className="text-lg font-bold text-slate-900">Withdrawal Methods</h2>
-            <p className="text-xs text-slate-500">Where your lump sum pot goes</p>
+            <p className="text-xs text-slate-600">Where your lump sum pot goes</p>
           </div>
         </div>
 
         {/* Existing Payout Display */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-9 rounded-lg bg-emerald-500 text-white font-black text-[10px] flex items-center justify-center shrink-0">
+          <div className="w-12 h-9 rounded-lg bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0">
             {walletsForm.primary_wallet_provider === 'BANK' ? 'BANK' : walletsForm.primary_wallet_provider}
           </div>
           <div className="border-l border-slate-200 pl-4 flex-1">
             <span className="font-mono text-sm font-bold text-slate-900 tracking-wider">
               {maskedPhone(walletsForm.primary_wallet_number)}
             </span>
-            <div className="text-[11px] text-slate-500">
-              {walletsForm.primary_wallet_provider === 'BANK' ? (walletsForm.bank_name || 'Bank Account') : `${walletsForm.primary_wallet_provider} Mobile Money`}
+            <div className="text-xs font-bold text-slate-700">
+              {resolvedAccountName ? `Account: ${resolvedAccountName}` : (walletsForm.primary_wallet_provider === 'BANK' ? (walletsForm.bank_name || 'Bank Account') : `${walletsForm.primary_wallet_provider} MoMo`)}
             </div>
           </div>
-          <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-            Payout Wallet
+          <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full">
+            Active Wallet
           </span>
         </div>
 
         {/* Update Payout Form */}
         <form onSubmit={handleWalletsSubmit} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-xs">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Configure Payout Wallet</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Configure Payout Destination</h3>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Destination Provider</label>
+            <label className="block text-xs font-bold text-slate-900 mb-1">Destination Provider</label>
             <select
               value={walletsForm.primary_wallet_provider}
               onChange={(e) => setWalletsForm({ ...walletsForm, primary_wallet_provider: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
             >
               <option value="MTN">MTN Mobile Money (*170#)</option>
               <option value="TELECEL">Telecel Cash (*110#)</option>
@@ -569,13 +618,13 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              {walletsForm.primary_wallet_provider === 'BANK' ? 'Account Number' : 'MoMo Phone Number'}
+            <label className="block text-xs font-bold text-slate-900 mb-1">
+              {walletsForm.primary_wallet_provider === 'BANK' ? 'Bank Account Number' : 'MoMo Phone Number'}
             </label>
             <input
               type="text"
               required
-              placeholder="024 123 4567"
+              placeholder="0599360626"
               value={walletsForm.primary_wallet_number}
               onChange={(e) => setWalletsForm({ ...walletsForm, primary_wallet_number: e.target.value })}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900"
@@ -584,20 +633,20 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
           {walletsForm.primary_wallet_provider === 'BANK' && (
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Bank Name</label>
+              <label className="block text-xs font-bold text-slate-900 mb-1">Bank Name</label>
               <input
                 type="text"
                 placeholder="e.g. GCB, Ecobank, Absa"
                 value={walletsForm.bank_name}
                 onChange={(e) => setWalletsForm({ ...walletsForm, bank_name: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
               />
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3 pt-1">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-bold text-slate-900 mb-1">
                 4-Digit PIN {user.has_security_pin ? '(Change)' : '(New)'}
               </label>
               <input
@@ -610,7 +659,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Confirm PIN</label>
+              <label className="block text-xs font-bold text-slate-900 mb-1">Confirm PIN</label>
               <input
                 type="password"
                 maxLength={4}
@@ -627,7 +676,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             disabled={loading}
             className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95"
           >
-            {loading ? 'Saving...' : 'Save Withdrawal Wallet'}
+            {loading ? 'Saving...' : 'Save Withdrawal Wallet & PIN'}
           </button>
         </form>
       </div>
@@ -635,7 +684,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   }
 
   // ==========================================
-  // SUBPAGE 4: TRUST & IDENTITY (KYC - Screenshot 3)
+  // SUBPAGE 4: TRUST & IDENTITY (KYC - Clean without signature)
   // ==========================================
   if (activeSubpage === 'kyc') {
     return (
@@ -643,92 +692,94 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveSubpage(null)}
-            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
           </button>
           <h2 className="text-lg font-bold text-slate-900">KYC Verification</h2>
         </div>
 
-        {/* Approved Banner if verified (Screenshot 3 style) */}
+        {/* Approved Banner if verified */}
         {isVerifiedKYC ? (
           <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center space-y-3 shadow-xs">
-            <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-md">
+            <div className="w-16 h-16 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-md">
               <Check size={32} className="stroke-[3]" />
             </div>
             <div>
               <h3 className="text-lg font-black text-slate-900">Approved</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Your account has been verified with Ghana Card</p>
+              <p className="text-xs text-slate-600 mt-0.5">Your account is verified with Ghana Card & Telecom MoMo</p>
             </div>
           </div>
         ) : (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-            <AlertCircle size={20} className="text-amber-600 shrink-0" />
-            <div className="text-xs text-amber-800 font-medium">
+            <AlertCircle size={20} className="text-amber-700 shrink-0" />
+            <div className="text-xs text-amber-900 font-bold">
               Complete your Ghana Card verification to participate in rotating pot payouts.
             </div>
           </div>
         )}
 
-        {/* Status Rows with Checkmarks (Screenshot 3 style) */}
+        {/* Status Rows with Checkmarks */}
         <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs">
           
           <div className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <User size={16} className="text-slate-400" />
-              <span className="text-xs font-semibold text-slate-800">Personal Information</span>
+              <User size={16} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">Personal Information</span>
             </div>
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${user.full_name ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${user.full_name ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
               <Check size={12} className="stroke-[3]" />
             </div>
           </div>
 
           <div className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <ShieldCheck size={16} className="text-slate-400" />
+              <ShieldCheck size={16} className="text-slate-700" />
               <div>
-                <span className="text-xs font-semibold text-slate-800 block">Identity Verification</span>
-                <span className="text-[10px] font-mono text-slate-500">{user.ghana_card_number || 'GHA-XXXXXXXXX-X'}</span>
+                <span className="text-xs font-bold text-slate-900 block">Identity Verification</span>
+                <span className="text-xs font-mono text-slate-700">{user.ghana_card_number || 'GHA-XXXXXXXXX-X'}</span>
               </div>
             </div>
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isVerifiedKYC ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isVerifiedKYC ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
               <Check size={12} className="stroke-[3]" />
             </div>
           </div>
 
           <div className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Users size={16} className="text-slate-400" />
-              <span className="text-xs font-semibold text-slate-800">Emergency Contact (Next of Kin)</span>
+              <Users size={16} className="text-slate-700" />
+              <span className="text-xs font-bold text-slate-900">Emergency Contact (Next of Kin)</span>
             </div>
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${user.next_of_kin_name ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${user.next_of_kin_name ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
               <Check size={12} className="stroke-[3]" />
             </div>
           </div>
 
           <div className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Smartphone size={16} className="text-slate-400" />
+              <Smartphone size={16} className="text-slate-700" />
               <div>
-                <span className="text-xs font-semibold text-slate-800 block">MoMo Name Match</span>
-                <span className="text-[10px] text-slate-500">Confirmed via Telecom Network</span>
+                <span className="text-xs font-bold text-slate-900 block">MoMo Name Match</span>
+                <span className="text-xs text-slate-700">
+                  {resolvedAccountName ? `Verified: ${resolvedAccountName}` : 'Auto-confirmed via Telecom'}
+                </span>
               </div>
             </div>
-            <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+            <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
               <Check size={12} className="stroke-[3]" />
             </div>
           </div>
 
         </div>
 
-        {/* KYC Form with Automatic Hyphenation */}
+        {/* KYC Form with Automatic Hyphenation (NO SIGNATURE) */}
         <form onSubmit={handleSubmitKYC} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-xs">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            {isVerifiedKYC ? 'Update Ghana Card & Contact' : 'Submit Ghana Card & Contact'}
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+            {isVerifiedKYC ? 'Update Ghana Card & Emergency Contact' : 'Submit Ghana Card & Emergency Contact'}
           </h3>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-bold text-slate-900 mb-1">
               Ghana Card PIN (Auto-hyphenated)
             </label>
             <input
@@ -743,20 +794,20 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Emergency Contact Full Name</label>
+            <label className="block text-xs font-bold text-slate-900 mb-1">Emergency Contact Full Name</label>
             <input
               type="text"
               required
               placeholder="Full Legal Name"
               value={kycForm.next_of_kin_name}
               onChange={(e) => setKycForm({ ...kycForm, next_of_kin_name: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900"
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Phone</label>
+              <label className="block text-xs font-bold text-slate-900 mb-1">Contact Phone</label>
               <input
                 type="tel"
                 required
@@ -767,11 +818,11 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Relationship</label>
+              <label className="block text-xs font-bold text-slate-900 mb-1">Relationship</label>
               <select
                 value={kycForm.next_of_kin_relation}
                 onChange={(e) => setKycForm({ ...kycForm, next_of_kin_relation: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-medium text-slate-900"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
               >
                 <option value="Spouse">Spouse</option>
                 <option value="Sibling">Sibling</option>
@@ -780,14 +831,6 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                 <option value="Relative">Relative</option>
               </select>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Digital Signature</label>
-            <SignatureCanvas
-              initialSignature={kycForm.signature_data}
-              onSave={(sigData) => setKycForm({ ...kycForm, signature_data: sigData })}
-            />
           </div>
 
           <button
@@ -812,13 +855,13 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveSubpage(null)}
-              className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+              className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
             >
               <ArrowLeft size={16} />
             </button>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Request Statement</h2>
-              <p className="text-xs text-slate-500">Official proof of rotational savings</p>
+              <p className="text-xs text-slate-600">Official proof of rotational savings</p>
             </div>
           </div>
 
@@ -835,41 +878,41 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
               <h3 className="text-base font-bold text-slate-900">SusuRow Ghana Savings Statement</h3>
-              <p className="text-xs text-slate-500">Coratech Global Financial Services</p>
+              <p className="text-xs text-slate-600">Coratech Global Financial Services</p>
             </div>
             <div className="text-right text-xs">
               <span className="font-mono font-bold text-slate-900">{new Date().toLocaleDateString()}</span>
-              <p className="text-[10px] text-emerald-600 font-bold">Verified Ledger</p>
+              <p className="text-xs text-emerald-700 font-bold">Verified Ledger</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
             <div>
-              <span className="text-[10px] uppercase text-slate-400 font-bold">Saver</span>
+              <span className="text-[10px] uppercase text-slate-700 font-bold">Saver</span>
               <p className="font-bold text-slate-900">{user.full_name}</p>
-              <p className="font-mono text-slate-500">{user.phone_number}</p>
+              <p className="font-mono font-bold text-slate-700">{user.phone_number}</p>
             </div>
             <div>
-              <span className="text-[10px] uppercase text-slate-400 font-bold">Ghana Card</span>
+              <span className="text-[10px] uppercase text-slate-700 font-bold">Ghana Card</span>
               <p className="font-mono font-bold text-slate-900">{user.ghana_card_number || 'N/A'}</p>
-              <p className="text-emerald-600 font-bold text-[11px]">{isVerifiedKYC ? 'Verified ✓' : 'Unverified'}</p>
+              <p className="text-emerald-700 font-bold text-xs">{isVerifiedKYC ? 'Verified ✓' : 'Unverified'}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 bg-sky-50 rounded-xl border border-sky-100">
-              <span className="text-[10px] uppercase text-sky-700 font-bold">Total Contributions</span>
-              <p className="text-lg font-bold font-mono text-sky-800">GH₵{totalContributions.toFixed(2)}</p>
+              <span className="text-[10px] uppercase text-sky-900 font-bold">Total Contributions</span>
+              <p className="text-lg font-black font-mono text-sky-900">GH₵{totalContributions.toFixed(2)}</p>
             </div>
             <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-              <span className="text-[10px] uppercase text-emerald-700 font-bold">Total Payouts Won</span>
-              <p className="text-lg font-bold font-mono text-emerald-800">GH₵{totalPayouts.toFixed(2)}</p>
+              <span className="text-[10px] uppercase text-emerald-900 font-bold">Total Payouts Won</span>
+              <p className="text-lg font-black font-mono text-emerald-900">GH₵{totalPayouts.toFixed(2)}</p>
             </div>
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-slate-50 text-slate-600 text-[10px] uppercase border-b border-slate-200">
+              <thead className="bg-slate-50 text-slate-900 text-[10px] uppercase border-b border-slate-200 font-bold">
                 <tr>
                   <th className="p-2.5">Date</th>
                   <th className="p-2.5">Group</th>
@@ -880,17 +923,17 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               <tbody className="divide-y divide-slate-100">
                 {transactions.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-4 text-center text-slate-400 font-sans text-xs">
+                    <td colSpan={4} className="p-4 text-center text-slate-700 font-sans text-xs font-bold">
                       No recorded transactions yet.
                     </td>
                   </tr>
                 ) : (
                   transactions.map(t => (
                     <tr key={t.id}>
-                      <td className="p-2.5 text-slate-500">{t.created_at ? new Date(t.created_at).toLocaleDateString() : 'N/A'}</td>
-                      <td className="p-2.5 text-slate-900 font-sans">{t.group_name}</td>
-                      <td className="p-2.5 text-slate-700">{t.type}</td>
-                      <td className="p-2.5 text-right font-bold text-slate-900">
+                      <td className="p-2.5 text-slate-700 font-bold">{t.created_at ? new Date(t.created_at).toLocaleDateString() : 'N/A'}</td>
+                      <td className="p-2.5 text-slate-900 font-sans font-bold">{t.group_name}</td>
+                      <td className="p-2.5 text-slate-800 font-bold">{t.type}</td>
+                      <td className="p-2.5 text-right font-black text-slate-900">
                         {t.type === 'CONTRIBUTION' ? '-' : '+'}GH₵{Number(t.amount).toFixed(2)}
                       </td>
                     </tr>
@@ -914,7 +957,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveSubpage(null)}
-              className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+              className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
             >
               <ArrowLeft size={16} />
             </button>
@@ -927,7 +970,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                 key={f}
                 onClick={() => setTxFilter(f)}
                 className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer transition-colors ${
-                  txFilter === f ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500'
+                  txFilter === f ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600'
                 }`}
               >
                 {f === 'ALL' ? 'All' : f === 'CONTRIBUTION' ? 'Paid' : 'Payouts'}
@@ -938,28 +981,28 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
         <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs overflow-hidden">
           {txLoading ? (
-            <div className="p-8 text-center text-slate-400 text-xs">Loading transactions...</div>
+            <div className="p-8 text-center text-slate-600 font-bold text-xs">Loading transactions...</div>
           ) : filteredTransactions.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-xs">No transactions recorded yet.</div>
+            <div className="p-8 text-center text-slate-600 font-bold text-xs">No transactions recorded yet.</div>
           ) : (
             filteredTransactions.map(t => (
               <div key={t.id} className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    t.type === 'CONTRIBUTION' ? 'bg-sky-50 text-sky-600' : 'bg-emerald-50 text-emerald-600'
+                    t.type === 'CONTRIBUTION' ? 'bg-sky-50 text-sky-700' : 'bg-emerald-50 text-emerald-700'
                   }`}>
                     {t.type === 'CONTRIBUTION' ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
                   </div>
                   <div>
                     <h4 className="text-xs font-bold text-slate-900">{t.group_name}</h4>
-                    <p className="text-[10px] text-slate-500 font-mono">{t.reference} • {t.momo_provider}</p>
+                    <p className="text-xs text-slate-700 font-mono font-bold">{t.reference} • {t.momo_provider}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-mono font-bold text-xs text-slate-900">
+                  <div className="font-mono font-black text-xs text-slate-900">
                     {t.type === 'CONTRIBUTION' ? '-' : '+'}GH₵{Number(t.amount).toFixed(2)}
                   </div>
-                  <div className="text-[10px] text-slate-400 font-mono">
+                  <div className="text-xs text-slate-600 font-mono font-bold">
                     {t.created_at ? new Date(t.created_at).toLocaleDateString() : 'Recent'}
                   </div>
                 </div>
@@ -980,31 +1023,31 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveSubpage(null)}
-            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
           </button>
           <h2 className="text-lg font-bold text-slate-900">Legal & Constitution</h2>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 text-xs text-slate-700 shadow-xs">
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 text-xs text-slate-900 shadow-xs">
           <div>
-            <h4 className="font-bold text-slate-900">Rotational Fairness</h4>
-            <p className="text-slate-500 mt-1">
+            <h4 className="font-black text-slate-900 text-sm">Rotational Fairness</h4>
+            <p className="text-slate-700 mt-1 leading-relaxed">
               Turns progress in strict sequential, random ballot, or bidding order. No participant may withdraw ahead of their allocated round.
             </p>
           </div>
 
           <div className="border-t border-slate-100 pt-3">
-            <h4 className="font-bold text-slate-900">Default Policy</h4>
-            <p className="text-slate-500 mt-1">
+            <h4 className="font-black text-slate-900 text-sm">Default Policy</h4>
+            <p className="text-slate-700 mt-1 leading-relaxed">
               If a member is 24h late on contribution, upfront commitment deposits are utilized to cover the winner pot, and the emergency contact is notified.
             </p>
           </div>
 
           <div className="border-t border-slate-100 pt-3">
-            <h4 className="font-bold text-slate-900">Data Privacy</h4>
-            <p className="text-slate-500 mt-1">
+            <h4 className="font-black text-slate-900 text-sm">Data Privacy</h4>
+            <p className="text-slate-700 mt-1 leading-relaxed">
               Compliant with the Data Protection Act of Ghana. Credentials and identities are stored with end-to-end encryption.
             </p>
           </div>
@@ -1022,7 +1065,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveSubpage(null)}
-            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
           </button>
@@ -1033,9 +1076,9 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           <details className="bg-white rounded-2xl border border-slate-200 p-4 text-xs group shadow-xs">
             <summary className="font-bold text-slate-900 cursor-pointer flex justify-between items-center">
               <span>How does Susu rotational savings work?</span>
-              <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-400" />
+              <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-600" />
             </summary>
-            <p className="text-slate-500 mt-2 leading-relaxed">
+            <p className="text-slate-700 mt-2 leading-relaxed font-medium">
               Members contribute a set amount each cycle. Every round, one member receives the entire collective pot until all members have had their turn.
             </p>
           </details>
@@ -1043,9 +1086,9 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           <details className="bg-white rounded-2xl border border-slate-200 p-4 text-xs group shadow-xs">
             <summary className="font-bold text-slate-900 cursor-pointer flex justify-between items-center">
               <span>How do I receive my pot?</span>
-              <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-400" />
+              <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-600" />
             </summary>
-            <p className="text-slate-500 mt-2 leading-relaxed">
+            <p className="text-slate-700 mt-2 leading-relaxed font-medium">
               When all contributions for your round are collected, the system automatically disburses the full pot directly to your verified Mobile Money wallet.
             </p>
           </details>
@@ -1053,9 +1096,9 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           <details className="bg-white rounded-2xl border border-slate-200 p-4 text-xs group shadow-xs">
             <summary className="font-bold text-slate-900 cursor-pointer flex justify-between items-center">
               <span>What if someone doesn't pay?</span>
-              <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-400" />
+              <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-600" />
             </summary>
-            <p className="text-slate-500 mt-2 leading-relaxed">
+            <p className="text-slate-700 mt-2 leading-relaxed font-medium">
               Circles utilize security escrow deposits and automatic SMS recovery to protect the recipient's payout.
             </p>
           </details>
@@ -1065,7 +1108,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   }
 
   // ==========================================
-  // SUBPAGE 9: CONTACT US
+  // SUBPAGE 9: CONTACT US (Helpline 0599360626)
   // ==========================================
   if (activeSubpage === 'contact') {
     return (
@@ -1073,7 +1116,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveSubpage(null)}
-            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
           </button>
@@ -1082,33 +1125,33 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
         <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs">
           <a
-            href="https://wa.me/233241234567?text=Hello%20SusuRow%20Support"
+            href="https://wa.me/233599360626?text=Hello%20SusuRow%20Support"
             target="_blank"
             rel="noopener noreferrer"
             className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <MessageCircle size={18} className="text-emerald-600" />
+              <MessageCircle size={20} className="text-emerald-600" />
               <div>
                 <h4 className="text-xs font-bold text-slate-900">WhatsApp Support</h4>
-                <p className="text-[11px] text-slate-500">Live chat with Coratech team</p>
+                <p className="text-xs text-slate-700 font-bold">Chat with our support team on WhatsApp</p>
               </div>
             </div>
-            <ChevronRight size={14} className="text-slate-400" />
+            <ChevronRight size={14} className="text-slate-600" />
           </a>
 
           <a
-            href="tel:+233241234567"
+            href="tel:0599360626"
             className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <Phone size={18} className="text-sky-600" />
+              <Phone size={20} className="text-sky-600" />
               <div>
                 <h4 className="text-xs font-bold text-slate-900">Ghanaian Helpline</h4>
-                <p className="text-[11px] text-slate-500">+233 (0) 24 123 4567</p>
+                <p className="text-xs text-slate-900 font-mono font-black">0599360626</p>
               </div>
             </div>
-            <ChevronRight size={14} className="text-slate-400" />
+            <ChevronRight size={14} className="text-slate-600" />
           </a>
 
           <a
@@ -1116,13 +1159,13 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <Mail size={18} className="text-slate-600" />
+              <Mail size={20} className="text-slate-800" />
               <div>
                 <h4 className="text-xs font-bold text-slate-900">Email Desk</h4>
-                <p className="text-[11px] text-slate-500">support@coratechglobal.com</p>
+                <p className="text-xs text-slate-700 font-bold">support@coratechglobal.com</p>
               </div>
             </div>
-            <ChevronRight size={14} className="text-slate-400" />
+            <ChevronRight size={14} className="text-slate-600" />
           </a>
         </div>
       </div>
@@ -1130,7 +1173,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   }
 
   // ==========================================
-  // MAIN PROFILE MENU LIST (Screenshot 2 exact style)
+  // MAIN PROFILE MENU LIST
   // ==========================================
   return (
     <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
@@ -1139,7 +1182,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           title="Back to Marketplace"
         >
           <ArrowLeft size={16} />
@@ -1167,33 +1210,33 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           <h3 className="text-sm font-bold text-slate-900 truncate">
             {user.full_name || 'Ghana Saver'}
           </h3>
-          <p className="text-xs font-mono text-slate-500 truncate">
+          <p className="text-xs font-mono font-bold text-slate-700 truncate">
             {user.phone_number || user.email || 'No Phone Linked'}
           </p>
           <div className="flex items-center gap-2 pt-0.5">
             {isVerifiedKYC ? (
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                <ShieldCheck size={11} /> Ghana Card Verified ✓
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                <ShieldCheck size={11} className="text-emerald-600" /> Ghana Card Verified ✓
               </span>
             ) : (
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              <span className="text-[10px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                 KYC Pending
               </span>
             )}
-            <span className="text-[10px] text-slate-400 font-mono">{user.trust_score || 100}% Trust</span>
+            <span className="text-[10px] text-slate-700 font-mono font-bold">{user.trust_score || 100}% Trust</span>
           </div>
         </div>
       </div>
 
       {/* Success Notification */}
       {saveSuccess && (
-        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-in fade-in shadow-xs">
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in shadow-xs">
           <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
           <span>{saveSuccess}</span>
         </div>
       )}
 
-      {/* Profile Menu Groups (Screenshot 2 exact style) */}
+      {/* Profile Menu Groups */}
       <div className="space-y-4">
         
         {/* Section 1: Wallets & Identity */}
@@ -1204,12 +1247,12 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <ShieldCheck size={18} className="text-slate-700" />
+              <ShieldCheck size={18} className="text-slate-900" />
               <span className="text-xs font-bold text-slate-900">Trust & Identity (KYC)</span>
             </div>
             <div className="flex items-center gap-2">
-              {isVerifiedKYC && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Verified</span>}
-              <ChevronRight size={15} className="text-slate-400" />
+              {isVerifiedKYC && <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">Verified</span>}
+              <ChevronRight size={15} className="text-slate-600" />
             </div>
           </button>
 
@@ -1218,10 +1261,13 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <CreditCard size={18} className="text-slate-700" />
-              <span className="text-xs font-bold text-slate-900">Payment Methods</span>
+              <CreditCard size={18} className="text-slate-900" />
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">Payment Methods</span>
+                <span className="text-[11px] text-slate-700 font-medium">How you pay into circles</span>
+              </div>
             </div>
-            <ChevronRight size={15} className="text-slate-400" />
+            <ChevronRight size={15} className="text-slate-600" />
           </button>
 
           <button
@@ -1229,10 +1275,13 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <Wallet size={18} className="text-slate-700" />
-              <span className="text-xs font-bold text-slate-900">Withdrawal Methods</span>
+              <Wallet size={18} className="text-slate-900" />
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">Withdrawal Methods</span>
+                <span className="text-[11px] text-slate-700 font-medium">Where your lump sum pot goes</span>
+              </div>
             </div>
-            <ChevronRight size={15} className="text-slate-400" />
+            <ChevronRight size={15} className="text-slate-600" />
           </button>
 
         </div>
@@ -1245,10 +1294,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <FileText size={18} className="text-slate-700" />
+              <FileText size={18} className="text-slate-900" />
               <span className="text-xs font-bold text-slate-900">Request Statement</span>
             </div>
-            <ChevronRight size={15} className="text-slate-400" />
+            <ChevronRight size={15} className="text-slate-600" />
           </button>
 
           <button
@@ -1256,10 +1305,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <ArrowDownLeft size={18} className="text-slate-700" />
+              <ArrowDownLeft size={18} className="text-slate-900" />
               <span className="text-xs font-bold text-slate-900">All Transactions</span>
             </div>
-            <ChevronRight size={15} className="text-slate-400" />
+            <ChevronRight size={15} className="text-slate-600" />
           </button>
 
         </div>
@@ -1272,10 +1321,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <SettingsIcon size={18} className="text-slate-700" />
+              <SettingsIcon size={18} className="text-slate-900" />
               <span className="text-xs font-bold text-slate-900">Settings</span>
             </div>
-            <ChevronRight size={15} className="text-slate-400" />
+            <ChevronRight size={15} className="text-slate-600" />
           </button>
 
           <button
@@ -1283,10 +1332,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <BookOpen size={18} className="text-slate-700" />
+              <BookOpen size={18} className="text-slate-900" />
               <span className="text-xs font-bold text-slate-900">Legal</span>
             </div>
-            <ChevronRight size={15} className="text-slate-400" />
+            <ChevronRight size={15} className="text-slate-600" />
           </button>
 
           <button
@@ -1294,10 +1343,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <Info size={18} className="text-slate-700" />
+              <Info size={18} className="text-slate-900" />
               <span className="text-xs font-bold text-slate-900">Get Help</span>
             </div>
-            <ChevronRight size={15} className="text-slate-400" />
+            <ChevronRight size={15} className="text-slate-600" />
           </button>
 
           <button
@@ -1305,15 +1354,15 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-3.5">
-              <Phone size={18} className="text-slate-700" />
-              <span className="text-xs font-bold text-slate-900">Contact Us</span>
+              <Phone size={18} className="text-slate-900" />
+              <span className="text-xs font-bold text-slate-900">Contact Us (0599360626)</span>
             </div>
-            <ChevronRight size={15} className="text-slate-400" />
+            <ChevronRight size={15} className="text-slate-600" />
           </button>
 
         </div>
 
-        {/* Section 4: Sign Out (Screenshot 2 red text style) */}
+        {/* Section 4: Sign Out */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs">
           <button
             onClick={logout}

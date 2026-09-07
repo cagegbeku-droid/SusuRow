@@ -90,12 +90,12 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
   if (error || !group) {
     return (
-      <div className="dark-card rounded-3xl p-8 text-center space-y-3 max-w-md mx-auto">
+      <div className="bg-white border border-slate-200 shadow-sm rounded-3xl p-8 text-center space-y-3 max-w-md mx-auto">
         <AlertCircle className="w-8 h-8 text-red-500 mx-auto" />
-        <h3 className="text-base font-bold text-white">{error || 'Group not found'}</h3>
+        <h3 className="text-base font-bold text-slate-900">{error || 'Group not found'}</h3>
         <button
           onClick={onBack}
-          className="px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl cursor-pointer"
+          className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl cursor-pointer shadow-xs active:scale-95"
         >
           Back to Groups
         </button>
