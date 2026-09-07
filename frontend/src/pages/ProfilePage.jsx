@@ -13,6 +13,7 @@ import {
   CreditCard, 
   Lock, 
   ChevronRight, 
+  ChevronDown,
   HelpCircle,
   Bell,
   Wallet,
@@ -111,6 +112,38 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   // Form States
   // Form States & Saved Confirmation tracking (shows done state until user edits)
   const [kycSaved, setKycSaved] = useState(false);
+  const [openKycSections, setOpenKycSections] = useState({
+    personal: false,
+    identity: false,
+    kin: false,
+    momo: false
+  });
+  const [kycErrors, setKycErrors] = useState({});
+
+  const toggleKycSection = (key) => {
+    setOpenKycSections(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const validateGhanaPhone = (num) => {
+    if (!num) return 'Phone number is required.';
+    const clean = num.replace(/[^\d]/g, '');
+    if (!clean.startsWith('0')) return 'Must start with 0 (e.g. 0000000000)';
+    if (clean.length !== 10) return `Must be exactly 10 digits (currently ${clean.length})`;
+    return null;
+  };
+
+  const validateGhanaCard = (card) => {
+    if (!card) return 'Ghana Card number is required.';
+    const clean = card.trim().toUpperCase();
+    if (!/^GHA-\d{9}-\d$/.test(clean)) {
+      return 'Invalid Ghana Card number. Format must be GHA-000000000-0';
+    }
+    return null;
+  };
+
   const [paymentWalletSaved, setPaymentWalletSaved] = useState(false);
   const [withdrawalWalletSaved, setWithdrawalWalletSaved] = useState(false);
   const [autoDebitEnabled, setAutoDebitEnabled] = useState(user?.auto_debit_enabled || false);
@@ -206,6 +239,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
   // Handle phone change: auto detect network, auto resolve MoMo name, auto set as payment & withdrawal method
   const handlePhoneInputChange = async (newPhone) => {
+    setKycSaved(false);
     setPaymentWalletSaved(false);
     setWithdrawalWalletSaved(false);
     let clean = newPhone.replace(/[^\d]/g, '');
@@ -232,16 +266,35 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       primary_wallet_provider: detectedProvider
     }));
 
-    // If 10 digits, auto resolve the registered MoMo subscriber name
-    if (clean.length === 10) {
+    // Live validation feedback
+    if (clean.length > 0 && clean.length < 10) {
+      setKycErrors(prev => ({
+        ...prev,
+        personal_phone: !clean.startsWith('0') 
+          ? 'Must start with 0 (e.g. 0000000000)'
+          : `Must be 10 digits (currently ${clean.length})`
+      }));
+    } else if (clean.length === 10) {
+      if (!clean.startsWith('0')) {
+        setKycErrors(prev => ({ ...prev, personal_phone: 'Must start with 0 (e.g. 0000000000)' }));
+      } else {
+        setKycErrors(prev => {
+          const next = { ...prev };
+          delete next.personal_phone;
+          return next;
+        });
+      }
+      // If 10 digits, auto resolve the registered MoMo subscriber name
       const resolvedName = await handleResolveMoMo(newPhone, detectedProvider);
       if (resolvedName && (!personalForm.full_name || personalForm.full_name.startsWith('Saver '))) {
         setPersonalForm(prev => ({ ...prev, full_name: resolvedName }));
       }
+    } else if (clean.length > 10) {
+      setKycErrors(prev => ({ ...prev, personal_phone: 'Phone number cannot exceed 10 digits' }));
     }
   };
 
-  // Automatic Ghana Card Hyphenation: GHA-XXXXXXXXX-X
+  // Automatic Ghana Card Hyphenation: GHA-XXXXXXXXX-X with live format check
   const handleGhanaCardChange = (e) => {
     setKycSaved(false);
     let val = e.target.value.toUpperCase();
@@ -249,6 +302,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     
     if (!clean) {
       setKycForm(prev => ({ ...prev, ghana_card_number: '' }));
+      setKycErrors(prev => ({ ...prev, ghana_card: 'Ghana Card number is required' }));
       return;
     }
 
@@ -270,6 +324,46 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     }
 
     setKycForm(prev => ({ ...prev, ghana_card_number: formatted }));
+
+    if (formatted.length === 15) {
+      if (/^GHA-\d{9}-\d$/.test(formatted)) {
+        setKycErrors(prev => {
+          const next = { ...prev };
+          delete next.ghana_card;
+          return next;
+        });
+      } else {
+        setKycErrors(prev => ({ ...prev, ghana_card: 'Invalid format. Must be GHA-000000000-0' }));
+      }
+    } else if (formatted.length > 3) {
+      setKycErrors(prev => ({ ...prev, ghana_card: 'Incomplete Ghana Card (must be GHA-000000000-0)' }));
+    }
+  };
+
+  const handleKinPhoneChange = (val) => {
+    setKycSaved(false);
+    setKycForm(prev => ({ ...prev, next_of_kin_phone: val }));
+    const clean = val.replace(/[^\d]/g, '');
+    if (clean.length > 0 && clean.length < 10) {
+      setKycErrors(prev => ({
+        ...prev,
+        kin_phone: !clean.startsWith('0')
+          ? 'Must start with 0 (e.g. 0000000000)'
+          : `Must be 10 digits (currently ${clean.length})`
+      }));
+    } else if (clean.length === 10) {
+      if (!clean.startsWith('0')) {
+        setKycErrors(prev => ({ ...prev, kin_phone: 'Must start with 0 (e.g. 0000000000)' }));
+      } else {
+        setKycErrors(prev => {
+          const next = { ...prev };
+          delete next.kin_phone;
+          return next;
+        });
+      }
+    } else if (clean.length > 10) {
+      setKycErrors(prev => ({ ...prev, kin_phone: 'Phone number cannot exceed 10 digits' }));
+    }
   };
 
   const handleSaveAutoDebit = async (e) => {
@@ -347,30 +441,87 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     }
   };
 
-  const handleSubmitKYC = async (e) => {
-    e.preventDefault();
-    if (!kycForm.ghana_card_number.trim()) {
-      setErrorMsg('Please enter your Ghana Card Number (GHA-XXXXXXXXX-X).');
-      return;
+  const handleSubmitAllKyc = async (e) => {
+    if (e) e.preventDefault();
+    setErrorMsg(null);
+    const errors = {};
+
+    if (!personalForm.full_name?.trim()) {
+      errors.full_name = 'Full Legal Name is required.';
     }
-    if (!kycForm.next_of_kin_name.trim() || !kycForm.next_of_kin_phone.trim()) {
-      setErrorMsg('Emergency Contact (Next of Kin) name and phone are compulsory.');
+
+    const personalPhoneErr = validateGhanaPhone(personalForm.phone_number);
+    if (personalPhoneErr) {
+      errors.personal_phone = personalPhoneErr;
+    }
+
+    const cardErr = validateGhanaCard(kycForm.ghana_card_number);
+    if (cardErr) {
+      errors.ghana_card = cardErr;
+    }
+
+    if (!kycForm.next_of_kin_name?.trim()) {
+      errors.kin_name = 'Emergency Contact full name is required.';
+    }
+
+    const kinPhoneErr = validateGhanaPhone(kycForm.next_of_kin_phone);
+    if (kinPhoneErr) {
+      errors.kin_phone = kinPhoneErr;
+    }
+
+    setKycErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setOpenKycSections(prev => ({
+        ...prev,
+        personal: Boolean(errors.full_name || errors.personal_phone) || prev.personal,
+        identity: Boolean(errors.ghana_card) || prev.identity,
+        kin: Boolean(errors.kin_name || errors.kin_phone) || prev.kin,
+      }));
+      setErrorMsg('Please correct the highlighted errors before saving.');
       return;
     }
 
     setLoading(true);
-    setErrorMsg(null);
     try {
-      await submitKYC(kycForm);
+      const cleanPersonalPhone = personalForm.phone_number.replace(/[^\d]/g, '');
+      const cleanKinPhone = kycForm.next_of_kin_phone.replace(/[^\d]/g, '');
+      const cleanCard = kycForm.ghana_card_number.trim().toUpperCase();
+
+      await updateProfile({
+        full_name: personalForm.full_name.trim(),
+        phone_number: cleanPersonalPhone,
+        momo_provider: personalForm.momo_provider,
+        email: personalForm.email
+      });
+
+      await configureWallets({
+        primary_wallet_provider: personalForm.momo_provider,
+        primary_wallet_number: cleanPersonalPhone
+      });
+
+      await submitKYC({
+        ghana_card_number: cleanCard,
+        next_of_kin_name: kycForm.next_of_kin_name.trim(),
+        next_of_kin_phone: cleanKinPhone,
+        next_of_kin_relation: kycForm.next_of_kin_relation,
+        full_name: personalForm.full_name.trim(),
+        phone_number: cleanPersonalPhone,
+        momo_provider: personalForm.momo_provider
+      });
+
       await refreshProfile();
       setKycSaved(true);
-      triggerSuccess('Ghana Card KYC submitted and approved successfully!');
+      triggerSuccess('Verification saved and submitted successfully!');
     } catch (err) {
+      console.error(err);
       setErrorMsg(err.response?.data?.detail || 'KYC submission failed.');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSubmitKYC = handleSubmitAllKyc;
 
   const handleWalletsSubmit = async (e) => {
     e.preventDefault();
@@ -875,11 +1026,30 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   }
 
   // ==========================================
-  // SUBPAGE 4: TRUST & IDENTITY (KYC - Clean without signature)
+  // SUBPAGE 4: TRUST & IDENTITY (KYC - Interactive Accordion)
   // ==========================================
   if (activeSubpage === 'kyc') {
+    const isPersonalInfoComplete = Boolean(
+      personalForm.full_name?.trim() && 
+      personalForm.phone_number && 
+      !validateGhanaPhone(personalForm.phone_number)
+    );
+
+    const isIdentityComplete = Boolean(
+      kycForm.ghana_card_number && 
+      !validateGhanaCard(kycForm.ghana_card_number)
+    );
+
+    const isKinComplete = Boolean(
+      kycForm.next_of_kin_name?.trim() && 
+      kycForm.next_of_kin_phone && 
+      !validateGhanaPhone(kycForm.next_of_kin_phone)
+    );
+
+    const isMoMoComplete = Boolean(resolvedAccountName || user.momo_account_name);
+
     return (
-      <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+      <div className="max-w-md mx-auto py-4 px-4 space-y-5 animate-in fade-in duration-150 pb-20">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setActiveSubpage(null)}
@@ -887,174 +1057,497 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           >
             <ArrowLeft size={16} />
           </button>
-          <h2 className="text-lg font-bold text-slate-900">KYC Verification</h2>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">KYC Verification</h2>
+            <p className="text-xs text-slate-600">Set up and verify all identity details</p>
+          </div>
         </div>
 
-        {/* Approved Banner if verified */}
+        {/* Status Banner */}
         {isVerifiedKYC ? (
-          <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center space-y-3 shadow-xs">
-            <div className="w-16 h-16 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-md">
-              <Check size={32} className="stroke-[3]" />
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center space-y-2.5 shadow-xs">
+            <div className="w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-md">
+              <Check size={28} className="stroke-[3]" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-slate-900">Approved</h3>
-              <p className="text-xs text-slate-600 mt-0.5">Your account is verified with Ghana Card & Telecom MoMo</p>
+              <h3 className="text-base font-bold text-slate-900">Account Approved & Verified</h3>
+              <p className="text-xs text-slate-600 mt-0.5">Your Ghana Card and Telecom MoMo details are fully verified</p>
             </div>
           </div>
         ) : (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-            <AlertCircle size={20} className="text-amber-700 shrink-0" />
-            <div className="text-xs text-amber-900 font-bold">
-              Complete your Ghana Card verification to participate in rotating pot payouts.
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+            <AlertCircle size={18} className="text-amber-700 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-900 leading-relaxed font-medium">
+              Click each section below to set up your information. You can save or submit all four sections at once.
             </div>
           </div>
         )}
 
-        {/* Status Rows with Checkmarks */}
-        <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 shadow-xs">
-          
-          <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <User size={16} className="text-slate-700" />
-              <span className="text-xs font-bold text-slate-900">Personal Information</span>
-            </div>
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${user.full_name ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
-              <Check size={12} className="stroke-[3]" />
-            </div>
+        {/* Global Error Banner */}
+        {errorMsg && (
+          <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold text-rose-800 flex items-center gap-2 animate-in fade-in">
+            <AlertCircle size={16} className="shrink-0 text-rose-600" />
+            <span>{errorMsg}</span>
           </div>
+        )}
 
-          <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <ShieldCheck size={16} className="text-slate-700" />
-              <div>
-                <span className="text-xs font-bold text-slate-900 block">Identity Verification</span>
-                <span className="text-xs font-mono text-slate-700">{user.ghana_card_number || 'GHA-XXXXXXXXX-X'}</span>
+        {/* 4 Interactive Accordion Sections */}
+        <div className="space-y-3">
+
+          {/* ITEM 1: Personal Information */}
+          <div className={`bg-white rounded-2xl border transition-all duration-200 shadow-xs overflow-hidden ${
+            kycErrors.personal_phone || kycErrors.full_name ? 'border-rose-300 ring-1 ring-rose-200' : 'border-slate-200'
+          }`}>
+            <button
+              type="button"
+              onClick={() => toggleKycSection('personal')}
+              className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50/70 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                  <User size={16} />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">Personal Information</span>
+                  <span className="text-[11px] text-slate-600 block truncate max-w-[200px]">
+                    {personalForm.full_name ? `${personalForm.full_name} • ${personalForm.phone_number || ''}` : 'Click to set up legal name & phone'}
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isVerifiedKYC ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
-              <Check size={12} className="stroke-[3]" />
-            </div>
-          </div>
 
-          <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Users size={16} className="text-slate-700" />
-              <span className="text-xs font-bold text-slate-900">Emergency Contact (Next of Kin)</span>
-            </div>
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center ${user.next_of_kin_name ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'}`}>
-              <Check size={12} className="stroke-[3]" />
-            </div>
-          </div>
-
-          <div className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Smartphone size={16} className="text-slate-700" />
-              <div>
-                <span className="text-xs font-bold text-slate-900 block">MoMo Name Match</span>
-                <span className="text-xs text-slate-700">
-                  {resolvedAccountName ? `Verified: ${resolvedAccountName}` : 'Auto-confirmed via Telecom'}
-                </span>
+              <div className="flex items-center gap-2">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                  isPersonalInfoComplete ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'
+                }`}>
+                  <Check size={12} className="stroke-[3]" />
+                </div>
+                <ChevronDown
+                  size={16}
+                  className={`text-slate-500 transform transition-transform duration-200 ${
+                    openKycSections.personal ? 'rotate-180' : ''
+                  }`}
+                />
               </div>
-            </div>
-            <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
-              <Check size={12} className="stroke-[3]" />
-            </div>
+            </button>
+
+            {openKycSections.personal && (
+              <div className="p-4 pt-2 border-t border-slate-100 space-y-3 bg-slate-50/30">
+                <div>
+                  <label className="block text-xs font-bold text-slate-900 mb-1">
+                    Full Legal Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Kwame Mensah"
+                    value={personalForm.full_name}
+                    onChange={(e) => {
+                      setKycSaved(false);
+                      setPersonalForm({ ...personalForm, full_name: e.target.value });
+                      if (e.target.value.trim()) {
+                        setKycErrors(prev => {
+                          const next = { ...prev };
+                          delete next.full_name;
+                          return next;
+                        });
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!personalForm.full_name.trim()) {
+                        setKycErrors(prev => ({ ...prev, full_name: 'Full Legal Name is required.' }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-900 border transition-all ${
+                      kycErrors.full_name 
+                        ? 'border-rose-500 bg-rose-50/20 text-rose-950 focus:ring-rose-500' 
+                        : 'border-slate-200 bg-white focus:ring-sky-500'
+                    }`}
+                  />
+                  {kycErrors.full_name && (
+                    <p className="text-[11px] text-rose-600 font-bold flex items-center gap-1 mt-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{kycErrors.full_name}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-900 mb-1">
+                    Mobile Money Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="0000000000"
+                    value={personalForm.phone_number}
+                    onChange={(e) => handlePhoneInputChange(e.target.value)}
+                    onBlur={() => {
+                      const err = validateGhanaPhone(personalForm.phone_number);
+                      if (err) {
+                        setKycErrors(prev => ({ ...prev, personal_phone: err }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-900 border transition-all ${
+                      kycErrors.personal_phone 
+                        ? 'border-rose-500 bg-rose-50/20 text-rose-950 focus:ring-rose-500' 
+                        : 'border-slate-200 bg-white focus:ring-sky-500'
+                    }`}
+                  />
+                  {kycErrors.personal_phone ? (
+                    <p className="text-[11px] text-rose-600 font-bold flex items-center gap-1 mt-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{kycErrors.personal_phone}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Enter 10 digits starting with 0 (e.g. 0000000000).
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-900 mb-1">
+                    Network Provider
+                  </label>
+                  <select
+                    value={personalForm.momo_provider}
+                    onChange={(e) => {
+                      setKycSaved(false);
+                      setPersonalForm({ ...personalForm, momo_provider: e.target.value });
+                    }}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900"
+                  >
+                    <option value="MTN">MTN Mobile Money (*170#)</option>
+                    <option value="TELECEL">Telecel Cash (*110#)</option>
+                    <option value="AT">AT Money (*110#)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ITEM 2: Identity Verification (Ghana Card) */}
+          <div className={`bg-white rounded-2xl border transition-all duration-200 shadow-xs overflow-hidden ${
+            kycErrors.ghana_card ? 'border-rose-300 ring-1 ring-rose-200' : 'border-slate-200'
+          }`}>
+            <button
+              type="button"
+              onClick={() => toggleKycSection('identity')}
+              className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50/70 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                  <ShieldCheck size={16} />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">Identity Verification</span>
+                  <span className="text-[11px] font-mono text-slate-600 block">
+                    {kycForm.ghana_card_number || 'GHA-000000000-0'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                  isIdentityComplete ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'
+                }`}>
+                  <Check size={12} className="stroke-[3]" />
+                </div>
+                <ChevronDown
+                  size={16}
+                  className={`text-slate-500 transform transition-transform duration-200 ${
+                    openKycSections.identity ? 'rotate-180' : ''
+                  }`}
+                />
+              </div>
+            </button>
+
+            {openKycSections.identity && (
+              <div className="p-4 pt-2 border-t border-slate-100 space-y-3 bg-slate-50/30">
+                <div>
+                  <label className="block text-xs font-bold text-slate-900 mb-1">
+                    Ghana Card Number
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="GHA-000000000-0"
+                    maxLength={15}
+                    value={kycForm.ghana_card_number}
+                    onChange={handleGhanaCardChange}
+                    onBlur={() => {
+                      const err = validateGhanaCard(kycForm.ghana_card_number);
+                      if (err) {
+                        setKycErrors(prev => ({ ...prev, ghana_card: err }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold tracking-wider text-slate-900 border transition-all ${
+                      kycErrors.ghana_card 
+                        ? 'border-rose-500 bg-rose-50/20 text-rose-950 focus:ring-rose-500' 
+                        : 'border-slate-200 bg-white focus:ring-sky-500'
+                    }`}
+                  />
+                  {kycErrors.ghana_card ? (
+                    <p className="text-[11px] text-rose-600 font-bold flex items-center gap-1 mt-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{kycErrors.ghana_card}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Format: GHA-000000000-0 (auto-formatted as you type).
+                    </p>
+                  )}
+                </div>
+
+                <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                  💡 Identity verification ensures trust and fairness in every Susu circle payout.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* ITEM 3: Emergency Contact (Next of Kin) */}
+          <div className={`bg-white rounded-2xl border transition-all duration-200 shadow-xs overflow-hidden ${
+            kycErrors.kin_phone || kycErrors.kin_name ? 'border-rose-300 ring-1 ring-rose-200' : 'border-slate-200'
+          }`}>
+            <button
+              type="button"
+              onClick={() => toggleKycSection('kin')}
+              className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50/70 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                  <Users size={16} />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">Emergency Contact (Next of Kin)</span>
+                  <span className="text-[11px] text-slate-600 block truncate max-w-[200px]">
+                    {kycForm.next_of_kin_name ? `${kycForm.next_of_kin_name} (${kycForm.next_of_kin_relation})` : 'Click to set up backup contact person'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                  isKinComplete ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'
+                }`}>
+                  <Check size={12} className="stroke-[3]" />
+                </div>
+                <ChevronDown
+                  size={16}
+                  className={`text-slate-500 transform transition-transform duration-200 ${
+                    openKycSections.kin ? 'rotate-180' : ''
+                  }`}
+                />
+              </div>
+            </button>
+
+            {openKycSections.kin && (
+              <div className="p-4 pt-2 border-t border-slate-100 space-y-3 bg-slate-50/30">
+                <div>
+                  <label className="block text-xs font-bold text-slate-900 mb-1">
+                    Emergency Contact Full Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Full Legal Name"
+                    value={kycForm.next_of_kin_name}
+                    onChange={(e) => {
+                      setKycSaved(false);
+                      setKycForm({ ...kycForm, next_of_kin_name: e.target.value });
+                      if (e.target.value.trim()) {
+                        setKycErrors(prev => {
+                          const next = { ...prev };
+                          delete next.kin_name;
+                          return next;
+                        });
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!kycForm.next_of_kin_name.trim()) {
+                        setKycErrors(prev => ({ ...prev, kin_name: 'Emergency Contact name is required.' }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-bold text-slate-900 border transition-all ${
+                      kycErrors.kin_name 
+                        ? 'border-rose-500 bg-rose-50/20 text-rose-950 focus:ring-rose-500' 
+                        : 'border-slate-200 bg-white focus:ring-sky-500'
+                    }`}
+                  />
+                  {kycErrors.kin_name && (
+                    <p className="text-[11px] text-rose-600 font-bold flex items-center gap-1 mt-1">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{kycErrors.kin_name}</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-900 mb-1">
+                      Contact Phone
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="0000000000"
+                      value={kycForm.next_of_kin_phone}
+                      onChange={(e) => handleKinPhoneChange(e.target.value)}
+                      onBlur={() => {
+                        const err = validateGhanaPhone(kycForm.next_of_kin_phone);
+                        if (err) {
+                          setKycErrors(prev => ({ ...prev, kin_phone: err }));
+                        }
+                      }}
+                      className={`w-full px-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-900 border transition-all ${
+                        kycErrors.kin_phone 
+                          ? 'border-rose-500 bg-rose-50/20 text-rose-950 focus:ring-rose-500' 
+                          : 'border-slate-200 bg-white focus:ring-sky-500'
+                      }`}
+                    />
+                    {kycErrors.kin_phone ? (
+                      <p className="text-[11px] text-rose-600 font-bold flex items-center gap-1 mt-1">
+                        <AlertCircle size={13} className="shrink-0" />
+                        <span>{kycErrors.kin_phone}</span>
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-slate-500 mt-1">
+                        10 digits (e.g. 0000000000)
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-900 mb-1">
+                      Relationship
+                    </label>
+                    <select
+                      value={kycForm.next_of_kin_relation}
+                      onChange={(e) => {
+                        setKycSaved(false);
+                        setKycForm({ ...kycForm, next_of_kin_relation: e.target.value });
+                      }}
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-900"
+                    >
+                      <option value="Spouse">Spouse</option>
+                      <option value="Sibling">Sibling</option>
+                      <option value="Parent">Parent</option>
+                      <option value="Child">Child</option>
+                      <option value="Relative">Relative</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ITEM 4: MoMo Name Match */}
+          <div className="bg-white rounded-2xl border border-slate-200 transition-all duration-200 shadow-xs overflow-hidden">
+            <button
+              type="button"
+              onClick={() => toggleKycSection('momo')}
+              className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50/70 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                  <Smartphone size={16} />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-900 block">MoMo Name Match</span>
+                  <span className="text-[11px] text-slate-600 block">
+                    {resolvedAccountName ? `Verified: ${resolvedAccountName}` : 'Auto-confirmed via Telecom'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                  isMoMoComplete ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'
+                }`}>
+                  <Check size={12} className="stroke-[3]" />
+                </div>
+                <ChevronDown
+                  size={16}
+                  className={`text-slate-500 transform transition-transform duration-200 ${
+                    openKycSections.momo ? 'rotate-180' : ''
+                  }`}
+                />
+              </div>
+            </button>
+
+            {openKycSections.momo && (
+              <div className="p-4 pt-2 border-t border-slate-100 space-y-3 bg-slate-50/30">
+                <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-medium">Registered Number</span>
+                    <span className="font-mono font-bold text-slate-900">
+                      {personalForm.phone_number || user.phone_number || 'None'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-medium">Provider</span>
+                    <span className="font-bold text-slate-900">
+                      {personalForm.momo_provider || user.momo_provider || 'MTN'}
+                    </span>
+                  </div>
+                </div>
+
+                {resolvedAccountName ? (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-bold text-emerald-800">
+                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                    <span>Registered MoMo Name: {resolvedAccountName} ✓</span>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-xs font-bold text-amber-800">
+                    <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                    <span>MoMo account name confirmation in progress</span>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  disabled={momoResolving}
+                  onClick={() => handleResolveMoMo(personalForm.phone_number || user.phone_number, personalForm.momo_provider || 'MTN')}
+                  className="w-full py-2 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <RefreshCw size={14} className={momoResolving ? 'animate-spin' : ''} />
+                  <span>{momoResolving ? 'Checking with Telecom Network...' : 'Re-check MoMo Name'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
         </div>
 
-        {/* KYC Form with Automatic Hyphenation (NO SIGNATURE) */}
-        <form onSubmit={handleSubmitKYC} className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-xs">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            {isVerifiedKYC ? 'Update Ghana Card & Emergency Contact' : 'Submit Ghana Card & Emergency Contact'}
-          </h3>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-900 mb-1">
-              Ghana Card Number
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="GHA-000000000-0"
-              value={kycForm.ghana_card_number}
-              onChange={handleGhanaCardChange}
-              maxLength={15}
-              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900 tracking-wider"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-900 mb-1">Emergency Contact Full Name</label>
-            <input
-              type="text"
-              required
-              placeholder="Full Legal Name"
-              value={kycForm.next_of_kin_name}
-              onChange={(e) => {
-                setKycSaved(false);
-                setKycForm({ ...kycForm, next_of_kin_name: e.target.value });
-              }}
-              className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-900 mb-1">Contact Phone</label>
-              <input
-                type="tel"
-                required
-                placeholder="0000000000"
-                value={kycForm.next_of_kin_phone}
-                onChange={(e) => {
-                  setKycSaved(false);
-                  setKycForm({ ...kycForm, next_of_kin_phone: e.target.value });
-                }}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-900 mb-1">Relationship</label>
-              <select
-                value={kycForm.next_of_kin_relation}
-                onChange={(e) => {
-                  setKycSaved(false);
-                  setKycForm({ ...kycForm, next_of_kin_relation: e.target.value });
-                }}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
-              >
-                <option value="Spouse">Spouse</option>
-                <option value="Sibling">Sibling</option>
-                <option value="Parent">Parent</option>
-                <option value="Child">Child</option>
-                <option value="Relative">Relative</option>
-              </select>
-            </div>
-          </div>
-
+        {/* UNIFIED SUBMISSION BUTTON */}
+        <div className="pt-2">
           {kycSaved ? (
-            <div className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2">
+            <div className="w-full py-3 bg-emerald-600 text-white font-bold text-xs rounded-2xl shadow-xs flex items-center justify-center gap-2">
               <CheckCircle2 size={16} className="text-white" />
               <span>✓ Verification Submitted & Saved</span>
             </div>
           ) : (
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmitAllKyc}
               disabled={loading}
-              className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-md cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Submitting...</span>
+                  <span>Saving & Submitting...</span>
                 </>
               ) : (
-                <span>Submit Verification</span>
+                <>
+                  <ShieldCheck size={16} className="text-white" />
+                  <span>{isVerifiedKYC ? 'Update & Save Verification' : 'Save & Submit KYC Verification'}</span>
+                </>
               )}
             </button>
           )}
-        </form>
+        </div>
       </div>
     );
   }

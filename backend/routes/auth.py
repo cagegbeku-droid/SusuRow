@@ -393,6 +393,16 @@ def submit_kyc(
     current_user.next_of_kin_name = payload.next_of_kin_name.strip()
     current_user.next_of_kin_phone = payload.next_of_kin_phone.strip()
     current_user.next_of_kin_relation = payload.next_of_kin_relation.strip()
+
+    if payload.full_name and payload.full_name.strip():
+        current_user.full_name = payload.full_name.strip()
+    if payload.phone_number and payload.phone_number.strip():
+        clean_p = sanitize_ghana_phone(payload.phone_number)
+        current_user.phone_number = clean_p
+        current_user.primary_wallet_number = clean_p
+    if payload.momo_provider:
+        current_user.momo_provider = payload.momo_provider
+        current_user.primary_wallet_provider = payload.momo_provider
     
     if payload.employment_status:
         current_user.employment_status = payload.employment_status

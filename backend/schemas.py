@@ -158,8 +158,11 @@ class UpdateProfileRequest(BaseModel):
 class KYCSubmitRequest(BaseModel):
     ghana_card_number: str = Field(..., description="Format: GHA-XXXXXXXXX-X")
     next_of_kin_name: str = Field(..., min_length=2)
-    next_of_kin_phone: str = Field(..., min_length=10)
+    next_of_kin_phone: str = Field(...)
     next_of_kin_relation: str = Field("Spouse/Sibling/Parent", min_length=2)
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    momo_provider: Optional[str] = None
     employment_status: Optional[str] = "Employed"
     savings_goal: Optional[str] = None
     signature_data: Optional[str] = None # Base64 signature image
@@ -169,9 +172,16 @@ class KYCSubmitRequest(BaseModel):
     def validate_ghana_card(cls, v: str) -> str:
         clean = v.strip().upper()
         if not re.match(r"^GHA-\d{9}-\d$", clean):
-            # Also accept loose format GHA-XXXXXXXXX-X
             if not clean.startswith("GHA-") or len(clean) < 14:
-                raise ValueError("Invalid Ghana Card format. Must be GHA-XXXXXXXXX-X (e.g. GHA-712345678-9)")
+                raise ValueError("Invalid Ghana Card number. Format must be GHA-XXXXXXXXX-X (e.g. GHA-000000000-0)")
+        return clean
+
+    @field_validator("next_of_kin_phone")
+    @classmethod
+    def validate_kin_phone(cls, v: str) -> str:
+        clean = v.replace("+233", "0").replace(" ", "").replace("-", "").strip()
+        if not re.match(r"^0\d{9}$", clean):
+            raise ValueError("Invalid emergency contact phone number. Must be a 10-digit mobile number (e.g. 0000000000)")
         return clean
 
 
