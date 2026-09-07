@@ -69,7 +69,7 @@ export const JoinCodeModal = ({ isOpen, onClose, onCircleFound }) => {
             <input
               type="text"
               required
-              placeholder="e.g. ACCRA5"
+              placeholder="SUSU-0000"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               className="w-full py-3 text-center tracking-[0.25em] text-xl font-black font-mono rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 uppercase placeholder-slate-400"

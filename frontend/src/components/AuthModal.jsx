@@ -182,7 +182,7 @@ export default function AuthModal({ isOpen, onClose }) {
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
     if (!phoneNumber || phoneNumber.length < 9) {
-      setError('Please enter a valid Ghana phone number (e.g. 0599360626).');
+      setError('Please enter a valid Ghana phone number (e.g. 0000000000).');
       return;
     }
     setError(null);

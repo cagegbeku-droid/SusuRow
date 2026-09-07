@@ -18,11 +18,12 @@ async def send_round_due_reminders(db: Session, group_id: str = None) -> Dict[st
 
     for group in active_groups:
         unpaid_members = [m for m in group.members if not m.has_paid_current_round]
+        freq_label = (group.frequency or "ROUND").capitalize()
         for member in unpaid_members:
             message = (
-                f"SusuRow Alert: Your GH₵{group.contribution_amount:.0f} contribution "
+                f"SusuRow Reminder: Your {freq_label} contribution of GH₵{group.contribution_amount:.2f} "
                 f"for '{group.name}' (Round {group.current_round}) is due. "
-                f"Kindly open SusuRow to approve your MoMo payment."
+                f"Kindly open SusuRow to make your payment."
             )
             try:
                 res = await GhanaSMSService.send_sms_message(member.phone_number, message)

@@ -296,7 +296,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       return;
     }
     if (!personalForm.phone_number.trim() || personalForm.phone_number.replace(/[^\d]/g, '').length < 9) {
-      setErrorMsg('Valid 10-digit Ghanaian phone number is required (e.g. 0599360626).');
+      setErrorMsg('Valid 10-digit Ghanaian phone number is required (e.g. 0000000000).');
       return;
     }
 
@@ -671,7 +671,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               <label className="block text-xs font-bold text-slate-900 mb-1">Bank Name</label>
               <input
                 type="text"
-                placeholder="e.g. GCB, Ecobank, Absa"
+                placeholder="e.g. GCB Bank"
                 value={walletsForm.bank_name}
                 onChange={(e) => {
                   setWithdrawalWalletSaved(false);
@@ -810,7 +810,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             <input
               type="text"
               required
-              placeholder="GHA-712345678-9"
+              placeholder="GHA-000000000-0"
               value={kycForm.ghana_card_number}
               onChange={handleGhanaCardChange}
               maxLength={15}
@@ -839,7 +839,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               <input
                 type="tel"
                 required
-                placeholder="024 123 4567"
+                placeholder="0000000000"
                 value={kycForm.next_of_kin_phone}
                 onChange={(e) => {
                   setKycSaved(false);

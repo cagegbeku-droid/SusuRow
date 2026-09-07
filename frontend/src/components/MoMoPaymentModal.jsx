@@ -139,14 +139,14 @@ export const MoMoPaymentModal = ({
               const verifyRes = await verifyPayment(response.reference);
               if (verifyRes.status === 'SUCCESS' || verifyRes.status === 'success' || verifyRes.paid) {
                 setPaymentStatus('SUCCESS');
-                setStatusMessage('Payment verified and credited to group ledger!');
+                setStatusMessage('Payment verified and recorded successfully!');
                 setTimeout(() => {
                   if (onPaymentSuccess) onPaymentSuccess();
                   onClose();
                 }, 1500);
               } else {
                 setPaymentStatus('PROMPTED');
-                setStatusMessage('Authorization received! Updating ledger...');
+                setStatusMessage('Payment received! Updating status...');
               }
             } catch {
               setPaymentStatus('PROMPTED');
@@ -247,28 +247,28 @@ export const MoMoPaymentModal = ({
             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-900 text-xs space-y-1 text-center animate-in zoom-in-95">
               <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-600 mb-1" />
               <p className="font-bold text-sm text-slate-900">Payment Verified & Settled!</p>
-              <p className="text-xs text-slate-700 font-medium">Your contribution has been recorded in the group ledger.</p>
+              <p className="text-xs text-slate-700 font-medium">Your contribution has been recorded and confirmed.</p>
             </div>
           )}
 
-          {/* PROMPTED / WAITING SCREEN (Direct MoMo PIN Prompt) */}
+          {/* PROMPTED / WAITING SCREEN */}
           {paymentStatus === 'PROMPTED' && (
             <div className="p-4 bg-sky-50 rounded-2xl border border-sky-200 text-sky-900 text-xs space-y-3 text-center animate-in fade-in">
               <div className="relative w-9 h-9 mx-auto flex items-center justify-center">
                 <Clock className="w-8 h-8 text-sky-600 animate-pulse" />
               </div>
               <div>
-                <p className="font-bold text-slate-900 text-sm">Prompt Dispatched to {cleanPhone || phoneNumber}</p>
+                <p className="font-bold text-slate-900 text-sm">Payment Prompt Sent to {cleanPhone || phoneNumber}</p>
                 <p className="text-xs text-slate-700 mt-1 font-medium leading-relaxed">
-                  Please check your phone screen to enter your MoMo PIN to confirm charges of <strong className="font-mono text-slate-950">GH₵{totalCharged.toFixed(2)}</strong>.
+                  Please check your phone to approve the payment of <strong className="font-mono text-slate-950">GH₵{totalCharged.toFixed(2)}</strong>.
                 </p>
               </div>
 
-              {/* Offline USSD Approvals Instructions */}
+              {/* Offline Approvals Instructions */}
               <div className="p-3 bg-white/90 rounded-xl border border-sky-100 text-left text-[11px] text-slate-800 space-y-1.5 shadow-xs">
                 <div className="font-bold text-slate-900 flex items-center gap-1.5">
                   <Info size={13} className="text-sky-600 shrink-0" />
-                  <span>Didn't see the USSD pop-up on your screen?</span>
+                  <span>Didn't receive the prompt on your phone?</span>
                 </div>
                 {momoProvider === 'MTN' && (
                   <p className="text-slate-700 leading-relaxed font-medium">
@@ -412,12 +412,12 @@ export const MoMoPaymentModal = ({
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Sending MoMo Prompt to SIM...</span>
+                    <span>Processing Payment...</span>
                   </>
                 ) : (
                   <>
                     <Smartphone size={16} className="text-white" />
-                    <span>Send MoMo PIN Prompt (GH₵{totalCharged.toFixed(2)})</span>
+                    <span>Make Payment (GH₵{totalCharged.toFixed(2)})</span>
                   </>
                 )}
               </button>

@@ -131,7 +131,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Accra Market Traders, Tech Savers Club"
+                  placeholder="e.g. Family Savings, Friends Club"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold text-slate-900 placeholder-slate-400"
@@ -144,7 +144,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Briefly state the goal (e.g. Weekly savings for shop restocking)..."
+                  placeholder="Savings goal (e.g. Personal savings, emergency fund)..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs font-medium text-slate-900 placeholder-slate-400"
@@ -208,14 +208,14 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                     min={1}
                     max={50000}
                     step={1}
-                    placeholder="e.g. 1, 2, 5, 10, 50"
+                    placeholder="0"
                     value={contributionAmount}
                     onChange={(e) => setContributionAmount(e.target.value)}
                     className="w-full pl-12 pr-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono font-bold text-slate-900"
                   />
                 </div>
                 <p className="text-[11px] text-slate-600 mt-1 font-medium">
-                  Enter any whole number (e.g. 1, 2, 3...) — saved as GH₵{Number(contributionAmount || 0).toFixed(2)}
+                  Contribution amount — saved as GH₵{Number(contributionAmount || 0).toFixed(2)}
                 </p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {[1, 2, 5, 10, 20, 50, 100, 200].map((amt) => (
@@ -253,7 +253,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                       min={2}
                       max={100}
                       step={1}
-                      placeholder="e.g. 5"
+                      placeholder="0"
                       value={membersCount}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -358,7 +358,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                   step={10}
                   value={commitmentDeposit}
                   onChange={(e) => setCommitmentDeposit(Number(e.target.value))}
-                  placeholder="0 (No deposit)"
+                  placeholder="0"
                   className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono font-bold text-slate-900"
                 />
                 <p className="text-[10px] text-slate-600 mt-1 font-medium">
