@@ -1,4 +1,5 @@
 import uuid
+import json
 from datetime import datetime
 from sqlalchemy import (
     Column,
@@ -223,3 +224,12 @@ class MoMoWebhookLog(Base):
     event_type = Column(String(40), nullable=False)
     payload_json = Column(Text, nullable=False)
     processed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    @property
+    def payload(self) -> dict:
+        if not self.payload_json:
+            return {}
+        try:
+            return json.loads(self.payload_json)
+        except Exception:
+            return {}

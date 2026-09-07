@@ -202,3 +202,80 @@ def test_delete_group_rules(client):
     del_ok = client.delete(f"/api/groups/{empty_id}?phone_number=0245550001")
     assert del_ok.status_code == 200
     assert del_ok.json()["success"] == True
+
+def test_create_group_small_amounts_and_manual_members(client):
+    # Test entering whole amounts like 1, 2, 3... and custom member counts (e.g. 7)
+    res = client.post("/api/groups", json={
+        "name": "Micro Savers Group",
+        "contribution_amount": 1,
+        "frequency": "DAILY",
+        "members_count": 7,
+        "creator_phone": "0247770001",
+        "creator_name": "Micro Saver Leader",
+        "creator_momo_provider": "MTN"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["contribution_amount"] == 1.0
+    assert data["members_count"] == 7
+    assert data["total_pool"] == 7.0
+
+from unittest.mock import patch, AsyncMock
+
+def test_verify_transaction_settlement(client):
+    # 1. Create a group
+    res = client.post("/api/groups", json={
+        "name": "Verification Settlement Circle",
+        "contribution_amount": 2.0,
+        "frequency": "WEEKLY",
+        "members_count": 2,
+        "creator_phone": "0248880001",
+        "creator_name": "Settlement Leader",
+        "creator_momo_provider": "MTN"
+    })
+    group_id = res.json()["id"]
+    member_id = res.json()["members"][0]["id"]
+
+    # 2. Call initiate to log webhook event
+    with patch("services.paystack_service.GhanaMoMoGateway.charge_momo", new_callable=AsyncMock) as mock_charge:
+        mock_charge.return_value = {
+            "success": True,
+            "gateway": "PAYSTACK",
+            "status": "pending",
+            "requires_otp": False,
+            "reference": "TEST-REF-123456",
+            "ussd_prompt": "Authorize payment on your phone"
+        }
+        init_res = client.post("/api/payments/initiate", json={
+            "group_id": group_id,
+            "member_id": member_id,
+            "momo_provider": "MTN"
+        })
+        assert init_res.status_code == 200
+        ref = init_res.json()["transaction_reference"]
+
+    # 3. Call verify_transaction with that reference, mocking successful gateway response
+    with patch("services.paystack_service.GhanaMoMoGateway.verify_payment", new_callable=AsyncMock) as mock_verify:
+        mock_verify.return_value = {
+            "success": True,
+            "paid": True,
+            "data": {
+                "reference": ref,
+                "amount": 200,
+                "status": "success",
+                "customer": {"phone": "0248880001"}
+            }
+        }
+        verify_res = client.get(f"/api/payments/verify/{ref}")
+        assert verify_res.status_code == 200
+        assert verify_res.json()["status"] == "SUCCESS"
+        assert verify_res.json()["paid"] == True
+
+    # 4. Check group detail: member should now be marked as has_paid_current_round = True!
+    g_res = client.get(f"/api/groups/{group_id}")
+    assert g_res.status_code == 200
+    member = g_res.json()["members"][0]
+    assert member["has_paid_current_round"] == True
+    assert len(g_res.json()["payments"]) == 1
+    assert g_res.json()["payments"][0]["transaction_reference"] == ref
+

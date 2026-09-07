@@ -168,7 +168,8 @@ def create_group(payload: GroupCreate, db: Session = Depends(get_db)):
     while db.query(SusuGroup).filter(SusuGroup.invite_code == invite_code).first():
         invite_code = generate_invite_code()
 
-    total_pool = payload.contribution_amount * payload.members_count
+    contribution_amount = round(float(payload.contribution_amount), 2)
+    total_pool = round(contribution_amount * payload.members_count, 2)
     clean_creator_phone = payload.creator_phone.replace("+233", "0").replace(" ", "")
 
     group = SusuGroup(
@@ -176,7 +177,7 @@ def create_group(payload: GroupCreate, db: Session = Depends(get_db)):
         name=payload.name,
         description=payload.description,
         is_private=payload.is_private,
-        contribution_amount=payload.contribution_amount,
+        contribution_amount=contribution_amount,
         frequency=payload.frequency.upper(),
         members_count=payload.members_count,
         total_pool=total_pool,

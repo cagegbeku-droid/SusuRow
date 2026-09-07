@@ -56,7 +56,8 @@ class GhanaMoMoGateway:
         provider: str,
         email: str,
         reference: str,
-        description: str = "SusuRow Circle Contribution"
+        description: str = "SusuRow Circle Contribution",
+        extra_metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Sends real USSD Mobile Money debit prompt to user's phone.
@@ -72,6 +73,14 @@ class GhanaMoMoGateway:
                 paystack_provider = cls._map_paystack_provider(provider)
                 amount_in_pesewas = int(round(amount_ghs * 100))
 
+                metadata_dict = {
+                    "description": description,
+                    "phone_number": clean_phone,
+                    "provider": provider
+                }
+                if extra_metadata:
+                    metadata_dict.update(extra_metadata)
+
                 async with httpx.AsyncClient() as client:
                     payload = {
                         "amount": str(amount_in_pesewas),
@@ -82,11 +91,7 @@ class GhanaMoMoGateway:
                             "phone": clean_phone,
                             "provider": paystack_provider
                         },
-                        "metadata": {
-                            "description": description,
-                            "phone_number": clean_phone,
-                            "provider": provider
-                        }
+                        "metadata": metadata_dict
                     }
 
                     headers = {

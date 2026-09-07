@@ -1,6 +1,7 @@
 import uuid
+import json
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -51,7 +52,14 @@ async def initiate_payment(payload: PaymentInitiateRequest, db: Session = Depend
         provider=provider,
         email=f"{member.phone_number.replace('+', '')}@susurow.com",
         reference=reference,
-        description=f"SusuRow Round {group.current_round} - {group.name}"
+        description=f"SusuRow Round {group.current_round} - {group.name}",
+        extra_metadata={
+            "group_id": group.id,
+            "member_id": member.id,
+            "phone_number": member.phone_number,
+            "round_number": group.current_round,
+            "is_commitment_deposit": payload.is_commitment_deposit
+        }
     )
 
     prompt_text = charge_result.get("ussd_prompt") or f"Authorize payment of GH₵{amount:.2f} on {member.phone_number} ({provider})."
@@ -162,6 +170,135 @@ def process_momo_webhook(payload: PaymentWebhookPayload, db: Session = Depends(g
         "rotation_result": advance_result
     }
 
+def _settle_payment(
+    db: Session,
+    reference: str,
+    verify_data: Optional[Dict[str, Any]] = None,
+    log_payload: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Idempotently records contribution payment in DB, sets member.has_paid_current_round = True,
+    and advances rotation round if all members have paid.
+    """
+    verify_data = verify_data or {}
+    log_payload = log_payload or {}
+
+    metadata = verify_data.get("metadata") or {}
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except Exception:
+            metadata = {}
+
+    group_id = log_payload.get("group_id") or metadata.get("group_id")
+    member_id = log_payload.get("member_id") or metadata.get("member_id")
+    is_escrow = log_payload.get("is_commitment_deposit") or metadata.get("is_commitment_deposit", False)
+
+    # 1. Resolve member
+    member = None
+    if member_id:
+        member = db.query(GroupMember).filter(GroupMember.id == member_id).first()
+
+    if not member:
+        customer = verify_data.get("customer") or {}
+        cust_phone = (
+            log_payload.get("phone_number")
+            or metadata.get("phone_number")
+            or metadata.get("mobile_number")
+            or customer.get("phone")
+            or ""
+        )
+        clean_phone = cust_phone.replace("+233", "0").replace(" ", "").replace("-", "").strip()
+        if clean_phone.startswith("233"):
+            clean_phone = "0" + clean_phone[3:]
+
+        if group_id and clean_phone:
+            member = db.query(GroupMember).filter(
+                GroupMember.group_id == group_id,
+                (GroupMember.phone_number == clean_phone) | (GroupMember.phone_number == cust_phone)
+            ).first()
+
+        if not member and clean_phone:
+            member = db.query(GroupMember).filter(
+                (GroupMember.phone_number == clean_phone) | (GroupMember.phone_number == cust_phone)
+            ).order_by(GroupMember.joined_at.desc()).first()
+
+    if not member:
+        return {"settled": False, "reason": "No member found for transaction"}
+
+    # 2. Resolve group
+    group = db.query(SusuGroup).filter(SusuGroup.id == member.group_id).first()
+    if not group:
+        return {"settled": False, "reason": "Group not found for member"}
+
+    # 3. Resolve amount
+    amount = 0.0
+    if verify_data.get("amount"):
+        amount = float(verify_data.get("amount")) / 100.0
+    elif log_payload.get("amount"):
+        amount = float(log_payload.get("amount"))
+    else:
+        amount = float(group.commitment_deposit if is_escrow else group.contribution_amount)
+
+    provider = (
+        log_payload.get("provider")
+        or metadata.get("provider")
+        or member.momo_provider
+        or "MTN"
+    )
+
+    # 4. Check existing payment to prevent duplicate records
+    existing_payment = db.query(ContributionPayment).filter(
+        ContributionPayment.transaction_reference == reference
+    ).first()
+
+    if not existing_payment:
+        payment = ContributionPayment(
+            id=str(uuid.uuid4()),
+            group_id=group.id,
+            member_id=member.id,
+            round_number=group.current_round,
+            amount=amount,
+            momo_provider=provider,
+            transaction_reference=reference,
+            status=PaymentStatus.SUCCESS.value,
+            paid_at=datetime.utcnow()
+        )
+        db.add(payment)
+
+    if is_escrow:
+        member.deposit_paid = True
+    else:
+        member.has_paid_current_round = True
+
+    db.commit()
+
+    # Log settlement event
+    GhanaMoMoService.log_webhook_event(
+        db=db,
+        reference=reference,
+        provider=provider,
+        event_type="PAYMENT_SETTLED",
+        payload={
+            "group_id": group.id,
+            "member_id": member.id,
+            "amount": amount,
+            "status": "SUCCESS",
+            "is_commitment_deposit": is_escrow
+        }
+    )
+
+    # Check and advance round
+    advance_result = RotationEngine.check_and_advance_round(db, group)
+
+    return {
+        "settled": True,
+        "member_id": member.id,
+        "group_id": group.id,
+        "amount": amount,
+        "advance_result": advance_result
+    }
+
 @router.post("/paystack-webhook")
 async def paystack_webhook(
     request: Request,
@@ -186,36 +323,9 @@ async def paystack_webhook(
     reference = data.get("reference")
 
     if event_type == "charge.success" and reference:
-        customer = data.get("customer", {})
-        metadata = data.get("metadata", {})
-        phone = metadata.get("phone_number") or customer.get("phone")
-        amount_ghs = float(data.get("amount", 0)) / 100.0
-        provider = metadata.get("provider", "MTN")
-
-        if phone:
-            clean_phone = phone.replace("+233", "0").replace(" ", "")
-            member = db.query(GroupMember).filter(
-                (GroupMember.phone_number == clean_phone) | (GroupMember.phone_number == phone)
-            ).first()
-
-            if member:
-                group = db.query(SusuGroup).filter(SusuGroup.id == member.group_id).first()
-                if group and not member.has_paid_current_round:
-                    payment = ContributionPayment(
-                        id=str(uuid.uuid4()),
-                        group_id=group.id,
-                        member_id=member.id,
-                        round_number=group.current_round,
-                        amount=amount_ghs,
-                        momo_provider=provider,
-                        transaction_reference=reference,
-                        status=PaymentStatus.SUCCESS.value,
-                        paid_at=datetime.utcnow()
-                    )
-                    db.add(payment)
-                    member.has_paid_current_round = True
-                    db.commit()
-                    RotationEngine.check_and_advance_round(db, group)
+        log = db.query(MoMoWebhookLog).filter(MoMoWebhookLog.transaction_reference == reference).first()
+        log_payload = log.payload if log else {}
+        _settle_payment(db, reference, verify_data=data, log_payload=log_payload)
 
     return {"status": "success"}
 
@@ -283,43 +393,19 @@ async def verify_transaction(reference: str, db: Session = Depends(get_db)):
     verify_result = await GhanaMoMoGateway.verify_payment(reference)
     if verify_result.get("paid"):
         log = db.query(MoMoWebhookLog).filter(MoMoWebhookLog.transaction_reference == reference).first()
-        if log and log.payload:
-            payload_data = log.payload
-            group_id = payload_data.get("group_id")
-            member_id = payload_data.get("member_id")
-            amount = payload_data.get("amount", 0.0)
-            is_escrow = payload_data.get("is_commitment_deposit", False)
+        log_payload = log.payload if log else {}
+        tx_data = verify_result.get("data") or {}
 
-            member = db.query(GroupMember).filter(GroupMember.id == member_id).first()
-            group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
-
-            if member and group:
-                existing_payment = db.query(ContributionPayment).filter(
-                    ContributionPayment.transaction_reference == reference
-                ).first()
-                if not existing_payment:
-                    payment = ContributionPayment(
-                        id=str(uuid.uuid4()),
-                        group_id=group.id,
-                        member_id=member.id,
-                        round_number=group.current_round,
-                        amount=float(amount),
-                        momo_provider=member.momo_provider,
-                        transaction_reference=reference,
-                        status=PaymentStatus.SUCCESS.value,
-                        paid_at=datetime.utcnow()
-                    )
-                    db.add(payment)
-                    if is_escrow:
-                        member.deposit_paid = True
-                    else:
-                        member.has_paid_current_round = True
-                    db.commit()
-                    RotationEngine.check_and_advance_round(db, group)
-
-        return {"status": "SUCCESS", "message": "Payment verified and contribution recorded!"}
+        settle_res = _settle_payment(db, reference, verify_data=tx_data, log_payload=log_payload)
+        return {
+            "status": "SUCCESS",
+            "paid": True,
+            "message": "Payment verified and contribution recorded!",
+            "details": settle_res
+        }
 
     return {
         "status": verify_result.get("status", "PENDING"),
+        "paid": False,
         "message": "Payment is still pending authorization on your phone. Please approve the prompt on your SIM."
     }

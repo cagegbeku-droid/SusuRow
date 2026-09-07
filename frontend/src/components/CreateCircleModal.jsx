@@ -29,7 +29,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
   // Form State
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [contributionAmount, setContributionAmount] = useState(200);
+  const [contributionAmount, setContributionAmount] = useState('10');
   const [frequency, setFrequency] = useState('WEEKLY');
   const [membersCount, setMembersCount] = useState(5);
   const [rotationType, setRotationType] = useState('SEQUENTIAL');
@@ -38,7 +38,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
 
   if (!isOpen) return null;
 
-  const totalPool = contributionAmount * membersCount;
+  const totalPool = (Number(contributionAmount) || 0) * (Number(membersCount) || 0);
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
@@ -46,16 +46,27 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
       alert("Please add your Ghanaian Mobile Money phone number in your Profile before creating a group.");
       return;
     }
+    const numAmount = Number(contributionAmount);
+    if (!numAmount || numAmount < 1) {
+      alert("Please enter a valid contribution amount of at least GH₵1.00.");
+      return;
+    }
+    const numMembers = Number(membersCount);
+    if (!numMembers || numMembers < 2) {
+      alert("Please enter at least 2 members for the group.");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await createGroup({
         name: name.trim(),
         description: description.trim() || undefined,
         is_private: isPrivate,
-        contribution_amount: Number(contributionAmount),
+        contribution_amount: Number(numAmount.toFixed(2)),
         frequency: frequency,
-        members_count: Number(membersCount),
-        commitment_deposit: Number(commitmentDeposit),
+        members_count: numMembers,
+        commitment_deposit: Number(commitmentDeposit) || 0,
         rotation_type: rotationType,
         creator_phone: user.phone_number,
         creator_name: user.full_name || 'Group Leader',
@@ -177,63 +188,125 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
               <div className="bg-sky-50 rounded-3xl p-4 border border-sky-200 text-center space-y-1">
                 <div className="text-[10px] uppercase font-bold text-sky-800">Total Pot per Turn</div>
                 <div className="text-3xl font-black text-sky-900 font-mono">
-                  GH₵{totalPool.toLocaleString()}
+                  GH₵{totalPool.toFixed(2)}
                 </div>
                 <div className="text-xs text-sky-700 font-bold">
-                  {membersCount} Savers × GH₵{contributionAmount} / {frequency.toLowerCase()}
+                  {membersCount || 0} Savers × GH₵{Number(contributionAmount || 0).toFixed(2)} / {frequency.toLowerCase()}
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-900 mb-1">
-                  Contribution per Saver (GH₵)
+                  Contribution per Saver (GH₵) *
                 </label>
-                <input
-                  type="number"
-                  min={10}
-                  max={50000}
-                  step={10}
-                  value={contributionAmount}
-                  onChange={(e) => setContributionAmount(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono font-bold text-slate-900"
-                />
-                <div className="flex gap-2 mt-2">
-                  {[50, 100, 200, 500, 1000].map((amt) => (
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-sm font-bold text-slate-400">
+                    GH₵
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={50000}
+                    step={1}
+                    placeholder="e.g. 1, 2, 5, 10, 50"
+                    value={contributionAmount}
+                    onChange={(e) => setContributionAmount(e.target.value)}
+                    className="w-full pl-12 pr-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono font-bold text-slate-900"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-600 mt-1 font-medium">
+                  Enter any whole number (e.g. 1, 2, 3...) — saved as GH₵{Number(contributionAmount || 0).toFixed(2)}
+                </p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[1, 2, 5, 10, 20, 50, 100, 200].map((amt) => (
                     <button
                       type="button"
                       key={amt}
-                      onClick={() => setContributionAmount(amt)}
-                      className={`flex-1 py-1 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                        contributionAmount === amt
+                      onClick={() => setContributionAmount(String(amt))}
+                      className={`px-3 py-1 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                        Number(contributionAmount) === amt
                           ? 'bg-sky-600 text-white border-sky-500 shadow-xs'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      GH₵{amt}
+                      GH₵{amt}.00
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-bold text-slate-900">
-                    Member Capacity Limit
+                    Number of People to Join Group (Capacity) *
                   </label>
-                  <span className="text-xs font-black text-sky-700 font-mono">{membersCount} Savers</span>
+                  <span className="text-xs font-black text-sky-700 font-mono">
+                    {membersCount || 0} {Number(membersCount) === 1 ? 'Saver' : 'Savers'}
+                  </span>
                 </div>
-                <input
-                  type="range"
-                  min={2}
-                  max={30}
-                  value={membersCount}
-                  onChange={(e) => setMembersCount(Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-sky-600"
-                />
-                <div className="flex justify-between text-[10px] text-slate-600 mt-1 font-bold">
-                  <span>2 Savers</span>
-                  <span>15 Savers</span>
-                  <span>30 Savers</span>
+
+                {/* Direct manual numeric input */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min={2}
+                      max={100}
+                      step={1}
+                      placeholder="e.g. 5"
+                      value={membersCount}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          setMembersCount('');
+                        } else {
+                          const parsed = parseInt(val, 10);
+                          setMembersCount(isNaN(parsed) ? '' : Math.max(1, Math.min(100, parsed)));
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!membersCount || Number(membersCount) < 2) {
+                          setMembersCount(2);
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-mono font-bold text-slate-900"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setMembersCount((prev) => Math.max(2, (Number(prev) || 2) - 1))}
+                      className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-base flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                      title="Decrease member count"
+                    >
+                      -
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMembersCount((prev) => Math.min(100, (Number(prev) || 2) + 1))}
+                      className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-base flex items-center justify-center transition-colors cursor-pointer active:scale-95"
+                      title="Increase member count"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Slider */}
+                <div className="mt-3">
+                  <input
+                    type="range"
+                    min={2}
+                    max={50}
+                    value={Number(membersCount) || 2}
+                    onChange={(e) => setMembersCount(Number(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-sky-600"
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-600 mt-1 font-bold">
+                    <span>2 Savers</span>
+                    <span>25 Savers</span>
+                    <span>50+ Savers</span>
+                  </div>
                 </div>
               </div>
 

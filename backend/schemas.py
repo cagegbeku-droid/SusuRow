@@ -323,14 +323,23 @@ class GroupCreate(BaseModel):
     name: str = Field(..., min_length=3, max_length=120)
     description: Optional[str] = None
     is_private: bool = False
-    contribution_amount: float = Field(..., gt=0.0, description="Contribution amount per round in GHS")
+    contribution_amount: float = Field(..., ge=1.0, description="Contribution amount per round in GHS (e.g. 1.00, 2.00, 50.00)")
     frequency: str = Field("WEEKLY", description="DAILY, WEEKLY, or MONTHLY")
-    members_count: int = Field(..., ge=2, le=50, description="Capacity limit between 2 and 50 members")
+    members_count: int = Field(..., ge=2, le=100, description="Capacity limit between 2 and 100 members")
     commitment_deposit: Optional[float] = Field(0.0, ge=0.0, description="Optional upfront escrow deposit in GHS")
     rotation_type: str = Field("SEQUENTIAL", description="SEQUENTIAL, BALLOT, or BIDDING")
     creator_phone: str
     creator_name: Optional[str] = "Group Leader"
     creator_momo_provider: Optional[str] = "MTN"
+
+    @field_validator("contribution_amount")
+    @classmethod
+    def validate_contribution_amount(cls, v: float) -> float:
+        val = round(float(v), 2)
+        if val < 1.0:
+            raise ValueError("Contribution amount must be at least GH₵1.00")
+        return val
+
 
 
 class GroupSummaryResponse(BaseModel):

@@ -8,11 +8,9 @@ import {
   CheckCircle2, 
   RefreshCw, 
   Clock,
-  KeyRound,
-  ArrowRight,
   Info
 } from 'lucide-react';
-import { initiatePayment, verifyPayment, submitPaymentOtp } from '../api/client';
+import { initiatePayment, verifyPayment } from '../api/client';
 import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 const PAYSTACK_PUBLIC_KEY = "pk_live_91afa1d8fbd591e8d5ae17327033f2cb3a33148a";
@@ -36,9 +34,6 @@ export const MoMoPaymentModal = ({
   const [txRef, setTxRef] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState(null); // 'PROMPTED' | 'SUCCESS' | 'FAILED'
   const [statusMessage, setStatusMessage] = useState(null);
-  const [requiresOtp, setRequiresOtp] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [submittingOtp, setSubmittingOtp] = useState(false);
   const [error, setError] = useState(null);
 
   const pollTimerRef = useRef(null);
@@ -94,8 +89,6 @@ export const MoMoPaymentModal = ({
     setError(null);
     setPaymentStatus(null);
     setStatusMessage(null);
-    setRequiresOtp(false);
-    setOtpCode('');
 
     // Method 1: Official Paystack Inline SDK (pushes USSD PIN prompt directly to SIM screen)
     if (window.PaystackPop && typeof window.PaystackPop.setup === 'function') {
@@ -111,6 +104,10 @@ export const MoMoPaymentModal = ({
           channels: ['mobile_money'],
           ref: ref,
           metadata: {
+            group_id: group.id,
+            member_id: member.id,
+            phone_number: cleanPhone,
+            provider: momoProvider,
             custom_fields: [
               { display_name: 'Mobile Number', variable_name: 'mobile_number', value: cleanPhone },
               { display_name: 'Group Name', variable_name: 'group_name', value: group.name },
@@ -133,7 +130,7 @@ export const MoMoPaymentModal = ({
                 setPaymentStatus('PROMPTED');
                 setStatusMessage('Authorization received! Updating ledger...');
               }
-            } catch (err) {
+            } catch {
               setPaymentStatus('PROMPTED');
             } finally {
               setVerifying(false);
@@ -152,7 +149,7 @@ export const MoMoPaymentModal = ({
       }
     }
 
-    // Method 2: Server-side Charge API fallback
+    // Method 2: Server-side Charge API fallback (pushes USSD debit prompt directly to telecom SIM)
     try {
       const res = await initiatePayment({
         group_id: group.id,
@@ -163,38 +160,13 @@ export const MoMoPaymentModal = ({
 
       setTxRef(res.transaction_reference);
       setPaymentStatus('PROMPTED');
-
-      if (res.requires_otp) {
-        setRequiresOtp(true);
-        setStatusMessage('Paystack sent an authorization code via SMS. Enter it below to complete your payment:');
-      } else {
-        setStatusMessage(res.message || `Payment prompt sent to ${phoneNumber || cleanPhone}`);
-      }
+      setStatusMessage(res.message || `Payment prompt sent to ${cleanPhone || phoneNumber}`);
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.detail || 'Payment prompt failed. Please check your phone number and network.');
       setPaymentStatus('FAILED');
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Submit SMS OTP code if Paystack requests it
-  const handleSubmitOtp = async (e) => {
-    if (e) e.preventDefault();
-    if (!otpCode.trim() || !txRef) return;
-    setSubmittingOtp(true);
-    setError(null);
-
-    try {
-      const res = await submitPaymentOtp({ reference: txRef, otp: otpCode.trim() });
-      setRequiresOtp(false);
-      setStatusMessage(res.message || 'Code verified! Checking payment confirmation on your SIM...');
-      setTimeout(handleCheckStatus, 1500);
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid or expired code. Please check your SMS and try again.');
-    } finally {
-      setSubmittingOtp(false);
     }
   };
 
@@ -261,38 +233,8 @@ export const MoMoPaymentModal = ({
             </div>
           )}
 
-          {/* OTP INPUT BOX (When Paystack sends code via SMS) */}
-          {requiresOtp && paymentStatus !== 'SUCCESS' && (
-            <form onSubmit={handleSubmitOtp} className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-950 space-y-3 animate-in fade-in">
-              <div className="flex items-center gap-2">
-                <KeyRound size={16} className="text-amber-700 shrink-0" />
-                <p className="font-bold text-xs">Enter Code Sent to Your Phone</p>
-              </div>
-              <p className="text-[11px] text-amber-900 leading-tight">
-                Paystack sent a verification code to {cleanPhone || phoneNumber}. Enter it below to confirm charges:
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 123456"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.trim())}
-                  className="flex-1 px-3 py-2 text-center tracking-widest text-sm font-mono font-bold bg-white rounded-xl border border-amber-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
-                <button
-                  type="submit"
-                  disabled={submittingOtp || !otpCode}
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-                >
-                  {submittingOtp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>Confirm</span>}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* PROMPTED / WAITING SCREEN */}
-          {paymentStatus === 'PROMPTED' && !requiresOtp && (
+          {/* PROMPTED / WAITING SCREEN (Direct MoMo PIN Prompt) */}
+          {paymentStatus === 'PROMPTED' && (
             <div className="p-4 bg-sky-50 rounded-2xl border border-sky-200 text-sky-900 text-xs space-y-3 text-center animate-in fade-in">
               <div className="relative w-9 h-9 mx-auto flex items-center justify-center">
                 <Clock className="w-8 h-8 text-sky-600 animate-pulse" />
@@ -305,7 +247,7 @@ export const MoMoPaymentModal = ({
               </div>
 
               {/* Offline USSD Approvals Instructions */}
-              <div className="p-3 bg-white/80 rounded-xl border border-sky-100 text-left text-[11px] text-slate-800 space-y-1.5">
+              <div className="p-3 bg-white/90 rounded-xl border border-sky-100 text-left text-[11px] text-slate-800 space-y-1.5 shadow-xs">
                 <div className="font-bold text-slate-900 flex items-center gap-1.5">
                   <Info size={13} className="text-sky-600 shrink-0" />
                   <span>Didn't see the USSD pop-up on your screen?</span>
@@ -327,24 +269,37 @@ export const MoMoPaymentModal = ({
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={handleCheckStatus}
-                disabled={verifying}
-                className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
-              >
-                {verifying ? (
-                  <>
-                    <RefreshCw size={14} className="animate-spin text-white" />
-                    <span>Checking Network...</span>
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheck size={14} className="text-white" />
-                    <span>Check Payment Status</span>
-                  </>
-                )}
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={handleCheckStatus}
+                  disabled={verifying}
+                  className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  {verifying ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin text-white" />
+                      <span>Checking Network...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck size={14} className="text-white" />
+                      <span>Check Payment Status</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentStatus(null);
+                    setError(null);
+                  }}
+                  className="w-full py-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                >
+                  Change Wallet / Try Again
+                </button>
+              </div>
             </div>
           )}
 
@@ -360,9 +315,9 @@ export const MoMoPaymentModal = ({
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center space-y-1">
             <div className="text-[11px] uppercase font-bold text-slate-700">Amount to Pay</div>
             <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">
-              GH₵{amount.toLocaleString()}
+              GH₵{Number(amount).toFixed(2)}
             </div>
-            <div className="text-xs text-slate-600 font-bold">Secure Mobile Money (MTN • Telecel • AT)</div>
+            <div className="text-xs text-slate-600 font-bold">Direct Mobile Money Debit (MTN • Telecel • AT)</div>
           </div>
 
           {/* Network Selector & Main Action Button */}
@@ -404,12 +359,12 @@ export const MoMoPaymentModal = ({
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Contacting MoMo Network...</span>
+                    <span>Sending MoMo Prompt to SIM...</span>
                   </>
                 ) : (
                   <>
                     <Smartphone size={16} className="text-white" />
-                    <span>Send MoMo Prompt (GH₵{amount.toLocaleString()})</span>
+                    <span>Send MoMo PIN Prompt (GH₵{Number(amount).toFixed(2)})</span>
                   </>
                 )}
               </button>
