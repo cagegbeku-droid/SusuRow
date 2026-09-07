@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Smartphone, 
@@ -6,12 +6,16 @@ import {
   AlertCircle, 
   Loader2, 
   CheckCircle2, 
-  Lock, 
   RefreshCw, 
-  Clock 
+  Clock,
+  KeyRound,
+  ArrowRight,
+  Info
 } from 'lucide-react';
-import { initiatePayment, verifyPayment } from '../api/client';
+import { initiatePayment, verifyPayment, submitPaymentOtp } from '../api/client';
 import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
+
+const PAYSTACK_PUBLIC_KEY = "pk_live_91afa1d8fbd591e8d5ae17327033f2cb3a33148a";
 
 export const MoMoPaymentModal = ({
   isOpen,
@@ -32,17 +36,123 @@ export const MoMoPaymentModal = ({
   const [txRef, setTxRef] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState(null); // 'PROMPTED' | 'SUCCESS' | 'FAILED'
   const [statusMessage, setStatusMessage] = useState(null);
+  const [requiresOtp, setRequiresOtp] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [submittingOtp, setSubmittingOtp] = useState(false);
   const [error, setError] = useState(null);
+
+  const pollTimerRef = useRef(null);
+
+  // Clean phone number format for Ghanaian telecom networks (0XXXXXXXXX)
+  const cleanPhone = (phoneNumber || member?.phone_number || '').replace('+233', '0').replace(/[^\d]/g, '');
+
+  // Cleanup polling timer on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, []);
+
+  // Background auto-polling when prompt is active
+  useEffect(() => {
+    if (paymentStatus === 'PROMPTED' && txRef) {
+      let attempts = 0;
+      pollTimerRef.current = setInterval(async () => {
+        attempts += 1;
+        if (attempts > 30) { // Stop after ~90 seconds
+          clearInterval(pollTimerRef.current);
+          return;
+        }
+        try {
+          const res = await verifyPayment(txRef);
+          if (res.status === 'SUCCESS' || res.status === 'success' || res.paid) {
+            clearInterval(pollTimerRef.current);
+            setPaymentStatus('SUCCESS');
+            setStatusMessage('Payment verified successfully on Mobile Money!');
+            setTimeout(() => {
+              if (onPaymentSuccess) onPaymentSuccess();
+              onClose();
+            }, 1800);
+          }
+        } catch {
+          // Keep polling quietly
+        }
+      }, 3000);
+
+      return () => {
+        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+      };
+    }
+  }, [paymentStatus, txRef]);
 
   if (!isOpen || !group || !member) return null;
 
+  // Main payment trigger
   const handlePay = async (e) => {
     if (e) e.preventDefault();
     setLoading(true);
     setError(null);
     setPaymentStatus(null);
     setStatusMessage(null);
+    setRequiresOtp(false);
+    setOtpCode('');
 
+    // Method 1: Official Paystack Inline SDK (pushes USSD PIN prompt directly to SIM screen)
+    if (window.PaystackPop && typeof window.PaystackPop.setup === 'function') {
+      try {
+        const ref = `${momoProvider.substring(0, 3).toUpperCase()}-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        setTxRef(ref);
+
+        const handler = window.PaystackPop.setup({
+          key: PAYSTACK_PUBLIC_KEY,
+          email: member?.email || `${cleanPhone}@susurow.com`,
+          amount: Math.round(amount * 100), // Pesewas
+          currency: 'GHS',
+          channels: ['mobile_money'],
+          ref: ref,
+          metadata: {
+            custom_fields: [
+              { display_name: 'Mobile Number', variable_name: 'mobile_number', value: cleanPhone },
+              { display_name: 'Group Name', variable_name: 'group_name', value: group.name },
+              { display_name: 'Provider', variable_name: 'provider', value: momoProvider }
+            ]
+          },
+          callback: async function(response) {
+            setLoading(false);
+            setVerifying(true);
+            try {
+              const verifyRes = await verifyPayment(response.reference);
+              if (verifyRes.status === 'SUCCESS' || verifyRes.status === 'success' || verifyRes.paid) {
+                setPaymentStatus('SUCCESS');
+                setStatusMessage('Payment verified and credited to group ledger!');
+                setTimeout(() => {
+                  if (onPaymentSuccess) onPaymentSuccess();
+                  onClose();
+                }, 1500);
+              } else {
+                setPaymentStatus('PROMPTED');
+                setStatusMessage('Authorization received! Updating ledger...');
+              }
+            } catch (err) {
+              setPaymentStatus('PROMPTED');
+            } finally {
+              setVerifying(false);
+            }
+          },
+          onClose: function() {
+            setLoading(false);
+          }
+        });
+
+        handler.openIframe();
+        setLoading(false);
+        return;
+      } catch (inlineErr) {
+        console.warn('Paystack inline SDK error, falling back to server API:', inlineErr);
+      }
+    }
+
+    // Method 2: Server-side Charge API fallback
     try {
       const res = await initiatePayment({
         group_id: group.id,
@@ -53,7 +163,13 @@ export const MoMoPaymentModal = ({
 
       setTxRef(res.transaction_reference);
       setPaymentStatus('PROMPTED');
-      setStatusMessage(res.message || `Payment prompt sent to ${phoneNumber}`);
+
+      if (res.requires_otp) {
+        setRequiresOtp(true);
+        setStatusMessage('Paystack sent an authorization code via SMS. Enter it below to complete your payment:');
+      } else {
+        setStatusMessage(res.message || `Payment prompt sent to ${phoneNumber || cleanPhone}`);
+      }
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.detail || 'Payment prompt failed. Please check your phone number and network.');
@@ -63,6 +179,26 @@ export const MoMoPaymentModal = ({
     }
   };
 
+  // Submit SMS OTP code if Paystack requests it
+  const handleSubmitOtp = async (e) => {
+    if (e) e.preventDefault();
+    if (!otpCode.trim() || !txRef) return;
+    setSubmittingOtp(true);
+    setError(null);
+
+    try {
+      const res = await submitPaymentOtp({ reference: txRef, otp: otpCode.trim() });
+      setRequiresOtp(false);
+      setStatusMessage(res.message || 'Code verified! Checking payment confirmation on your SIM...');
+      setTimeout(handleCheckStatus, 1500);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Invalid or expired code. Please check your SMS and try again.');
+    } finally {
+      setSubmittingOtp(false);
+    }
+  };
+
+  // Manual Check Payment Status
   const handleCheckStatus = async () => {
     if (!txRef) return;
     setVerifying(true);
@@ -70,18 +206,18 @@ export const MoMoPaymentModal = ({
 
     try {
       const res = await verifyPayment(txRef);
-      if (res.status === 'SUCCESS') {
+      if (res.status === 'SUCCESS' || res.status === 'success' || res.paid) {
         setPaymentStatus('SUCCESS');
         setStatusMessage('Payment verified successfully on Mobile Money!');
         setTimeout(() => {
           if (onPaymentSuccess) onPaymentSuccess();
           onClose();
-        }, 2000);
+        }, 1500);
       } else {
-        setStatusMessage(res.message || 'Payment prompt is still pending. Please approve on your phone first.');
+        setStatusMessage(res.message || 'Payment prompt is still pending. Please approve the prompt or check *170# > Approvals.');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Could not verify payment status yet. Please approve the prompt on your phone.');
+      setError(err.response?.data?.detail || 'Payment is still awaiting approval on your phone.');
     } finally {
       setVerifying(false);
     }
@@ -116,25 +252,92 @@ export const MoMoPaymentModal = ({
 
         <div className="p-5 space-y-4">
           
-          {/* Status Prompts */}
-          {paymentStatus === 'PROMPTED' && (
-            <div className="p-4 bg-sky-50 rounded-2xl border border-sky-200 text-sky-900 text-xs space-y-2 text-center">
-              <Clock className="w-6 h-6 text-sky-700 mx-auto" />
-              <p className="font-bold text-slate-900 text-sm">Prompt Dispatched to {phoneNumber}</p>
-              <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                {momoProvider === 'MTN' && 'Please check your phone screen to enter your MoMo PIN, or dial *170# > Approvals.'}
-                {momoProvider === 'TELECEL' && 'Please check your phone screen or dial *110# to approve the payment.'}
-                {momoProvider === 'AT' && 'Please approve the prompt on your phone screen.'}
+          {/* SUCCESS BANNER */}
+          {paymentStatus === 'SUCCESS' && (
+            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-900 text-xs space-y-1 text-center animate-in zoom-in-95">
+              <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-600 mb-1" />
+              <p className="font-bold text-sm text-slate-900">Payment Verified & Settled!</p>
+              <p className="text-xs text-slate-700 font-medium">Your contribution has been recorded in the group ledger.</p>
+            </div>
+          )}
+
+          {/* OTP INPUT BOX (When Paystack sends code via SMS) */}
+          {requiresOtp && paymentStatus !== 'SUCCESS' && (
+            <form onSubmit={handleSubmitOtp} className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-950 space-y-3 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <KeyRound size={16} className="text-amber-700 shrink-0" />
+                <p className="font-bold text-xs">Enter Code Sent to Your Phone</p>
+              </div>
+              <p className="text-[11px] text-amber-900 leading-tight">
+                Paystack sent a verification code to {cleanPhone || phoneNumber}. Enter it below to confirm charges:
               </p>
-              
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 123456"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.trim())}
+                  className="flex-1 px-3 py-2 text-center tracking-widest text-sm font-mono font-bold bg-white rounded-xl border border-amber-300 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <button
+                  type="submit"
+                  disabled={submittingOtp || !otpCode}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  {submittingOtp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <span>Confirm</span>}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* PROMPTED / WAITING SCREEN */}
+          {paymentStatus === 'PROMPTED' && !requiresOtp && (
+            <div className="p-4 bg-sky-50 rounded-2xl border border-sky-200 text-sky-900 text-xs space-y-3 text-center animate-in fade-in">
+              <div className="relative w-9 h-9 mx-auto flex items-center justify-center">
+                <Clock className="w-8 h-8 text-sky-600 animate-pulse" />
+              </div>
+              <div>
+                <p className="font-bold text-slate-900 text-sm">Prompt Dispatched to {cleanPhone || phoneNumber}</p>
+                <p className="text-xs text-slate-700 mt-1 font-medium leading-relaxed">
+                  Please check your phone screen to enter your MoMo PIN to confirm charges.
+                </p>
+              </div>
+
+              {/* Offline USSD Approvals Instructions */}
+              <div className="p-3 bg-white/80 rounded-xl border border-sky-100 text-left text-[11px] text-slate-800 space-y-1.5">
+                <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                  <Info size={13} className="text-sky-600 shrink-0" />
+                  <span>Didn't see the USSD pop-up on your screen?</span>
+                </div>
+                {momoProvider === 'MTN' && (
+                  <p className="text-slate-700 leading-relaxed font-medium">
+                    Dial <strong className="font-mono text-slate-950">*170#</strong> ➔ Select <strong className="font-mono text-slate-950">6</strong> (My Wallet) ➔ Select <strong className="font-mono text-slate-950">3</strong> (My Approvals) to enter your PIN and approve.
+                  </p>
+                )}
+                {momoProvider === 'TELECEL' && (
+                  <p className="text-slate-700 leading-relaxed font-medium">
+                    Dial <strong className="font-mono text-slate-950">*110#</strong> ➔ Select Approvals to enter your PIN and authorize.
+                  </p>
+                )}
+                {momoProvider === 'AT' && (
+                  <p className="text-slate-700 leading-relaxed font-medium">
+                    Dial <strong className="font-mono text-slate-950">*110#</strong> to approve the pending transaction.
+                  </p>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={handleCheckStatus}
                 disabled={verifying}
-                className="w-full mt-2 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 {verifying ? (
-                  <RefreshCw size={14} className="animate-spin text-white" />
+                  <>
+                    <RefreshCw size={14} className="animate-spin text-white" />
+                    <span>Checking Network...</span>
+                  </>
                 ) : (
                   <>
                     <ShieldCheck size={14} className="text-white" />
@@ -145,24 +348,11 @@ export const MoMoPaymentModal = ({
             </div>
           )}
 
-          {paymentStatus === 'SUCCESS' && (
-            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-900 text-xs space-y-1 text-center">
-              <CheckCircle2 className="w-7 h-7 mx-auto text-emerald-600 mb-1" />
-              <p className="font-bold text-sm text-slate-900">Payment Verified & Settled!</p>
-              <p className="text-xs text-slate-700 font-medium">Your contribution has been recorded in the group ledger.</p>
-            </div>
-          )}
-
+          {/* ERROR ALERT */}
           {error && (
-            <div className="p-3 bg-red-50 rounded-2xl border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+            <div className="p-3 bg-red-50 rounded-2xl border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2 animate-in fade-in">
               <AlertCircle size={15} className="shrink-0 text-red-500" />
               <span>{error}</span>
-            </div>
-          )}
-
-          {statusMessage && paymentStatus !== 'PROMPTED' && paymentStatus !== 'SUCCESS' && (
-            <div className="p-3 bg-sky-50 rounded-2xl border border-sky-200 text-sky-900 text-xs text-center font-medium">
-              {statusMessage}
             </div>
           )}
 
@@ -175,7 +365,7 @@ export const MoMoPaymentModal = ({
             <div className="text-xs text-slate-600 font-bold">Secure Mobile Money (MTN • Telecel • AT)</div>
           </div>
 
-          {/* Network Selector Pills */}
+          {/* Network Selector & Main Action Button */}
           {paymentStatus !== 'PROMPTED' && paymentStatus !== 'SUCCESS' && (
             <>
               <div className="space-y-1.5">
@@ -212,7 +402,10 @@ export const MoMoPaymentModal = ({
                 className="w-full py-3.5 px-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Contacting MoMo Network...</span>
+                  </>
                 ) : (
                   <>
                     <Smartphone size={16} className="text-white" />

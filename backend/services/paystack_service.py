@@ -105,11 +105,13 @@ class GhanaMoMoGateway:
 
                     if data.get("status"):
                         charge_data = data.get("data", {})
+                        status = charge_data.get("status", "pending")
                         display_text = charge_data.get("display_text") or f"Please authorize payment of GH₵{amount_ghs:.2f} on your {provider} phone."
                         return {
                             "success": True,
                             "gateway": "PAYSTACK",
-                            "status": charge_data.get("status", "pending"),
+                            "status": status,
+                            "requires_otp": (status == "send_otp"),
                             "reference": reference,
                             "ussd_prompt": display_text,
                             "raw": charge_data
@@ -129,10 +131,49 @@ class GhanaMoMoGateway:
             "success": True,
             "gateway": "SIMULATED",
             "status": "pending",
+            "requires_otp": False,
             "reference": reference,
             "ussd_prompt": f"Authorize payment of GH₵{amount_ghs:.2f} to SusuRow on {clean_phone} ({provider}).",
             "message": "Simulated USSD dispatched. Configure PAYSTACK_SECRET_KEY in .env for live debit prompts."
         }
+
+    @classmethod
+    async def submit_otp(cls, otp: str, reference: str) -> Dict[str, Any]:
+        """
+        Submits OTP/SMS code to Paystack to authorize or trigger the USSD prompt for mobile money.
+        """
+        keys = cls.get_keys()
+        if not keys["PAYSTACK_SECRET_KEY"]:
+            return {"success": True, "status": "success", "message": "Simulated OTP verified"}
+
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    "https://api.paystack.co/charge/submit_otp",
+                    headers={
+                        "Authorization": f"Bearer {keys['PAYSTACK_SECRET_KEY']}",
+                        "Content-Type": "application/json"
+                    },
+                    json={"otp": otp.strip(), "reference": reference.strip()},
+                    timeout=15.0
+                )
+                data = resp.json()
+                print(f"[Paystack Submit OTP]: Status {resp.status_code} - {data}")
+                if data.get("status"):
+                    charge_data = data.get("data", {})
+                    return {
+                        "success": True,
+                        "status": charge_data.get("status", "success"),
+                        "display_text": charge_data.get("display_text") or "OTP accepted. Please check your phone to confirm your PIN.",
+                        "raw": charge_data
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "error": data.get("message", "Invalid OTP code.")
+                    }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     @classmethod
     async def create_transfer_recipient(

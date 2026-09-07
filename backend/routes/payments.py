@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from database import get_db
 from models import SusuGroup, GroupMember, ContributionPayment, PaymentStatus, GroupStatus, MoMoWebhookLog
 from schemas import (
@@ -17,6 +18,10 @@ from services.rotation_engine import RotationEngine
 from routes.groups import _build_detail_response
 
 router = APIRouter(prefix="/api/payments", tags=["Ghana MoMo Payments"])
+
+class SubmitPaymentOtpRequest(BaseModel):
+    reference: str
+    otp: str
 
 @router.post("/initiate")
 async def initiate_payment(payload: PaymentInitiateRequest, db: Session = Depends(get_db)):
@@ -75,8 +80,30 @@ async def initiate_payment(payload: PaymentInitiateRequest, db: Session = Depend
         "currency": "GHS",
         "provider": provider,
         "ussd_prompt": prompt_text,
+        "requires_otp": charge_result.get("requires_otp", False),
+        "gateway_status": charge_result.get("status", "pending"),
         "gateway": charge_result.get("gateway", "SIMULATED"),
         "expires_in_seconds": 120
+    }
+
+@router.post("/submit-otp")
+async def submit_payment_otp(payload: SubmitPaymentOtpRequest, db: Session = Depends(get_db)):
+    """
+    Submits SMS OTP code to Paystack to authorize payment or trigger the USSD prompt.
+    """
+    result = await GhanaMoMoGateway.submit_otp(otp=payload.otp, reference=payload.reference)
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error") or "Failed to verify OTP code with Paystack.")
+
+    # Check if payment is paid
+    verify_result = await GhanaMoMoGateway.verify_payment(payload.reference)
+    if verify_result.get("paid"):
+        await verify_transaction(payload.reference, db)
+
+    return {
+        "success": True,
+        "status": result.get("status"),
+        "message": result.get("display_text") or "Code submitted successfully. Please check your phone to confirm your PIN."
     }
 
 @router.post("/webhook")
