@@ -7,6 +7,7 @@ import {
   Gavel, 
   ShieldCheck, 
   Check, 
+  CheckCircle2,
   Coins, 
   Lock, 
   Sparkles, 
@@ -23,6 +24,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
   const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [isCreated, setIsCreated] = useState(false);
 
   // Form State
   const [name, setName] = useState('');
@@ -60,8 +62,11 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
         creator_momo_provider: user.momo_provider || 'MTN'
       });
 
-      onClose();
-      if (onGroupCreated) onGroupCreated(res);
+      setIsCreated(true);
+      setTimeout(() => {
+        onClose();
+        if (onGroupCreated) onGroupCreated(res);
+      }, 700);
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to create Susu group.');
     } finally {
@@ -342,6 +347,11 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
               <span>Continue</span>
               <ArrowRight size={14} />
             </button>
+          ) : isCreated ? (
+            <div className="px-6 py-2.5 rounded-2xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs">
+              <CheckCircle2 size={16} className="text-white" />
+              <span>✓ Susu Group Created!</span>
+            </div>
           ) : (
             <button
               type="button"

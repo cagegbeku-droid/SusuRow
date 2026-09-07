@@ -37,7 +37,6 @@ import { useUser } from '../context/UserContext';
 import { 
   updateProfile, 
   submitKYC, 
-  setSecurityPIN, 
   configureWallets, 
   getUserTransactions,
   resolveMoMoAccount
@@ -108,6 +107,11 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   };
 
   // Form States
+  // Form States & Saved Confirmation tracking (shows done state until user edits)
+  const [kycSaved, setKycSaved] = useState(false);
+  const [paymentWalletSaved, setPaymentWalletSaved] = useState(false);
+  const [withdrawalWalletSaved, setWithdrawalWalletSaved] = useState(false);
+
   const [personalForm, setPersonalForm] = useState({
     full_name: '',
     phone_number: '',
@@ -126,9 +130,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     primary_wallet_provider: 'MTN',
     primary_wallet_number: '',
     bank_name: '',
-    bank_account_number: '',
-    pin: '',
-    confirm_pin: ''
+    bank_account_number: ''
   });
 
   useEffect(() => {
@@ -151,9 +153,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         primary_wallet_provider: user.primary_wallet_provider || user.momo_provider || 'MTN',
         primary_wallet_number: user.primary_wallet_number || user.phone_number || '',
         bank_name: user.bank_name || '',
-        bank_account_number: user.bank_account_number || '',
-        pin: '',
-        confirm_pin: ''
+        bank_account_number: user.bank_account_number || ''
       });
 
       if (user.momo_account_name) {
@@ -198,6 +198,8 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
   // Handle phone change: auto detect network, auto resolve MoMo name, auto set as payment & withdrawal method
   const handlePhoneInputChange = async (newPhone) => {
+    setPaymentWalletSaved(false);
+    setWithdrawalWalletSaved(false);
     let clean = newPhone.replace(/[^\d]/g, '');
     let detectedProvider = personalForm.momo_provider;
 
@@ -233,6 +235,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
   // Automatic Ghana Card Hyphenation: GHA-XXXXXXXXX-X
   const handleGhanaCardChange = (e) => {
+    setKycSaved(false);
     let val = e.target.value.toUpperCase();
     let clean = val.replace(/[^A-Z0-9]/g, '');
     
@@ -306,6 +309,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         primary_wallet_number: personalForm.phone_number
       });
       await refreshProfile();
+      setPaymentWalletSaved(true);
       triggerSuccess('Personal info saved. This MoMo number is now your active Payment & Withdrawal wallet.');
       handleResolveMoMo(personalForm.phone_number, personalForm.momo_provider);
     } catch (err) {
@@ -318,7 +322,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   const handleSubmitKYC = async (e) => {
     e.preventDefault();
     if (!kycForm.ghana_card_number.trim()) {
-      setErrorMsg('Please enter your Ghana Card PIN (GHA-XXXXXXXXX-X).');
+      setErrorMsg('Please enter your Ghana Card Number (GHA-XXXXXXXXX-X).');
       return;
     }
     if (!kycForm.next_of_kin_name.trim() || !kycForm.next_of_kin_phone.trim()) {
@@ -331,6 +335,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     try {
       await submitKYC(kycForm);
       await refreshProfile();
+      setKycSaved(true);
       triggerSuccess('Ghana Card KYC submitted and approved successfully!');
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'KYC submission failed.');
@@ -346,17 +351,6 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       return;
     }
 
-    if (walletsForm.pin) {
-      if (walletsForm.pin !== walletsForm.confirm_pin) {
-        setErrorMsg('PINs do not match.');
-        return;
-      }
-      if (!/^\d{4}$/.test(walletsForm.pin)) {
-        setErrorMsg('PIN must be 4 numeric digits.');
-        return;
-      }
-    }
-
     setLoading(true);
     setErrorMsg(null);
     try {
@@ -367,13 +361,9 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         bank_account_number: walletsForm.bank_account_number
       });
 
-      if (walletsForm.pin) {
-        await setSecurityPIN(walletsForm.pin);
-      }
-
       await refreshProfile();
-      triggerSuccess('Wallets configured successfully!');
-      setWalletsForm(prev => ({ ...prev, pin: '', confirm_pin: '' }));
+      setWithdrawalWalletSaved(true);
+      triggerSuccess('Payout wallet saved successfully!');
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'Failed to save wallet configuration.');
     } finally {
@@ -529,7 +519,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               <label className="block text-xs font-bold text-slate-900 mb-1">Network Provider</label>
               <select
                 value={personalForm.momo_provider}
-                onChange={(e) => setPersonalForm({ ...personalForm, momo_provider: e.target.value })}
+                onChange={(e) => {
+                  setPaymentWalletSaved(false);
+                  setPersonalForm({ ...personalForm, momo_provider: e.target.value });
+                }}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
               >
                 <option value="MTN">MTN Mobile Money (*170#)</option>
@@ -571,13 +564,27 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               💡 This number is automatically saved as both your contribution wallet and your pot withdrawal wallet until you change it.
             </p>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95"
-            >
-              {loading ? 'Saving...' : 'Save Payment & Withdrawal Method'}
-            </button>
+            {paymentWalletSaved ? (
+              <div className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2">
+                <CheckCircle2 size={16} className="text-white" />
+                <span>✓ Payment Method Saved</span>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>Save Payment & Withdrawal Method</span>
+                )}
+              </button>
+            )}
           </form>
         </div>
       </div>
@@ -629,7 +636,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             <label className="block text-xs font-bold text-slate-900 mb-1">Destination Provider</label>
             <select
               value={walletsForm.primary_wallet_provider}
-              onChange={(e) => setWalletsForm({ ...walletsForm, primary_wallet_provider: e.target.value })}
+              onChange={(e) => {
+                setWithdrawalWalletSaved(false);
+                setWalletsForm({ ...walletsForm, primary_wallet_provider: e.target.value });
+              }}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
             >
               <option value="MTN">MTN Mobile Money (*170#)</option>
@@ -648,7 +658,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               required
               placeholder="0599360626"
               value={walletsForm.primary_wallet_number}
-              onChange={(e) => setWalletsForm({ ...walletsForm, primary_wallet_number: e.target.value })}
+              onChange={(e) => {
+                setWithdrawalWalletSaved(false);
+                setWalletsForm({ ...walletsForm, primary_wallet_number: e.target.value });
+              }}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900"
             />
           </div>
@@ -660,46 +673,36 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                 type="text"
                 placeholder="e.g. GCB, Ecobank, Absa"
                 value={walletsForm.bank_name}
-                onChange={(e) => setWalletsForm({ ...walletsForm, bank_name: e.target.value })}
+                onChange={(e) => {
+                  setWithdrawalWalletSaved(false);
+                  setWalletsForm({ ...walletsForm, bank_name: e.target.value });
+                }}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
               />
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <div>
-              <label className="block text-xs font-bold text-slate-900 mb-1">
-                4-Digit PIN {user.has_security_pin ? '(Change)' : '(New)'}
-              </label>
-              <input
-                type="password"
-                maxLength={4}
-                placeholder="••••"
-                value={walletsForm.pin}
-                onChange={(e) => setWalletsForm({ ...walletsForm, pin: e.target.value.replace(/[^\d]/g, '') })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold tracking-widest text-center text-slate-900"
-              />
+          {withdrawalWalletSaved ? (
+            <div className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2">
+              <CheckCircle2 size={16} className="text-white" />
+              <span>✓ Payout Wallet Saved</span>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-900 mb-1">Confirm PIN</label>
-              <input
-                type="password"
-                maxLength={4}
-                placeholder="••••"
-                value={walletsForm.confirm_pin}
-                onChange={(e) => setWalletsForm({ ...walletsForm, confirm_pin: e.target.value.replace(/[^\d]/g, '') })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold tracking-widest text-center text-slate-900"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95"
-          >
-            {loading ? 'Saving...' : 'Save Withdrawal Wallet & PIN'}
-          </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Withdrawal Wallet</span>
+              )}
+            </button>
+          )}
         </form>
       </div>
     );
@@ -802,7 +805,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
           <div>
             <label className="block text-xs font-bold text-slate-900 mb-1">
-              Ghana Card PIN (Auto-hyphenated)
+              Ghana Card Number
             </label>
             <input
               type="text"
@@ -822,7 +825,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               required
               placeholder="Full Legal Name"
               value={kycForm.next_of_kin_name}
-              onChange={(e) => setKycForm({ ...kycForm, next_of_kin_name: e.target.value })}
+              onChange={(e) => {
+                setKycSaved(false);
+                setKycForm({ ...kycForm, next_of_kin_name: e.target.value });
+              }}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
             />
           </div>
@@ -835,7 +841,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                 required
                 placeholder="024 123 4567"
                 value={kycForm.next_of_kin_phone}
-                onChange={(e) => setKycForm({ ...kycForm, next_of_kin_phone: e.target.value })}
+                onChange={(e) => {
+                  setKycSaved(false);
+                  setKycForm({ ...kycForm, next_of_kin_phone: e.target.value });
+                }}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900"
               />
             </div>
@@ -843,7 +852,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               <label className="block text-xs font-bold text-slate-900 mb-1">Relationship</label>
               <select
                 value={kycForm.next_of_kin_relation}
-                onChange={(e) => setKycForm({ ...kycForm, next_of_kin_relation: e.target.value })}
+                onChange={(e) => {
+                  setKycSaved(false);
+                  setKycForm({ ...kycForm, next_of_kin_relation: e.target.value });
+                }}
                 className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900"
               >
                 <option value="Spouse">Spouse</option>
@@ -855,13 +867,27 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95"
-          >
-            {loading ? 'Submitting...' : 'Submit Verification'}
-          </button>
+          {kycSaved ? (
+            <div className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2">
+              <CheckCircle2 size={16} className="text-white" />
+              <span>✓ Verification Submitted & Saved</span>
+            </div>
+          ) : (
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <span>Submit Verification</span>
+              )}
+            </button>
+          )}
         </form>
       </div>
     );
