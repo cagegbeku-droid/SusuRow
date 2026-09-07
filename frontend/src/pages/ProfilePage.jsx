@@ -31,13 +31,15 @@ import {
   Briefcase,
   Users,
   Settings as SettingsIcon,
-  RefreshCw
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { 
   updateProfile, 
   submitKYC, 
   configureWallets, 
+  configureAutoDebit,
   getUserTransactions,
   resolveMoMoAccount
 } from '../api/client';
@@ -111,6 +113,10 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   const [kycSaved, setKycSaved] = useState(false);
   const [paymentWalletSaved, setPaymentWalletSaved] = useState(false);
   const [withdrawalWalletSaved, setWithdrawalWalletSaved] = useState(false);
+  const [autoDebitEnabled, setAutoDebitEnabled] = useState(user?.auto_debit_enabled || false);
+  const [autoDebitTime, setAutoDebitTime] = useState(user?.auto_debit_time || '08:00');
+  const [autoDebitSaved, setAutoDebitSaved] = useState(false);
+  const [autoDebitLoading, setAutoDebitLoading] = useState(false);
 
   const [personalForm, setPersonalForm] = useState({
     full_name: '',
@@ -135,6 +141,8 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
   useEffect(() => {
     if (user) {
+      setAutoDebitEnabled(Boolean(user.auto_debit_enabled));
+      setAutoDebitTime(user.auto_debit_time || '08:00');
       setPersonalForm({
         full_name: user.full_name || '',
         phone_number: user.phone_number || '',
@@ -262,6 +270,26 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     }
 
     setKycForm(prev => ({ ...prev, ghana_card_number: formatted }));
+  };
+
+  const handleSaveAutoDebit = async (e) => {
+    if (e) e.preventDefault();
+    setAutoDebitLoading(true);
+    try {
+      await configureAutoDebit({
+        enabled: autoDebitEnabled,
+        frequency: 'WEEKLY',
+        time: autoDebitTime
+      });
+      setAutoDebitSaved(true);
+      await refreshProfile();
+      triggerSuccess(autoDebitEnabled ? 'Automated payments activated!' : 'Automated payments deactivated.');
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Failed to update automated payment settings.');
+    } finally {
+      setAutoDebitLoading(false);
+    }
   };
 
   if (!isAuthenticated || !user) {
@@ -704,6 +732,144 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             </button>
           )}
         </form>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // SUBPAGE: AUTOMATED PAYMENTS
+  // ==========================================
+  if (activeSubpage === 'auto_payments') {
+    return (
+      <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setActiveSubpage(null)}
+            className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Automated Payments</h2>
+            <p className="text-xs text-slate-600">Choose to automate round payment prompts or pay manually</p>
+          </div>
+        </div>
+
+        {/* Toggle Card */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <span className="text-sm font-bold text-slate-900 block">Automated Round Payment</span>
+              <span className="text-xs text-slate-600">
+                {autoDebitEnabled ? 'Active: Payment prompt sent automatically' : 'Disabled: You pay manually'}
+              </span>
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => {
+                setAutoDebitSaved(false);
+                setAutoDebitEnabled(!autoDebitEnabled);
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                autoDebitEnabled ? 'bg-sky-600' : 'bg-slate-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  autoDebitEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Explanation Box */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-2">
+            <p className="font-bold text-slate-900">How it works:</p>
+            {autoDebitEnabled ? (
+              <p className="leading-relaxed">
+                When a round becomes due according to your group's schedule (Daily, Weekly, or Monthly), SusuRow will automatically send the payment prompt to your phone. You only need to enter your MoMo PIN on your phone to confirm.
+              </p>
+            ) : (
+              <p className="leading-relaxed">
+                Automated payment is currently off. You will manually click <strong>"Make Payment"</strong> on your group page whenever you are ready to pay.
+              </p>
+            )}
+          </div>
+
+          {/* Setup details when enabled */}
+          {autoDebitEnabled && (
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <div>
+                <label className="block text-xs font-bold text-slate-900 mb-1.5">
+                  Preferred Prompt Time on Due Date
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: '08:00', label: 'Morning', time: '8:00 AM' },
+                    { id: '12:00', label: 'Afternoon', time: '12:00 PM' },
+                    { id: '18:00', label: 'Evening', time: '6:00 PM' }
+                  ].map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setAutoDebitSaved(false);
+                        setAutoDebitTime(t.id);
+                      }}
+                      className={`p-2.5 text-center rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        autoDebitTime === t.id
+                          ? 'border-sky-500 bg-sky-50 text-sky-900 ring-2 ring-sky-500/20'
+                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <div>{t.label}</div>
+                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">{t.time}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 bg-sky-50 rounded-xl border border-sky-100 flex items-center justify-between text-xs">
+                <div>
+                  <span className="font-bold text-slate-900 block">Active MoMo Number</span>
+                  <span className="text-slate-600 font-mono">{personalForm.phone_number || user.phone_number} ({personalForm.momo_provider || 'MTN'})</span>
+                </div>
+                <span className="text-[10px] font-bold bg-sky-100 text-sky-800 px-2 py-0.5 rounded-full">
+                  Primary Wallet
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Save Button */}
+          {autoDebitSaved ? (
+            <button
+              type="button"
+              disabled
+              className="w-full py-2.5 px-4 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-default"
+            >
+              <CheckCircle2 size={16} />
+              <span>Automated Payment Settings Saved!</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSaveAutoDebit}
+              disabled={autoDebitLoading}
+              className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+            >
+              {autoDebitLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Automated Payment Settings</span>
+              )}
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -1330,6 +1496,27 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               </div>
             </div>
             <ChevronRight size={15} className="text-slate-600" />
+          </button>
+
+          <button
+            onClick={() => setActiveSubpage('auto_payments')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5">
+              <Zap size={18} className="text-slate-900" />
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">Automated Payments</span>
+                <span className="text-[11px] text-slate-700 font-medium">Auto-push prompts on cycle due dates</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                autoDebitEnabled ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+              }`}>
+                {autoDebitEnabled ? 'Active' : 'Off'}
+              </span>
+              <ChevronRight size={15} className="text-slate-600" />
+            </div>
           </button>
 
         </div>

@@ -460,3 +460,103 @@ async def verify_transaction(reference: str, db: Session = Depends(get_db)):
         "paid": False,
         "message": "Payment is still pending authorization on your phone. Please approve the prompt on your SIM."
     }
+
+@router.post("/trigger-auto-debits")
+async def trigger_auto_debits(
+    group_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Automated Payment Engine:
+    Finds active Susu circles where members have opted into automated payments (auto_debit_enabled == True)
+    and have not paid their current round share yet.
+    Automatically dispatches the MoMo payment prompt directly to their phone screen.
+    """
+    from models import User
+    
+    query = db.query(SusuGroup).filter(SusuGroup.status == GroupStatus.ACTIVE.value)
+    if group_id:
+        query = query.filter(SusuGroup.id == group_id)
+        
+    active_groups = query.all()
+    triggered_members = []
+    skipped_members = []
+    
+    for group in active_groups:
+        unpaid_members = [m for m in group.members if not m.has_paid_current_round]
+        for member in unpaid_members:
+            clean_phone = member.phone_number.replace("+233", "0").replace(" ", "").replace("-", "").strip()
+            user = db.query(User).filter(
+                (User.phone_number == clean_phone) | (User.phone_number == member.phone_number)
+            ).first()
+            
+            if not user or not user.auto_debit_enabled:
+                skipped_members.append({
+                    "phone_number": member.phone_number,
+                    "reason": "Automated payment not activated by member"
+                })
+                continue
+                
+            try:
+                base_amount = float(group.contribution_amount)
+                fees = calculate_fees(base_amount)
+                total_charged = fees["total_charged"]
+                provider = member.momo_provider or GhanaMoMoService.detect_provider(member.phone_number)
+                reference = GhanaMoMoService.generate_transaction_ref(prefix=provider[:3].upper())
+                
+                charge_result = await GhanaMoMoGateway.charge_momo(
+                    phone_number=member.phone_number,
+                    amount_ghs=total_charged,
+                    provider=provider,
+                    email=f"{clean_phone}@susurow.com",
+                    reference=reference,
+                    description=f"SusuRow Round {group.current_round} Auto-Debit - {group.name}",
+                    extra_metadata={
+                        "group_id": group.id,
+                        "member_id": member.id,
+                        "phone_number": member.phone_number,
+                        "round_number": group.current_round,
+                        "is_commitment_deposit": False,
+                        "base_amount": base_amount,
+                        "gateway_fee": fees["gateway_fee"],
+                        "commission_fee": fees["commission_fee"],
+                        "transaction_fee": fees["transaction_fee"],
+                        "total_fee": fees["total_fee"],
+                        "total_charged": total_charged,
+                        "is_automated": True
+                    }
+                )
+                
+                GhanaMoMoService.log_webhook_event(
+                    db=db,
+                    reference=reference,
+                    provider=provider,
+                    event_type="AUTO_PAYMENT_TRIGGERED",
+                    payload={
+                        "group_id": group.id,
+                        "member_id": member.id,
+                        "amount": base_amount,
+                        "total_charged": total_charged,
+                        "gateway_result": charge_result
+                    }
+                )
+                
+                triggered_members.append({
+                    "phone_number": member.phone_number,
+                    "group_name": group.name,
+                    "amount": total_charged,
+                    "reference": reference,
+                    "status": "PROMPTED"
+                })
+            except Exception as e:
+                skipped_members.append({
+                    "phone_number": member.phone_number,
+                    "reason": str(e)
+                })
+                
+    return {
+        "status": "success",
+        "triggered_count": len(triggered_members),
+        "triggered_members": triggered_members,
+        "skipped_count": len(skipped_members)
+    }

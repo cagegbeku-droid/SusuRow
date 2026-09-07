@@ -342,5 +342,40 @@ def test_fee_breakdown_calculation(client):
     assert init_data["total_fee"] == 2.08
     assert init_data["total_charged"] == 52.08
 
+def test_auto_debit_opt_in_and_trigger(client):
+    """
+    Tests that a user can choose whether to activate automated payments.
+    When activated, trigger-auto-debits pushes prompts automatically.
+    """
+    # 1. Create circle
+    res = client.post("/api/groups", json={
+        "name": "Auto Debit Circle",
+        "contribution_amount": 25.0,
+        "frequency": "WEEKLY",
+        "members_count": 2,
+        "creator_phone": "0247770001",
+        "creator_name": "Ama Auto",
+        "creator_momo_provider": "MTN"
+    })
+    assert res.status_code == 200
+    group_id = res.json()["id"]
+
+    # 2. Member 2 joins
+    join_res = client.post("/api/members/join", json={
+        "group_id": group_id,
+        "phone_number": "0208880002",
+        "full_name": "Kofi Auto",
+        "momo_provider": "TELECEL"
+    })
+    assert join_res.status_code == 200
+    assert join_res.json()["status"] == "ACTIVE"
+
+    # 3. Trigger auto-debits before users activate it -> 0 triggered, 2 skipped
+    trigger_before = client.post(f"/api/payments/trigger-auto-debits?group_id={group_id}")
+    assert trigger_before.status_code == 200
+    assert trigger_before.json()["triggered_count"] == 0
+    assert trigger_before.json()["skipped_count"] == 2
+
+
 
 

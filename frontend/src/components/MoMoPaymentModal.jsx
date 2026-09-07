@@ -10,7 +10,7 @@ import {
   Clock,
   Info
 } from 'lucide-react';
-import { initiatePayment, verifyPayment } from '../api/client';
+import { initiatePayment, verifyPayment, configureAutoDebit } from '../api/client';
 import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 const PAYSTACK_PUBLIC_KEY = "pk_live_91afa1d8fbd591e8d5ae17327033f2cb3a33148a";
@@ -26,6 +26,7 @@ export const MoMoPaymentModal = ({
   const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [momoProvider, setMomoProvider] = useState(member?.momo_provider || 'MTN');
   const [phoneNumber, setPhoneNumber] = useState(member?.phone_number || '');
+  const [optInAutoDebit, setOptInAutoDebit] = useState(false);
   const baseAmount = Number(
     isEscrow ? (group?.commitment_deposit || 0) : (group?.contribution_amount || 0)
   );
@@ -97,6 +98,10 @@ export const MoMoPaymentModal = ({
     setError(null);
     setPaymentStatus(null);
     setStatusMessage(null);
+
+    if (optInAutoDebit) {
+      configureAutoDebit({ enabled: true, frequency: group?.frequency || 'WEEKLY', time: '08:00' }).catch(() => {});
+    }
 
     // Method 1: Official Paystack Inline SDK (pushes USSD PIN prompt directly to SIM screen)
     if (window.PaystackPop && typeof window.PaystackPop.setup === 'function') {
@@ -400,6 +405,25 @@ export const MoMoPaymentModal = ({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Optional Quick Auto-Debit Opt-In */}
+              <div 
+                onClick={() => setOptInAutoDebit(!optInAutoDebit)}
+                className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between cursor-pointer hover:bg-slate-100/80 transition-colors"
+              >
+                <div className="space-y-0.5 pr-2">
+                  <span className="text-xs font-bold text-slate-900 block">Automate next round's payment</span>
+                  <span className="text-[11px] text-slate-600 font-medium block">
+                    Push prompt to my phone automatically on cycle due date
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={optInAutoDebit}
+                  onChange={(e) => setOptInAutoDebit(e.target.checked)}
+                  className="w-4 h-4 text-sky-600 rounded border-slate-300 focus:ring-sky-500 cursor-pointer"
+                />
               </div>
 
               {/* Instant Pay Action Button */}
