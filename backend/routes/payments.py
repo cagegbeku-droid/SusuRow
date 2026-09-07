@@ -5,6 +5,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from decimal import Decimal, ROUND_HALF_UP
 from database import get_db
 from models import SusuGroup, GroupMember, ContributionPayment, PaymentStatus, GroupStatus, MoMoWebhookLog
 from schemas import (
@@ -19,6 +20,29 @@ from services.rotation_engine import RotationEngine
 from routes.groups import _build_detail_response
 
 router = APIRouter(prefix="/api/payments", tags=["Ghana MoMo Payments"])
+
+def calculate_fees(base_amount: float) -> Dict[str, float]:
+    """
+    Transparent 3-part fee breakdown:
+    - Gateway fee: 1.95% (e.g. GH₵0.98 on GH₵50.00)
+    - Commission fee: 1.0% (e.g. GH₵0.50 on GH₵50.00)
+    - Transaction fee: 1.2% (e.g. GH₵0.60 on GH₵50.00)
+    Pot receives 100% of base_amount. Saver is debited total_charged.
+    """
+    d_base = Decimal(str(base_amount))
+    gateway = (d_base * Decimal("0.0195")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    commission = (d_base * Decimal("0.010")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    transaction = (d_base * Decimal("0.012")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    total_fee = gateway + commission + transaction
+    total_charged = d_base + total_fee
+    return {
+        "base_amount": float(d_base),
+        "gateway_fee": float(gateway),
+        "commission_fee": float(commission),
+        "transaction_fee": float(transaction),
+        "total_fee": float(total_fee),
+        "total_charged": float(total_charged)
+    }
 
 class SubmitPaymentOtpRequest(BaseModel):
     reference: str
@@ -41,14 +65,22 @@ async def initiate_payment(payload: PaymentInitiateRequest, db: Session = Depend
     if group.status == GroupStatus.COMPLETED.value:
         raise HTTPException(status_code=400, detail="This circle is completed. No more contributions accepted.")
 
-    amount = group.commitment_deposit if payload.is_commitment_deposit else group.contribution_amount
+    raw_base = float(group.commitment_deposit if payload.is_commitment_deposit else group.contribution_amount)
+    fees = calculate_fees(raw_base)
+    base_amount = fees["base_amount"]
+    gateway_fee = fees["gateway_fee"]
+    commission_fee = fees["commission_fee"]
+    transaction_fee = fees["transaction_fee"]
+    total_fee = fees["total_fee"]
+    total_charged = fees["total_charged"]
+
     provider = payload.momo_provider or member.momo_provider or GhanaMoMoService.detect_provider(member.phone_number)
     reference = GhanaMoMoService.generate_transaction_ref(prefix=provider[:3].upper())
 
-    # Call Ghana MoMo Gateway (Paystack or Simulation)
+    # Call Ghana MoMo Gateway (Paystack or Simulation) with total charged including fees
     charge_result = await GhanaMoMoGateway.charge_momo(
         phone_number=member.phone_number,
-        amount_ghs=float(amount),
+        amount_ghs=total_charged,
         provider=provider,
         email=f"{member.phone_number.replace('+', '')}@susurow.com",
         reference=reference,
@@ -58,11 +90,17 @@ async def initiate_payment(payload: PaymentInitiateRequest, db: Session = Depend
             "member_id": member.id,
             "phone_number": member.phone_number,
             "round_number": group.current_round,
-            "is_commitment_deposit": payload.is_commitment_deposit
+            "is_commitment_deposit": payload.is_commitment_deposit,
+            "base_amount": base_amount,
+            "gateway_fee": gateway_fee,
+            "commission_fee": commission_fee,
+            "transaction_fee": transaction_fee,
+            "total_fee": total_fee,
+            "total_charged": total_charged
         }
     )
 
-    prompt_text = charge_result.get("ussd_prompt") or f"Authorize payment of GH₵{amount:.2f} on {member.phone_number} ({provider})."
+    prompt_text = charge_result.get("ussd_prompt") or f"Authorize payment of GH₵{total_charged:.2f} on {member.phone_number} ({provider})."
 
     # Save event log
     GhanaMoMoService.log_webhook_event(
@@ -74,7 +112,13 @@ async def initiate_payment(payload: PaymentInitiateRequest, db: Session = Depend
             "group_id": group.id,
             "member_id": member.id,
             "round_number": group.current_round,
-            "amount": amount,
+            "amount": base_amount,
+            "base_amount": base_amount,
+            "gateway_fee": gateway_fee,
+            "commission_fee": commission_fee,
+            "transaction_fee": transaction_fee,
+            "total_fee": total_fee,
+            "total_charged": total_charged,
             "is_commitment_deposit": payload.is_commitment_deposit,
             "gateway_result": charge_result
         }
@@ -84,7 +128,13 @@ async def initiate_payment(payload: PaymentInitiateRequest, db: Session = Depend
         "status": "INITIATED",
         "message": f"Payment prompt dispatched to {member.phone_number} ({provider})",
         "transaction_reference": reference,
-        "amount": amount,
+        "amount": base_amount,
+        "base_amount": base_amount,
+        "gateway_fee": gateway_fee,
+        "commission_fee": commission_fee,
+        "transaction_fee": transaction_fee,
+        "total_fee": total_fee,
+        "total_charged": total_charged,
         "currency": "GHS",
         "provider": provider,
         "ussd_prompt": prompt_text,
@@ -231,14 +281,15 @@ def _settle_payment(
     if not group:
         return {"settled": False, "reason": "Group not found for member"}
 
-    # 3. Resolve amount
-    amount = 0.0
-    if verify_data.get("amount"):
-        amount = float(verify_data.get("amount")) / 100.0
-    elif log_payload.get("amount"):
-        amount = float(log_payload.get("amount"))
-    else:
-        amount = float(group.commitment_deposit if is_escrow else group.contribution_amount)
+    # 3. Resolve contribution amount credited to group pot (pure contribution, keeping pot intact)
+    expected_amount = float(group.commitment_deposit if is_escrow else group.contribution_amount)
+    amount = (
+        float(metadata.get("base_amount") or metadata.get("contribution_amount") or 0)
+        or float(log_payload.get("base_amount") or 0)
+        or expected_amount
+    )
+    if amount <= 0 or (expected_amount > 0 and amount > expected_amount):
+        amount = expected_amount
 
     provider = (
         log_payload.get("provider")

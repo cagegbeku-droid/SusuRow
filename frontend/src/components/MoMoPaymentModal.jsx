@@ -26,9 +26,17 @@ export const MoMoPaymentModal = ({
   const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
   const [momoProvider, setMomoProvider] = useState(member?.momo_provider || 'MTN');
   const [phoneNumber, setPhoneNumber] = useState(member?.phone_number || '');
-  const [amount] = useState(
+  const baseAmount = Number(
     isEscrow ? (group?.commitment_deposit || 0) : (group?.contribution_amount || 0)
   );
+
+  // Transparent 3-part fee structure
+  const gatewayFee = Math.round(baseAmount * 0.0195 * 100) / 100; // 1.95% Gateway fee
+  const commissionFee = Math.round(baseAmount * 0.01 * 100) / 100; // 1.0% Commission fee
+  const transactionFee = Math.round(baseAmount * 0.012 * 100) / 100; // 1.2% Transaction fee
+  const totalFees = Math.round((gatewayFee + commissionFee + transactionFee) * 100) / 100;
+  const totalCharged = Math.round((baseAmount + totalFees) * 100) / 100;
+
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [txRef, setTxRef] = useState(null);
@@ -99,7 +107,7 @@ export const MoMoPaymentModal = ({
         const handler = window.PaystackPop.setup({
           key: PAYSTACK_PUBLIC_KEY,
           email: member?.email || `${cleanPhone}@susurow.com`,
-          amount: Math.round(amount * 100), // Pesewas
+          amount: Math.round(totalCharged * 100), // Pesewas (includes total debit)
           currency: 'GHS',
           channels: ['mobile_money'],
           ref: ref,
@@ -108,10 +116,20 @@ export const MoMoPaymentModal = ({
             member_id: member.id,
             phone_number: cleanPhone,
             provider: momoProvider,
+            base_amount: baseAmount,
+            gateway_fee: gatewayFee,
+            commission_fee: commissionFee,
+            transaction_fee: transactionFee,
+            total_fee: totalFees,
+            total_charged: totalCharged,
             custom_fields: [
               { display_name: 'Mobile Number', variable_name: 'mobile_number', value: cleanPhone },
               { display_name: 'Group Name', variable_name: 'group_name', value: group.name },
-              { display_name: 'Provider', variable_name: 'provider', value: momoProvider }
+              { display_name: 'Round Contribution', variable_name: 'round_contribution', value: `GH₵${baseAmount.toFixed(2)}` },
+              { display_name: 'Gateway fee (1.95%)', variable_name: 'gateway_fee', value: `GH₵${gatewayFee.toFixed(2)}` },
+              { display_name: 'Commission fee (1%)', variable_name: 'commission_fee', value: `GH₵${commissionFee.toFixed(2)}` },
+              { display_name: 'Transaction fee (1.2%)', variable_name: 'transaction_fee', value: `GH₵${transactionFee.toFixed(2)}` },
+              { display_name: 'Total Debit', variable_name: 'total_debit', value: `GH₵${totalCharged.toFixed(2)}` }
             ]
           },
           callback: async function(response) {
@@ -242,7 +260,7 @@ export const MoMoPaymentModal = ({
               <div>
                 <p className="font-bold text-slate-900 text-sm">Prompt Dispatched to {cleanPhone || phoneNumber}</p>
                 <p className="text-xs text-slate-700 mt-1 font-medium leading-relaxed">
-                  Please check your phone screen to enter your MoMo PIN to confirm charges.
+                  Please check your phone screen to enter your MoMo PIN to confirm charges of <strong className="font-mono text-slate-950">GH₵{totalCharged.toFixed(2)}</strong>.
                 </p>
               </div>
 
@@ -311,13 +329,48 @@ export const MoMoPaymentModal = ({
             </div>
           )}
 
-          {/* Amount Display */}
-          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-center space-y-1">
-            <div className="text-[11px] uppercase font-bold text-slate-700">Amount to Pay</div>
-            <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">
-              GH₵{Number(amount).toFixed(2)}
+          {/* Amount & Transparent Fee Breakdown Card */}
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-3">
+            <div className="flex items-baseline justify-between">
+              <div>
+                <span className="text-[11px] uppercase tracking-wider font-bold text-slate-700 block">Total MoMo Debit</span>
+                <span className="text-2xs text-slate-500 font-medium">100% round contribution + processing</span>
+              </div>
+              <div className="text-right font-mono font-black text-2xl sm:text-3xl text-slate-900">
+                GH₵{totalCharged.toFixed(2)}
+              </div>
             </div>
-            <div className="text-xs text-slate-600 font-bold">Direct Mobile Money Debit (MTN • Telecel • AT)</div>
+
+            {/* Detailed Itemized Receipt */}
+            <div className="pt-2.5 border-t border-slate-200 space-y-1.5 text-xs">
+              <div className="flex justify-between items-center text-slate-900">
+                <span className="font-semibold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Round Contribution (100% to Pot)
+                </span>
+                <span className="font-mono font-bold text-slate-950">GH₵{baseAmount.toFixed(2)}</span>
+              </div>
+
+              <div className="flex justify-between items-center text-slate-600 pl-3">
+                <span className="font-medium">Gateway fee (1.95%)</span>
+                <span className="font-mono font-bold text-slate-800">GH₵{gatewayFee.toFixed(2)}</span>
+              </div>
+
+              <div className="flex justify-between items-center text-slate-600 pl-3">
+                <span className="font-medium">Commission fee (1%)</span>
+                <span className="font-mono font-bold text-slate-800">GH₵{commissionFee.toFixed(2)}</span>
+              </div>
+
+              <div className="flex justify-between items-center text-slate-600 pl-3">
+                <span className="font-medium">Transaction fee (1.2%)</span>
+                <span className="font-mono font-bold text-slate-800">GH₵{transactionFee.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-dashed border-slate-200 flex items-center justify-between text-[11px] text-slate-600 font-medium">
+              <span>Recipient Pot Payout:</span>
+              <span className="font-bold text-emerald-700">100% Intact & Undiluted</span>
+            </div>
           </div>
 
           {/* Network Selector & Main Action Button */}
@@ -353,7 +406,7 @@ export const MoMoPaymentModal = ({
               <button
                 type="button"
                 onClick={handlePay}
-                disabled={loading || amount <= 0}
+                disabled={loading || totalCharged <= 0}
                 className="w-full py-3.5 px-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 {loading ? (
@@ -364,7 +417,7 @@ export const MoMoPaymentModal = ({
                 ) : (
                   <>
                     <Smartphone size={16} className="text-white" />
-                    <span>Send MoMo PIN Prompt (GH₵{Number(amount).toFixed(2)})</span>
+                    <span>Send MoMo PIN Prompt (GH₵{totalCharged.toFixed(2)})</span>
                   </>
                 )}
               </button>

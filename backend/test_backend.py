@@ -304,4 +304,43 @@ def test_creator_lump_sum_disbursement(client):
     assert creator_res.json()["success"] == True
     assert creator_res.json()["payout_disbursed"]["amount"] == 10.0  # Total sum: 2 savers * GH₵5 = GH₵10.00
 
+def test_fee_breakdown_calculation(client):
+    """
+    Verifies the 3-part fee breakdown:
+    Gateway fee: 1.95% (GH₵0.98 for GH₵50)
+    Commission fee: 1.0% (GH₵0.50 for GH₵50)
+    Transaction fee: 1.2% (GH₵0.60 for GH₵50)
+    Total charged: GH₵52.08, while contribution pot receives exactly GH₵50.00.
+    """
+    res = client.post("/api/groups", json={
+        "name": "Fee Calculation Circle",
+        "contribution_amount": 50.0,
+        "frequency": "WEEKLY",
+        "members_count": 3,
+        "creator_phone": "0245550001",
+        "creator_name": "Fee Tester",
+        "creator_momo_provider": "MTN"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    group_id = data["id"]
+    member_id = data["members"][0]["id"]
+
+    initiate_res = client.post("/api/payments/initiate", json={
+        "group_id": group_id,
+        "member_id": member_id,
+        "momo_provider": "MTN"
+    })
+    assert initiate_res.status_code == 200
+    init_data = initiate_res.json()
+
+    assert init_data["amount"] == 50.0
+    assert init_data["base_amount"] == 50.0
+    assert init_data["gateway_fee"] == 0.98  # 1.95% of 50.00
+    assert init_data["commission_fee"] == 0.50  # 1.0% of 50.00
+    assert init_data["transaction_fee"] == 0.60  # 1.2% of 50.00
+    assert init_data["total_fee"] == 2.08
+    assert init_data["total_charged"] == 52.08
+
+
 
