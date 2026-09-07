@@ -75,11 +75,17 @@ class RotationEngine:
         return sorted(members, key=lambda m: m.payout_position or 999)
 
     @staticmethod
-    def check_and_advance_round(db: Session, group: SusuGroup) -> Dict[str, Any]:
+    def check_and_advance_round(
+        db: Session,
+        group: SusuGroup,
+        requester_phone: Optional[str] = None,
+        force_by_creator: bool = False
+    ) -> Dict[str, Any]:
         """
-        Evaluates if all enrolled members have paid their contribution for current_round.
-        If all have paid, automatically executes the lump-sum payout disbursement to current round's recipient,
-        boosts on-time trust scores, resets payment flags, and increments state machine to round N + 1.
+        Evaluates if all enrolled members have paid their contribution for current_round,
+        OR if the circle creator manually disburses the total lump sum to the current round's recipient.
+        Executes lump-sum payout disbursement, boosts trust scores, resets payment flags,
+        and increments state machine to round N + 1.
         """
         members = db.query(GroupMember).filter(GroupMember.group_id == group.id).all()
         if not members:
@@ -91,22 +97,35 @@ class RotationEngine:
                     m.payout_position = idx
             db.commit()
 
-        # Check if all members paid the current round
-        all_paid = all(m.has_paid_current_round for m in members)
-        if not all_paid:
-            unpaid_count = sum(1 for m in members if not m.has_paid_current_round)
-            return {
-                "advanced": False,
-                "reason": f"Waiting on {unpaid_count} member(s) to complete Round {group.current_round} payment",
-                "all_paid": False
-            }
+        clean_requester = (requester_phone or "").replace("+233", "0").replace(" ", "").strip()
+        clean_creator = (group.creator_id or "").replace("+233", "0").replace(" ", "").strip()
+        is_creator_action = force_by_creator and (not requester_phone or clean_requester == clean_creator or requester_phone == group.creator_id)
+
+        # 1. If not triggered directly by creator, enforce that the group is fully enrolled AND all members have paid
+        if not is_creator_action:
+            if len(members) < group.members_count:
+                return {
+                    "advanced": False,
+                    "reason": f"Circle is still recruiting ({len(members)} of {group.members_count} members enrolled). All members must join before pot can disburse.",
+                    "all_paid": False
+                }
+
+            all_paid = all(m.has_paid_current_round for m in members)
+            if not all_paid:
+                unpaid_count = sum(1 for m in members if not m.has_paid_current_round)
+                return {
+                    "advanced": False,
+                    "reason": f"Waiting on {unpaid_count} member(s) to complete Round {group.current_round} payment before total sum can disburse.",
+                    "all_paid": False
+                }
 
         # Find designated recipient for this round
         recipient = next((m for m in members if m.payout_position == group.current_round), None)
         if not recipient:
             recipient = members[(group.current_round - 1) % len(members)]
 
-        payout_amount = group.total_pool
+        # The lump sum is the full pool for the round
+        payout_amount = round(float(group.total_pool or (group.contribution_amount * group.members_count)), 2)
         payout_ref = GhanaMoMoService.generate_transaction_ref(prefix="PAYOUT")
         
         # Record payout disbursement
@@ -127,23 +146,24 @@ class RotationEngine:
 
         # Boost trust score for members who paid on time
         for m in members:
-            user = db.query(User).filter(User.phone_number == m.phone_number).first()
-            if user:
-                user.on_time_payments_count += 1
-                user.trust_score = min(100, user.trust_score + 2)
+            if m.has_paid_current_round:
+                user = db.query(User).filter(User.phone_number == m.phone_number).first()
+                if user:
+                    user.on_time_payments_count += 1
+                    user.trust_score = min(100, user.trust_score + 2)
 
-        # Check if circle has completed all rounds
-        is_final_round = (group.current_round >= group.members_count) or (group.current_round >= len(members))
+        # Check if circle has completed all rounds (must reach members_count rounds)
+        is_final_round = group.current_round >= group.members_count
 
         if is_final_round:
             group.status = GroupStatus.COMPLETED.value
-            message = f"🎉 Group '{group.name}' completed all {group.current_round} rounds! Final pot of GH₵{payout_amount:.2f} disbursed to {recipient.full_name} ({recipient.phone_number})."
+            message = f"🎉 Group '{group.name}' completed all {group.current_round} rounds! Total lump sum of GH₵{payout_amount:.2f} disbursed to {recipient.full_name} ({recipient.phone_number})."
         else:
             previous_round = group.current_round
             group.current_round += 1
             for m in members:
                 m.has_paid_current_round = False
-            message = f"✅ Round {previous_round} completed! Pot of GH₵{payout_amount:.2f} disbursed to {recipient.full_name} via {recipient.momo_provider} MoMo. Advanced to Round {group.current_round}."
+            message = f"✅ Round {previous_round} complete! Total lump sum of GH₵{payout_amount:.2f} disbursed to {recipient.full_name} ({recipient.phone_number}). Advanced to Round {group.current_round}."
 
         db.commit()
         db.refresh(group)

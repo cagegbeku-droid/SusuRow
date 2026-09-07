@@ -113,7 +113,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
   const isEnrolled = Boolean(enrolledMember);
   const isFull = group.enrolled_count >= group.members_count;
   const isCompleted = group.status === 'COMPLETED';
-  const allPaidForRound = group.members?.length > 0 && group.members.every(m => m.has_paid_current_round);
+  const allPaidForRound = isFull && group.members?.length > 0 && group.members.every(m => m.has_paid_current_round);
 
   const hasActiveContributions = group.payments?.length > 0 || group.status === 'ACTIVE';
   const otherMembersCount = group.members?.filter(m => m.phone_number?.replace('+233', '0').replace(/\s+/g, '') !== cleanCreatorPhone).length || 0;
@@ -155,10 +155,22 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
   };
 
   const handleDisbursePot = async () => {
+    if (!group) return;
+    const recipient = group.current_recipient || group.members?.find(m => m.payout_position === group.current_round) || group.members?.[0];
+    const recipientName = recipient?.full_name || 'the current turn member';
+    const totalPotFormatted = Number(group.total_pool || 0).toFixed(2);
+    
+    const confirmPrompt = allPaidForRound
+      ? `Disburse total lump sum of GH₵${totalPotFormatted} to ${recipientName} and advance cycle?`
+      : `As circle creator, do you want to disburse the total sum of GH₵${totalPotFormatted} to ${recipientName} now?`;
+
+    if (!window.confirm(confirmPrompt)) return;
+
     setActionLoading(true);
     try {
-      const res = await advanceRound(group.id);
+      const res = await advanceRound(group.id, user?.phone_number);
       if (res.success) {
+        alert(res.message || `Successfully disbursed GH₵${totalPotFormatted} to ${recipientName}!`);
         await fetchDetail();
       } else {
         alert(res.message || 'Could not disburse pot.');
@@ -351,12 +363,12 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                 Total Payout Pot per Turn
               </div>
               <div className="text-3xl sm:text-4xl font-bold text-sky-600 font-mono">
-                GH₵{group.total_pool?.toLocaleString()}
+                GH₵{Number(group.total_pool || 0).toFixed(2)}
               </div>
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 text-xs">
                 <div>
                   <div className="text-[10px] text-slate-500">Contribution</div>
-                  <div className="font-bold text-slate-900 font-mono">GH₵{group.contribution_amount}</div>
+                  <div className="font-bold text-slate-900 font-mono">GH₵{Number(group.contribution_amount || 0).toFixed(2)}</div>
                 </div>
                 <div className="text-right">
                   <div className="text-[10px] text-slate-500">Savers</div>
@@ -452,14 +464,24 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             </button>
           )}
 
-          {allPaidForRound && !isCompleted && (
+          {!isCompleted && (allPaidForRound || isCreator) && (
             <button
               onClick={handleDisbursePot}
               disabled={actionLoading}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className={`px-4 py-2.5 font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                allPaidForRound
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  : 'bg-amber-600 hover:bg-amber-500 text-white'
+              }`}
+              title={`Disburse total sum of GH₵${Number(group.total_pool || 0).toFixed(2)} to ${group.current_recipient?.full_name || 'current receiver'}`}
             >
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>Disburse Pot & Advance Cycle</span>
+              <Sparkles className="w-4 h-4 text-amber-200" />
+              <span>
+                {allPaidForRound
+                  ? `Disburse Lump Sum (GH₵${Number(group.total_pool || 0).toFixed(2)})`
+                  : `Disburse Total Sum to ${group.current_recipient?.full_name?.split(' ')[0] || 'Receiver'}`
+                }
+              </span>
             </button>
           )}
         </div>

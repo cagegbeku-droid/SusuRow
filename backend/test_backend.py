@@ -278,4 +278,30 @@ def test_verify_transaction_settlement(client):
     assert member["has_paid_current_round"] == True
     assert len(g_res.json()["payments"]) == 1
     assert g_res.json()["payments"][0]["transaction_reference"] == ref
+    assert g_res.json()["status"] == "RECRUITING"
+
+def test_creator_lump_sum_disbursement(client):
+    # 1. Create a 2-person circle
+    res = client.post("/api/groups", json={
+        "name": "Creator Disbursement Circle",
+        "contribution_amount": 5.0,
+        "frequency": "WEEKLY",
+        "members_count": 2,
+        "creator_phone": "0249990001",
+        "creator_name": "Kofi Leader",
+        "creator_momo_provider": "MTN"
+    })
+    group_id = res.json()["id"]
+
+    # 2. Non-creator tries to disburse before all members joined and paid -> fails
+    non_creator_res = client.post(f"/api/rotation/advance/{group_id}?creator_phone=0200000000")
+    assert non_creator_res.status_code == 200
+    assert non_creator_res.json()["success"] == False
+
+    # 3. Circle creator explicitly disburses the total sum (lump sum pot) to current receiver -> succeeds!
+    creator_res = client.post(f"/api/rotation/advance/{group_id}?creator_phone=0249990001")
+    assert creator_res.status_code == 200
+    assert creator_res.json()["success"] == True
+    assert creator_res.json()["payout_disbursed"]["amount"] == 10.0  # Total sum: 2 savers * GH₵5 = GH₵10.00
+
 

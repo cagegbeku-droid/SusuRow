@@ -24,13 +24,30 @@ def trigger_ballot_draw(payload: BallotTriggerRequest, db: Session = Depends(get
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/advance/{group_id}", response_model=AdvanceRoundResponse)
-def advance_round_manually(group_id: str, db: Session = Depends(get_db)):
-    """Checks and advances the round if all members have completed payment for current_round."""
+def advance_round_manually(
+    group_id: str,
+    creator_phone: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Disburses the total lump sum to the current round's receiver.
+    Allowed if every member has completed payment for current_round,
+    OR if triggered by the circle creator.
+    """
     group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Circle not found")
 
-    result = RotationEngine.check_and_advance_round(db, group)
+    clean_creator = (group.creator_id or "").replace("+233", "0").replace(" ", "").strip()
+    clean_req = (creator_phone or "").replace("+233", "0").replace(" ", "").strip()
+    is_creator = bool(clean_req and (clean_req == clean_creator or clean_req == group.creator_id))
+
+    result = RotationEngine.check_and_advance_round(
+        db=db,
+        group=group,
+        requester_phone=creator_phone,
+        force_by_creator=is_creator
+    )
     
     if not result.get("advanced"):
         return AdvanceRoundResponse(

@@ -178,8 +178,9 @@ export const executeBallotDraw = async (payload) => {
   return res.data;
 };
 
-export const advanceRound = async (groupId) => {
-  const res = await api.post(`/rotation/advance/${groupId}`);
+export const advanceRound = async (groupId, creatorPhone) => {
+  const query = creatorPhone ? `?creator_phone=${encodeURIComponent(creatorPhone)}` : '';
+  const res = await api.post(`/rotation/advance/${groupId}${query}`);
   return res.data;
 };
 
