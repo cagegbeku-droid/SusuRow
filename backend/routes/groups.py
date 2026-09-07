@@ -260,3 +260,30 @@ def delete_group(
         "success": True,
         "message": f"Susu circle '{group.name}' was successfully deleted."
     }
+
+@router.post("/reopen/{group_id}", response_model=GroupDetailResponse)
+def reopen_group(
+    group_id: str,
+    phone_number: str = Query(..., description="Phone number of the creator"),
+    db: Session = Depends(get_db)
+):
+    """Allows the circle creator to reopen a prematurely completed circle back to recruiting/active."""
+    group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Circle not found")
+
+    clean_phone = phone_number.replace("+233", "0").replace(" ", "").strip()
+    clean_creator = (group.creator_id or "").replace("+233", "0").replace(" ", "").strip()
+    if clean_phone != clean_creator and phone_number != group.creator_id:
+        raise HTTPException(status_code=403, detail="Only creator can reopen this circle.")
+
+    group.status = GroupStatus.RECRUITING.value if len(group.members) < group.members_count else GroupStatus.ACTIVE.value
+    group.current_round = 1
+    # Remove premature payouts
+    db.query(PayoutDisbursement).filter(PayoutDisbursement.group_id == group.id).delete()
+    for m in group.members:
+        m.has_received_payout = False
+    db.commit()
+    db.refresh(group)
+    return _build_detail_response(group)
+

@@ -120,6 +120,11 @@ export const deleteGroup = async (groupId, phoneNumber) => {
   return res.data;
 };
 
+export const reopenGroup = async (groupId, phoneNumber) => {
+  const res = await api.post(`/groups/reopen/${groupId}?phone_number=${encodeURIComponent(phoneNumber)}`);
+  return res.data;
+};
+
 export const joinGroup = async (payload) => {
   const res = await api.post('/members/join', payload);
   return res.data;

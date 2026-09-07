@@ -30,6 +30,7 @@ import {
   joinGroup, 
   advanceRound, 
   deleteGroup,
+  reopenGroup,
   triggerDueReminders 
 } from '../api/client';
 import { RotationalTimeline } from '../components/RotationalTimeline';
@@ -204,6 +205,20 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
       onBack();
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to delete group.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReopenGroup = async () => {
+    if (!user) return;
+    if (!window.confirm(`Reopen circle '${group.name}' so new members can enroll and participate in rotation?`)) return;
+    setActionLoading(true);
+    try {
+      await reopenGroup(group.id, user.phone_number);
+      await fetchDetail();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to reopen group.');
     } finally {
       setActionLoading(false);
     }
@@ -482,6 +497,17 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                   : `Disburse Total Sum to ${group.current_recipient?.full_name?.split(' ')[0] || 'Receiver'}`
                 }
               </span>
+            </button>
+          )}
+
+          {isCreator && isCompleted && (
+            <button
+              onClick={handleReopenGroup}
+              disabled={actionLoading}
+              className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              <RotateCw className="w-4 h-4" />
+              <span>Reopen Circle for New Members</span>
             </button>
           )}
         </div>
