@@ -29,6 +29,7 @@ import {
   Info,
   LogOut,
   Building,
+  Building2,
   Briefcase,
   Users,
   Settings as SettingsIcon,
