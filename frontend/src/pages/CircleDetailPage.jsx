@@ -98,7 +98,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           onClick={onBack}
           className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl cursor-pointer shadow-xs active:scale-95"
         >
-          Back to Groups
+          Back
         </button>
       </div>
     );
@@ -257,7 +257,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer shadow-xs"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>All Groups</span>
+          <span>Back</span>
         </button>
 
         <div className="flex items-center gap-2">

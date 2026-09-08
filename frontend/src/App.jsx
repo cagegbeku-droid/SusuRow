@@ -16,12 +16,13 @@ import { CircleDetailPage } from './pages/CircleDetailPage';
 import { MyCirclesPage } from './pages/MyCirclesPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { getPlatformStats, getGroupByCode } from './api/client';
-import { ShieldCheck, Loader2, Globe, Building2 } from 'lucide-react';
+import { ShieldCheck, Loader2, Globe, Building2, AlertTriangle, ArrowRight } from 'lucide-react';
 
 function AppContent() {
   const { user, isAuthenticated, loading, isAuthModalOpen, openAuthModal, closeAuthModal } = useUser();
   const [currentTab, setCurrentTab] = useState('marketplace'); // 'marketplace' | 'my-circles' | 'profile' | 'detail'
   const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [profileSubpage, setProfileSubpage] = useState(null);
   const [stats, setStats] = useState({
     total_pooled_ghs: 0.0,
     total_payouts_disbursed_ghs: 0.0,
@@ -49,9 +50,70 @@ function AppContent() {
     }
   };
 
+  // Centralized Navigation with browser/device history synchronization
+  const navigateTo = (tab, options = {}) => {
+    const nextGroupId = options.groupId !== undefined ? options.groupId : null;
+    const nextSubpage = options.subpage !== undefined ? options.subpage : null;
+
+    const currentState = window.history.state;
+    if (
+      !currentState ||
+      currentState.tab !== tab ||
+      currentState.groupId !== nextGroupId ||
+      currentState.subpage !== nextSubpage
+    ) {
+      window.history.pushState({
+        tab,
+        groupId: nextGroupId,
+        subpage: nextSubpage
+      }, '');
+    }
+
+    setCurrentTab(tab);
+    setSelectedGroupId(nextGroupId);
+    setProfileSubpage(nextSubpage);
+
+    if (options.scrollTop !== false) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      navigateTo('marketplace');
+    }
+  };
+
   useEffect(() => {
     fetchStats();
     
+    // Ensure initial entry has structured state
+    if (!window.history.state || !window.history.state.tab) {
+      window.history.replaceState({
+        tab: 'marketplace',
+        groupId: null,
+        subpage: null
+      }, '');
+    }
+
+    // Unified back/forward button handler across mobile phone gestures and browser back
+    const handlePopState = (event) => {
+      const state = event.state;
+      if (state && state.tab) {
+        setCurrentTab(state.tab);
+        setSelectedGroupId(state.groupId || null);
+        setProfileSubpage(state.subpage || null);
+      } else {
+        setCurrentTab('marketplace');
+        setSelectedGroupId(null);
+        setProfileSubpage(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
     // Check URL parameters for direct invite code or referral code
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
@@ -59,55 +121,25 @@ function AppContent() {
 
     if (code) {
       getGroupByCode(code).then(group => {
-        setSelectedGroupId(group.id);
-        setCurrentTab('detail');
+        navigateTo('detail', { groupId: group.id });
       }).catch(console.error);
     }
 
     if (ref) {
       localStorage.setItem('susurow_referred_by', ref);
     }
-  }, []);
-
-  const handleSelectCircle = (circle) => {
-    setSelectedGroupId(circle.id);
-    setCurrentTab('detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const tabPopRef = React.useRef(false);
-
-  useEffect(() => {
-    if (currentTab === 'marketplace') return;
-
-    tabPopRef.current = false;
-    const stateId = `tab_${currentTab}_${Date.now()}`;
-    window.history.pushState({ tabId: stateId }, '');
-
-    const handlePopState = () => {
-      tabPopRef.current = true;
-      setCurrentTab('marketplace');
-      setSelectedGroupId(null);
-    };
-    window.addEventListener('popstate', handlePopState);
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
-      if (!tabPopRef.current && window.history.state?.tabId === stateId) {
-        window.history.back();
-      }
     };
-  }, [currentTab]);
+  }, []);
 
-  const handleBackToMarketplace = () => {
-    setCurrentTab('marketplace');
-    setSelectedGroupId(null);
-    fetchStats();
+  const handleSelectCircle = (circle) => {
+    navigateTo('detail', { groupId: circle.id });
   };
 
   const handleGroupCreated = (newGroup) => {
-    setSelectedGroupId(newGroup.id);
-    setCurrentTab('detail');
+    navigateTo('detail', { groupId: newGroup.id });
     fetchStats();
   };
 
@@ -127,6 +159,15 @@ function AppContent() {
       setIsReferralModalOpen(true);
     }
   };
+
+  // KYC Completion Status for Top Banner:
+  // User is verified or has both Ghana Card and next of kin phone filled in
+  const isKycComplete = Boolean(
+    user && (
+      user.kyc_status === 'VERIFIED' || 
+      (user.ghana_card_number && user.next_of_kin_phone)
+    )
+  );
 
   if (loading) {
     return (
@@ -148,8 +189,7 @@ function AppContent() {
           if ((tab === 'my-circles' || tab === 'profile') && !isAuthenticated) {
             openAuthModal();
           } else {
-            setCurrentTab(tab);
-            if (tab !== 'detail') setSelectedGroupId(null);
+            navigateTo(tab);
           }
         }}
         onOpenCreateModal={handleOpenCreateModal}
@@ -166,8 +206,7 @@ function AppContent() {
           if ((tab === 'my-circles' || tab === 'profile') && !isAuthenticated) {
             openAuthModal();
           } else {
-            setCurrentTab(tab);
-            if (tab !== 'detail') setSelectedGroupId(null);
+            navigateTo(tab);
           }
         }}
         onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
@@ -180,6 +219,34 @@ function AppContent() {
 
       {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6">
+        {/* Action Required: Unverified KYC Top Banner */}
+        {isAuthenticated && user && !isKycComplete && (
+          <div className="mb-4 bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 border border-amber-300 dark:border-amber-600/40 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <AlertTriangle size={18} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md">
+                    Action Required
+                  </span>
+                </div>
+                <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mt-0.5">
+                  Please complete your verification with your Ghana Card to unlock full features and circle payouts.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigateTo('profile', { subpage: 'kyc' })}
+              className="shrink-0 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+            >
+              <span>Verify</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        )}
+
         {currentTab === 'marketplace' && (
           <MarketplacePage
             stats={stats}
@@ -193,7 +260,7 @@ function AppContent() {
         {currentTab === 'detail' && selectedGroupId && (
           <CircleDetailPage
             groupId={selectedGroupId}
-            onBack={handleBackToMarketplace}
+            onBack={handleBack}
           />
         )}
 
@@ -206,7 +273,9 @@ function AppContent() {
 
         {currentTab === 'profile' && (
           <ProfilePage
-            onBack={handleBackToMarketplace}
+            activeSubpage={profileSubpage}
+            setActiveSubpage={(subpage) => navigateTo('profile', { subpage })}
+            onBack={handleBack}
             onOpenReferralModal={handleOpenReferralModal}
             onOpenTermsModal={() => setIsTermsModalOpen(true)}
           />
@@ -306,8 +375,7 @@ function AppContent() {
           if ((tab === 'my-circles' || tab === 'profile') && !isAuthenticated) {
             openAuthModal();
           } else {
-            setCurrentTab(tab);
-            if (tab !== 'detail') setSelectedGroupId(null);
+            navigateTo(tab);
           }
         }}
         onOpenCreateModal={handleOpenCreateModal}

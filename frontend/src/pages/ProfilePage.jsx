@@ -45,33 +45,29 @@ import {
   resolveMoMoAccount
 } from '../api/client';
 
-export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) => {
+export const ProfilePage = ({ 
+  activeSubpage: externalActiveSubpage, 
+  setActiveSubpage: externalSetActiveSubpage, 
+  onBack, 
+  onOpenReferralModal, 
+  onOpenTermsModal 
+}) => {
   const { user, isAuthenticated, logout, openAuthModal, refreshProfile } = useUser();
   
-  // Navigation: null = Main menu list; string = active subpage
-  const [activeSubpage, setActiveSubpage] = useState(null); 
-  const closedByPopStateRef = React.useRef(false);
+  // Navigation: synchronized with top-level App navigation stack
+  const [internalActiveSubpage, setInternalActiveSubpage] = useState(null);
+  const activeSubpage = externalActiveSubpage !== undefined ? externalActiveSubpage : internalActiveSubpage;
+  const setActiveSubpage = externalSetActiveSubpage || setInternalActiveSubpage;
 
-  useEffect(() => {
-    if (!activeSubpage) return;
-
-    closedByPopStateRef.current = false;
-    const stateId = `subpage_${activeSubpage}_${Date.now()}`;
-    window.history.pushState({ subpageId: stateId }, '');
-
-    const handlePopState = () => {
-      closedByPopStateRef.current = true;
+  const handleSubpageBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
       setActiveSubpage(null);
-    };
-    window.addEventListener('popstate', handlePopState);
+    }
+  };
 
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      if (!closedByPopStateRef.current && window.history.state?.subpageId === stateId) {
-        window.history.back();
-      }
-    };
-  }, [activeSubpage]);
+  const isVerifiedKYC = Boolean(user && user.kyc_status === 'VERIFIED');
   
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(null);
@@ -576,8 +572,6 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
     return name.substring(0, 2).toUpperCase();
   };
 
-  const isVerifiedKYC = user.kyc_status === 'VERIFIED';
-
   const maskedPhone = (phone) => {
     if (!phone) return '*** ****';
     const clean = phone.replace(/[^\d]/g, '');
@@ -606,7 +600,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveSubpage(null)}
+            onClick={handleSubpageBack}
             className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
@@ -681,7 +675,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveSubpage(null)}
+            onClick={handleSubpageBack}
             className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
@@ -735,7 +729,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                 <input
                   type="tel"
                   required
-                  placeholder="0599360626"
+                  placeholder="0000000000"
                   value={personalForm.phone_number}
                   onChange={(e) => handlePhoneInputChange(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900"
@@ -753,7 +747,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               {resolvedAccountName && (
                 <div className="p-2.5 mt-2 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-1.5 text-xs font-bold text-emerald-800">
                   <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                  <span>Registered MoMo Name: {resolvedAccountName} ✓</span>
+                  <span>Account Name: {resolvedAccountName} ✓</span>
                 </div>
               )}
             </div>
@@ -765,7 +759,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             {paymentWalletSaved ? (
               <div className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2">
                 <CheckCircle2 size={16} className="text-white" />
-                <span>✓ Payment Method Saved</span>
+                <span>✓ Saved</span>
               </div>
             ) : (
               <button
@@ -779,7 +773,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                     <span>Saving...</span>
                   </>
                 ) : (
-                  <span>Save Payment & Withdrawal Method</span>
+                  <span>Save</span>
                 )}
               </button>
             )}
@@ -797,7 +791,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveSubpage(null)}
+            onClick={handleSubpageBack}
             className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
@@ -883,7 +877,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           {withdrawalWalletSaved ? (
             <div className="w-full py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2">
               <CheckCircle2 size={16} className="text-white" />
-              <span>✓ Payout Wallet Saved</span>
+              <span>✓ Saved</span>
             </div>
           ) : (
             <button
@@ -897,7 +891,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                   <span>Saving...</span>
                 </>
               ) : (
-                <span>Save Withdrawal Wallet</span>
+                <span>Save</span>
               )}
             </button>
           )}
@@ -914,7 +908,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveSubpage(null)}
+            onClick={handleSubpageBack}
             className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
@@ -1064,7 +1058,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
 
               {/* Zero-Hassle / No Reminders Once Paid Guarantee */}
               <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-900 font-medium leading-relaxed">
-                🛡️ <strong>Zero Reminders Once Paid:</strong> When time is due, the system deducts your contribution automatically. Once paid, all prompts, reminders, and alerts stop completely for the rest of the round until the next round begins.
+                🛡️ <strong>Zero Reminders Once Paid:</strong> When time is due, the system deducts your contribution automatically. Once paid, all prompts and reminders pause completely until the next round.
               </div>
             </div>
           )}
@@ -1077,7 +1071,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               className="w-full py-2.5 px-4 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 cursor-default"
             >
               <CheckCircle2 size={16} />
-              <span>Automated Payment Settings Saved!</span>
+              <span>✓ Saved</span>
             </button>
           ) : (
             <button
@@ -1092,7 +1086,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                   <span>Saving...</span>
                 </>
               ) : (
-                <span>Save Automated Payment Settings</span>
+                <span>Save</span>
               )}
             </button>
           )}
@@ -1128,7 +1122,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       <div className="max-w-md mx-auto py-4 px-4 space-y-5 animate-in fade-in duration-150 pb-20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveSubpage(null)}
+            onClick={handleSubpageBack}
             className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
@@ -1147,7 +1141,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900">Account Approved & Verified</h3>
-              <p className="text-xs text-slate-600 mt-0.5">Your Ghana Card and Telecom MoMo details are fully verified</p>
+              <p className="text-xs text-slate-600 mt-0.5">Your identity and Mobile Money details are verified</p>
             </div>
           </div>
         ) : (
@@ -1530,9 +1524,9 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                   <Smartphone size={16} />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-slate-900 block">MoMo Name Match</span>
+                  <span className="text-xs font-bold text-slate-900 block">Mobile Money Name</span>
                   <span className="text-[11px] text-slate-600 block">
-                    {resolvedAccountName ? `Verified: ${resolvedAccountName}` : 'Auto-confirmed via Telecom'}
+                    {resolvedAccountName ? resolvedAccountName : 'Automatic name check'}
                   </span>
                 </div>
               </div>
@@ -1569,27 +1563,33 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
                   </div>
                 </div>
 
-                {resolvedAccountName ? (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs font-bold text-emerald-800">
-                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-                    <span>Registered MoMo Name: {resolvedAccountName} ✓</span>
+                {/* Clean account name display with small circular refresh icon beside it */}
+                <div className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-slate-600 font-medium shrink-0">Account Name:</span>
+                    <span className="font-bold text-slate-900 truncate">
+                      {momoResolving ? (
+                        <span className="text-slate-500 font-normal">Checking...</span>
+                      ) : (
+                        resolvedAccountName || 'Name will appear automatically'
+                      )}
+                    </span>
+                    {resolvedAccountName && !momoResolving && (
+                      <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                    )}
                   </div>
-                ) : (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-xs font-bold text-amber-800">
-                    <AlertCircle size={16} className="text-amber-600 shrink-0" />
-                    <span>MoMo account name confirmation in progress</span>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  disabled={momoResolving}
-                  onClick={() => handleResolveMoMo(personalForm.phone_number || user.phone_number, personalForm.momo_provider || 'MTN')}
-                  className="w-full py-2 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  <RefreshCw size={14} className={momoResolving ? 'animate-spin' : ''} />
-                  <span>{momoResolving ? 'Checking with Telecom Network...' : 'Re-check MoMo Name'}</span>
-                </button>
+                  
+                  <button
+                    type="button"
+                    disabled={momoResolving}
+                    onClick={() => handleResolveMoMo(personalForm.phone_number || user.phone_number, personalForm.momo_provider || 'MTN')}
+                    className="w-7 h-7 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center shrink-0 cursor-pointer transition-colors shadow-xs"
+                    title="Refresh account name"
+                    aria-label="Refresh account name"
+                  >
+                    <RefreshCw size={12} className={momoResolving ? 'animate-spin text-sky-600' : ''} />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1601,7 +1601,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
           {kycSaved ? (
             <div className="w-full py-3 bg-emerald-600 text-white font-bold text-xs rounded-2xl shadow-xs flex items-center justify-center gap-2">
               <CheckCircle2 size={16} className="text-white" />
-              <span>✓ Verification Submitted & Saved</span>
+              <span>✓ Saved</span>
             </div>
           ) : (
             <button
@@ -1613,12 +1613,12 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  <span>Saving & Submitting...</span>
+                  <span>Saving...</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck size={16} className="text-white" />
-                  <span>{isVerifiedKYC ? 'Update & Save Verification' : 'Save & Submit KYC Verification'}</span>
+                  <span>{isVerifiedKYC ? 'Save' : 'Submit'}</span>
                 </>
               )}
             </button>
@@ -1637,7 +1637,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setActiveSubpage(null)}
+              onClick={handleSubpageBack}
               className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
             >
               <ArrowLeft size={16} />
@@ -1739,7 +1739,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setActiveSubpage(null)}
+              onClick={handleSubpageBack}
               className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
             >
               <ArrowLeft size={16} />
@@ -1798,42 +1798,88 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
   }
 
   // ==========================================
-  // SUBPAGE 7: LEGAL (Susu Constitution)
+  // SUBPAGE 7: LEGAL & CONSTITUTION
   // ==========================================
   if (activeSubpage === 'legal') {
     return (
       <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveSubpage(null)}
+            onClick={handleSubpageBack}
             className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
           </button>
-          <h2 className="text-lg font-bold text-slate-900">Legal & Constitution</h2>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Legal Standards & Trust</h2>
+            <p className="text-xs text-slate-600">Ghanaian regulatory & compliance framework</p>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 text-xs text-slate-900 shadow-xs">
+          {/* Engineering & Governance Ownership */}
+          <div className="p-3.5 bg-sky-50/70 rounded-xl border border-sky-100 flex items-center gap-3">
+            <Building2 size={20} className="text-sky-600 shrink-0" />
+            <div>
+              <span className="font-bold text-slate-900 block text-xs">Developed by Coratech Global</span>
+              <span className="text-[11px] text-slate-600 block mt-0.5">
+                Enterprise FinTech engineering & cloud security infrastructure (coratechglobal.com)
+              </span>
+            </div>
+          </div>
+
           <div>
-            <h4 className="font-black text-slate-900 text-sm">Rotational Fairness</h4>
-            <p className="text-slate-700 mt-1 leading-relaxed">
-              Turns progress in strict sequential, random ballot, or bidding order. No participant may withdraw ahead of their allocated round.
+            <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+              <ShieldCheck size={14} className="text-emerald-600" />
+              <span>Rotational Integrity (0% Interest ROSCA)</span>
+            </h4>
+            <p className="text-slate-600 mt-1 leading-relaxed">
+              SusuRow operates strictly under traditional rotational savings mechanisms. Turns progress in sequential, ballot, or bidding order. Zero interest is charged on savings pots.
             </p>
           </div>
 
           <div className="border-t border-slate-100 pt-3">
-            <h4 className="font-black text-slate-900 text-sm">Default Policy</h4>
-            <p className="text-slate-700 mt-1 leading-relaxed">
-              If a member is 24h late on contribution, upfront commitment deposits are utilized to cover the winner pot, and the emergency contact is notified.
+            <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+              <ShieldCheck size={14} className="text-emerald-600" />
+              <span>Payment Systems & Services Act, 2019 (Act 987)</span>
+            </h4>
+            <p className="text-slate-600 mt-1 leading-relaxed">
+              Mobile Money collections and payouts are executed in partnership with Bank of Ghana licensed payment institutions and registered telecom operators (MTN, Telecel, AT, and Paystack Ghana).
             </p>
           </div>
 
           <div className="border-t border-slate-100 pt-3">
-            <h4 className="font-black text-slate-900 text-sm">Data Privacy</h4>
-            <p className="text-slate-700 mt-1 leading-relaxed">
-              Compliant with the Data Protection Act of Ghana. Credentials and identities are stored with end-to-end encryption.
+            <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+              <Lock size={14} className="text-sky-600" />
+              <span>Data Protection Act, 2012 (Act 843)</span>
+            </h4>
+            <p className="text-slate-600 mt-1 leading-relaxed">
+              Personal identities, Ghana Cards, and Mobile Money numbers are encrypted and safeguarded. Personal data is never sold or rented to third parties.
             </p>
           </div>
+
+          <div className="border-t border-slate-100 pt-3">
+            <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+              <AlertCircle size={14} className="text-amber-600" />
+              <span>Escrow Security & Default Protection</span>
+            </h4>
+            <p className="text-slate-600 mt-1 leading-relaxed">
+              Groups with security deposits lock upfront commitment funds in escrow. If a member defaults, escrow deposits are applied to preserve the round winner's payout.
+            </p>
+          </div>
+
+          {onOpenTermsModal && (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={onOpenTermsModal}
+                className="w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              >
+                <span>Read Full Terms & Privacy Policy</span>
+                <ExternalLink size={13} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1847,7 +1893,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveSubpage(null)}
+            onClick={handleSubpageBack}
             className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />
@@ -1898,7 +1944,7 @@ export const ProfilePage = ({ onBack, onOpenReferralModal, onOpenTermsModal }) =
       <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setActiveSubpage(null)}
+            onClick={handleSubpageBack}
             className="w-9 h-9 rounded-full bg-white border border-slate-200 text-slate-900 flex items-center justify-center hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
           >
             <ArrowLeft size={16} />

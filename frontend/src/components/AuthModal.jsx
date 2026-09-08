@@ -429,14 +429,14 @@ export default function AuthModal({ isOpen, onClose }) {
 
                 {resolvingMoMo && (
                   <p className="text-[11px] text-slate-600 font-medium mt-1 flex items-center gap-1">
-                    <RefreshCw size={11} className="animate-spin text-sky-600" /> Resolving MoMo name from telecom network...
+                    <RefreshCw size={11} className="animate-spin text-sky-600" /> Confirming account name...
                   </p>
                 )}
 
                 {resolvedMoMoName && (
                   <div className="p-2.5 mt-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-1.5 animate-in fade-in">
                     <CheckCircle2 size={14} className="text-emerald-600 shrink-0" />
-                    <span>Registered MoMo Name: {resolvedMoMoName} ✓</span>
+                    <span>Account Name: {resolvedMoMoName} ✓</span>
                   </div>
                 )}
               </div>
