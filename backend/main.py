@@ -15,6 +15,7 @@ from routes.rotation import router as rotation_router
 from routes.stats import router as stats_router
 from routes.chat import router as chat_router
 from routes.reminders import router as reminders_router
+from routes.admin import router as admin_router
 
 def auto_migrate_schema():
     """Ensures all columns exist in PostgreSQL (Supabase / Render) and SQLite."""
@@ -50,6 +51,7 @@ def auto_migrate_schema():
         ("users", "auto_debit_frequency", "VARCHAR(20) DEFAULT 'WEEKLY'"),
         ("users", "auto_debit_time", "VARCHAR(10) DEFAULT '08:00'"),
         ("users", "is_active", "BOOLEAN DEFAULT TRUE"),
+        ("users", "is_admin", "BOOLEAN DEFAULT FALSE"),
         ("group_members", "trust_score", "INTEGER DEFAULT 100"),
         ("group_members", "bid_amount", "FLOAT DEFAULT 0.0"),
     ]
@@ -111,6 +113,7 @@ app.include_router(rotation_router)
 app.include_router(stats_router)
 app.include_router(chat_router)
 app.include_router(reminders_router)
+app.include_router(admin_router)
 
 @app.get("/")
 def root():

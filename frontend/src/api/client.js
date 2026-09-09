@@ -214,4 +214,64 @@ export const resolveMoMoAccount = async (payload) => {
   return res.data;
 };
 
+// ==========================================
+// Executive Admin Panel API Endpoints
+// ==========================================
+
+export const getAdminMetrics = async () => {
+  const res = await api.get('/admin/metrics');
+  return res.data;
+};
+
+export const getAdminUsers = async (params = {}) => {
+  const res = await api.get('/admin/users', { params });
+  return res.data;
+};
+
+export const updateUserKycStatus = async (userId, status, note = '') => {
+  const res = await api.post(`/admin/users/${userId}/kyc-status`, { status, note });
+  return res.data;
+};
+
+export const toggleUserFreeze = async (userId) => {
+  const res = await api.post(`/admin/users/${userId}/toggle-freeze`);
+  return res.data;
+};
+
+export const toggleUserAdmin = async (userId) => {
+  const res = await api.post(`/admin/users/${userId}/toggle-admin`);
+  return res.data;
+};
+
+export const getAdminCircles = async (params = {}) => {
+  const res = await api.get('/admin/circles', { params });
+  return res.data;
+};
+
+export const getAdminCircleMembers = async (groupId) => {
+  const res = await api.get(`/admin/circles/${groupId}/members`);
+  return res.data;
+};
+
+export const overrideCirclePayout = async (groupId) => {
+  const res = await api.post(`/admin/circles/${groupId}/payout-override`);
+  return res.data;
+};
+
+export const getAdminTransactions = async (params = {}) => {
+  const res = await api.get('/admin/transactions', { params });
+  return res.data;
+};
+
+export const reconcileTransaction = async (txId, note = 'Manual reconciliation') => {
+  const res = await api.post(`/admin/transactions/${txId}/reconcile`, { note });
+  return res.data;
+};
+
+export const broadcastAdminSMS = async (payload) => {
+  const res = await api.post('/admin/broadcast-sms', payload);
+  return res.data;
+};
+
 export default api;
+

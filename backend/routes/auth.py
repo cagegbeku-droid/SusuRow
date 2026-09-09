@@ -1,3 +1,4 @@
+import os
 import uuid
 import re
 from typing import Optional
@@ -65,6 +66,11 @@ def _build_user_profile(user: User) -> UserProfile:
         auto_debit_enabled=bool(user.auto_debit_enabled),
         auto_debit_frequency=user.auto_debit_frequency or "WEEKLY",
         auto_debit_time=user.auto_debit_time or "08:00",
+        is_admin=bool(
+            getattr(user, "is_admin", False) or 
+            (user.phone_number in {"0599360626", "233599360626", "+233599360626"}) or
+            (bool(os.getenv("ADMIN_PHONES")) and user.phone_number in os.getenv("ADMIN_PHONES", "").split(","))
+        ),
         created_at=user.created_at or datetime.utcnow()
     )
 

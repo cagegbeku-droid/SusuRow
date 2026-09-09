@@ -314,6 +314,31 @@ export default function AppSidebar({
               <ChevronRight size={14} className={activeView === 'profile' ? 'text-sky-600' : 'text-slate-400'} />
             </button>
 
+            {/* Executive Admin Panel */}
+            {isAuthenticated && user?.is_admin && (
+              <button
+                onClick={() => {
+                  setActiveView('admin');
+                  onClose();
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                  activeView === 'admin'
+                    ? 'bg-slate-900 text-amber-400 border border-amber-500/40 shadow-xs'
+                    : 'text-amber-800 bg-amber-50/70 hover:bg-amber-100/70 border border-amber-200/60'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`p-1.5 rounded-xl ${activeView === 'admin' ? 'bg-amber-500 text-slate-950' : 'bg-amber-200 text-amber-900'}`}>
+                    <ShieldCheck size={16} />
+                  </div>
+                  <span>Executive Admin Panel</span>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full shadow-xs">
+                  ADMIN
+                </span>
+              </button>
+            )}
+
             {/* Create New Group */}
             <button
               onClick={() => {

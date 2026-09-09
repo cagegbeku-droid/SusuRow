@@ -15,6 +15,7 @@ import { MarketplacePage } from './pages/MarketplacePage';
 import { CircleDetailPage } from './pages/CircleDetailPage';
 import { MyCirclesPage } from './pages/MyCirclesPage';
 import { ProfilePage } from './pages/ProfilePage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import { getPlatformStats, getGroupByCode } from './api/client';
 import { ShieldCheck, Loader2, Globe, Building2, AlertTriangle, ArrowRight } from 'lucide-react';
 
@@ -279,6 +280,10 @@ function AppContent() {
             onOpenReferralModal={handleOpenReferralModal}
             onOpenTermsModal={() => setIsTermsModalOpen(true)}
           />
+        )}
+
+        {currentTab === 'admin' && (
+          <AdminDashboardPage onBack={handleBack} />
         )}
       </main>
 

@@ -10,7 +10,8 @@ import {
   Users,
   Gift,
   PlusCircle,
-  ChevronDown
+  ChevronDown,
+  ShieldCheck
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
@@ -110,6 +111,18 @@ export default function Navbar({
             <MessageCircle size={18} />
           </button>
 
+          {/* Executive Admin Quick Trigger */}
+          {isAuthenticated && user?.is_admin && (
+            <button
+              onClick={() => setActiveView('admin')}
+              className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/40 text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              title="Executive Admin Panel"
+            >
+              <ShieldCheck size={14} className="text-amber-400" />
+              <span className="hidden sm:inline">Admin</span>
+            </button>
+          )}
+
           {/* User Profile Thumbnail or Sign In */}
           {isAuthenticated ? (
             <div className="relative" ref={dropdownRef}>
@@ -138,6 +151,16 @@ export default function Navbar({
                     <p className="text-xs font-bold text-slate-900 truncate">{user?.full_name}</p>
                     <p className="text-[11px] font-mono text-slate-500 mt-0.5">{user?.phone_number || user?.email}</p>
                   </div>
+
+                  {user?.is_admin && (
+                    <button
+                      onClick={() => setActiveView('admin')}
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-amber-700 hover:bg-amber-50 flex items-center gap-2 cursor-pointer transition-colors border-b border-slate-100"
+                    >
+                      <ShieldCheck size={15} className="text-amber-600" />
+                      <span>Executive Admin Panel</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => setActiveView('profile')}

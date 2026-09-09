@@ -139,6 +139,7 @@ class UserProfile(BaseModel):
     auto_debit_frequency: str = "WEEKLY"
     auto_debit_time: str = "08:00"
 
+    is_admin: bool = False
     created_at: datetime
 
 
