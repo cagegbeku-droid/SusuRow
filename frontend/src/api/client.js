@@ -1,7 +1,24 @@
 import axios from 'axios';
 
+// Detect whether app is running inside native Android/Capacitor (localhost) or web
+const getBaseURL = () => {
+  if (typeof window !== 'undefined') {
+    const isNativeCapacitor = 
+      window.location.hostname === 'localhost' ||
+      window.location.protocol === 'capacitor:' ||
+      window.location.protocol === 'ionic:' ||
+      window.location.origin.includes('localhost') ||
+      !!window.Capacitor;
+
+    if (isNativeCapacitor) {
+      return 'https://susurow.onrender.com/api';
+    }
+  }
+  return '/api';
+};
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },

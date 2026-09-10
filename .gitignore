@@ -42,3 +42,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Android binaries
+*.apk
+*.aab

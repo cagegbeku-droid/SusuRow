@@ -42,9 +42,16 @@ export class ErrorBoundary extends React.Component {
               Something went wrong
             </h2>
 
-            <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+            <p className="text-sm text-slate-600 mb-4 leading-relaxed">
               We encountered an unexpected display issue. Don't worry — your contributions, savings circle rotations, and payout schedules are completely safe on the ledger.
             </p>
+
+            {this.state.error && (
+              <div className="mb-4 p-2.5 bg-slate-100 rounded-lg text-left text-[11px] font-mono text-slate-600 break-all max-h-24 overflow-y-auto border border-slate-200">
+                <span className="font-bold text-rose-600">Error: </span>
+                {this.state.error.message || String(this.state.error)}
+              </div>
+            )}
 
             <div className="space-y-3">
               <button

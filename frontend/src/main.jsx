@@ -4,8 +4,14 @@ import App from './App.jsx'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import './index.css'
 
-// Register Service Worker for PWA Offline Resilience & Instant Startup
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+// Register Service Worker for Web PWA only (safely exclude Capacitor native app)
+if (
+  typeof window !== 'undefined' &&
+  'serviceWorker' in navigator &&
+  import.meta.env.PROD &&
+  window.location.protocol.startsWith('http') &&
+  window.location.hostname !== 'localhost'
+) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((reg) => console.log('[PWA] Service Worker registered with scope:', reg.scope))

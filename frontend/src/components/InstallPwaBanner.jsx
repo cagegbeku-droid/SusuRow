@@ -8,9 +8,10 @@ export const InstallPwaBanner = () => {
   const [showIosGuide, setShowIosGuide] = useState(false);
 
   useEffect(() => {
-    // Check if already installed or running standalone
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-    if (isStandalone) {
+    // Check if already running inside Capacitor native Android/iOS app or standalone PWA
+    const isCapacitor = !!window.Capacitor || window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:' || window.location.protocol === 'ionic:';
+    const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    if (isCapacitor || isStandalone) {
       return; // App is already installed and opened as native app
     }
 
