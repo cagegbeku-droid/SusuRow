@@ -396,6 +396,41 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </div>
       </div>
 
+      {/* 🎯 Saver Payout Turn Banner */}
+      {isEnrolled && enrolledMember?.payout_position && !isCompleted && (
+        <div className={`p-4 rounded-3xl border flex items-center justify-between gap-3 text-xs font-bold shadow-xs ${
+          enrolledMember.payout_position === group.current_round
+            ? 'bg-gradient-to-r from-amber-500/15 via-amber-500/20 to-amber-500/10 border-amber-300 text-amber-900'
+            : enrolledMember.has_received_payout
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            : 'bg-sky-50 border-sky-200 text-sky-900'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {enrolledMember.payout_position === group.current_round ? (
+              <Sparkles size={18} className="text-amber-500 shrink-0 animate-pulse" />
+            ) : (
+              <Coins size={18} className="text-sky-600 shrink-0" />
+            )}
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                {enrolledMember.payout_position === group.current_round ? '🎉 YOUR TURN THIS ROUND!' : 'YOUR SCHEDULED PAYOUT'}
+              </div>
+              <div className="text-sm font-bold mt-0.5">
+                {enrolledMember.payout_position === group.current_round
+                  ? `You are this round's winner! You receive the total pot of GH₵${Number(group.total_pool || 0).toFixed(2)}.`
+                  : enrolledMember.has_received_payout
+                  ? `You have received your pot payout of GH₵${Number(group.total_pool || 0).toFixed(2)} for this circle.`
+                  : `Round ${enrolledMember.payout_position} (${enrolledMember.payout_position - group.current_round} round${enrolledMember.payout_position - group.current_round > 1 ? 's' : ''} away) • Expected Pot: GH₵${Number(group.total_pool || 0).toFixed(2)}.`
+                }
+              </div>
+            </div>
+          </div>
+          <span className="shrink-0 text-[10px] font-black uppercase px-2.5 py-1 rounded-xl bg-white border border-slate-200 shadow-2xs">
+            Turn #{enrolledMember.payout_position}
+          </span>
+        </div>
+      )}
+
       {/* ⚡ Action Bar */}
       <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="text-xs text-slate-600 font-medium">

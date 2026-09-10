@@ -372,6 +372,9 @@ class GroupSummaryResponse(BaseModel):
     current_round: int
     creator_id: str
     status: str
+    user_payout_position: Optional[int] = None
+    user_has_received_payout: Optional[bool] = None
+    current_recipient_name: Optional[str] = None
     created_at: datetime
 
 

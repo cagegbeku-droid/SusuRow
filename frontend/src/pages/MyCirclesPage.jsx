@@ -35,6 +35,22 @@ export const MyCirclesPage = ({ onSelectCircle, openCreateModal }) => {
 
   const totalPotsValue = circles.reduce((acc, c) => acc + (c.total_pool || 0), 0);
 
+  // Compute user's next payout across all active circles
+  const activeCirclesWithPayout = circles.filter(
+    c => c.status === 'ACTIVE' && c.user_payout_position && !c.user_has_received_payout
+  );
+
+  // Check if user is current round winner anywhere
+  const currentWinnerCircle = activeCirclesWithPayout.find(
+    c => c.user_payout_position === c.current_round
+  );
+
+  // Nearest upcoming payout
+  const upcomingPayoutCircles = activeCirclesWithPayout
+    .filter(c => c.user_payout_position > c.current_round)
+    .sort((a, b) => (a.user_payout_position - a.current_round) - (b.user_payout_position - b.current_round));
+  const nextPayoutCircle = upcomingPayoutCircles[0];
+
   return (
     <div className="space-y-6 sm:space-y-8 pb-12">
       
@@ -61,14 +77,45 @@ export const MyCirclesPage = ({ onSelectCircle, openCreateModal }) => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           
-          <div className="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-200 text-center min-w-[100px]">
+          <div className="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-200 text-center min-w-[90px]">
             <div className="text-[10px] text-slate-500 uppercase font-bold">My Groups</div>
             <div className="text-xl font-bold text-slate-900 font-mono mt-0.5">{circles.length}</div>
           </div>
 
-          <div className="bg-slate-50 px-5 py-3 rounded-2xl border border-slate-200 text-center min-w-[140px]">
+          {/* Next Payout Highlight Card */}
+          <div className={`px-4 py-3 rounded-2xl border text-center min-w-[130px] ${
+            currentWinnerCircle
+              ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-xs'
+              : 'bg-slate-50 border-slate-200'
+          }`}>
+            <div className="text-[10px] uppercase font-bold text-slate-500">
+              {currentWinnerCircle ? '🎉 Next Payout (Your Turn!)' : 'Next Payout'}
+            </div>
+            <div className={`text-xl font-bold font-mono mt-0.5 ${
+              currentWinnerCircle ? 'text-amber-600 font-black' : 'text-emerald-600'
+            }`}>
+              {currentWinnerCircle ? (
+                `GH₵${(currentWinnerCircle.total_pool || 0).toLocaleString()}`
+              ) : nextPayoutCircle ? (
+                `GH₵${(nextPayoutCircle.total_pool || 0).toLocaleString()}`
+              ) : (
+                'GH₵0.00'
+              )}
+            </div>
+            <div className="text-[10px] text-slate-500 font-medium truncate max-w-[130px] mt-0.5">
+              {currentWinnerCircle ? (
+                `Round ${currentWinnerCircle.current_round} Winner`
+              ) : nextPayoutCircle ? (
+                `Round ${nextPayoutCircle.user_payout_position} (${nextPayoutCircle.user_payout_position - nextPayoutCircle.current_round} round${nextPayoutCircle.user_payout_position - nextPayoutCircle.current_round > 1 ? 's' : ''} away)`
+              ) : (
+                'None Pending'
+              )}
+            </div>
+          </div>
+
+          <div className="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-200 text-center min-w-[120px]">
             <div className="text-[10px] text-slate-500 uppercase font-bold">Total Pot Value</div>
             <div className="text-xl font-bold text-sky-600 font-mono mt-0.5">
               GH₵{totalPotsValue.toLocaleString()}

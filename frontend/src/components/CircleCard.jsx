@@ -45,15 +45,34 @@ export const CircleCard = ({ circle, onSelect }) => {
             </div>
           </div>
 
-          <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${
-            isCompleted
-              ? 'bg-slate-100 text-slate-600'
-              : isActive
-              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-          }`}>
-            {isCompleted ? 'Completed' : isActive ? `Round ${circle.current_round}` : 'Recruiting'}
-          </span>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${
+              isCompleted
+                ? 'bg-slate-100 text-slate-600'
+                : isActive
+                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            }`}>
+              {isCompleted ? 'Completed' : isActive ? `Round ${circle.current_round}` : 'Recruiting'}
+            </span>
+
+            {/* User Specific Next Payout Indicator */}
+            {circle.user_payout_position && !isCompleted && (
+              circle.user_payout_position === circle.current_round ? (
+                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500 text-white shadow-xs animate-pulse">
+                  🎉 Your Payout!
+                </span>
+              ) : circle.user_has_received_payout ? (
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                  ✓ Received
+                </span>
+              ) : (
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800">
+                  Payout: Round {circle.user_payout_position}
+                </span>
+              )
+            )}
+          </div>
 
         </div>
 

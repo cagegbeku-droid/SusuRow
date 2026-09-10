@@ -88,6 +88,9 @@ def get_user_groups(phone_number: str, db: Session = Depends(get_db)):
     results = []
     for g in groups:
         enrolled = len(g.members)
+        user_member = next((m for m in g.members if m.phone_number in [clean_phone, phone_number]), None)
+        current_recipient = next((m for m in g.members if m.payout_position == g.current_round), None)
+
         results.append(GroupSummaryResponse(
             id=g.id,
             name=g.name,
@@ -104,6 +107,9 @@ def get_user_groups(phone_number: str, db: Session = Depends(get_db)):
             current_round=g.current_round,
             creator_id=g.creator_id,
             status=g.status,
+            user_payout_position=user_member.payout_position if user_member else None,
+            user_has_received_payout=user_member.has_received_payout if user_member else None,
+            current_recipient_name=current_recipient.full_name if current_recipient else None,
             created_at=g.created_at
         ))
     return results
