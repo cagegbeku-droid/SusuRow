@@ -58,6 +58,8 @@ class LoginRequest(BaseModel):
     @field_validator("phone_number")
     @classmethod
     def validate_phone(cls, v: str) -> str:
+        if "@" in v:
+            return v.strip().lower()
         return sanitize_ghana_phone(v)
 
 

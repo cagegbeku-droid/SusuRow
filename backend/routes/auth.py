@@ -134,18 +134,28 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=AuthResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    """Logs in an existing saver using Phone Number and Password."""
+    """Logs in an existing saver using Phone Number or Email and Password."""
     try:
-        clean_phone = sanitize_ghana_phone(payload.phone_number)
-        user = db.query(User).filter(User.phone_number == clean_phone).first()
+        identifier = payload.phone_number.strip()
+        user = None
+        if "@" in identifier:
+            user = db.query(User).filter(User.email == identifier.lower()).first()
+        else:
+            clean_phone = sanitize_ghana_phone(identifier)
+            user = db.query(User).filter(User.phone_number == clean_phone).first()
         
-        if not user or not user.hashed_password:
+        if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="No account found with this phone number or incorrect password. If you are new to SusuRow, please tap 'Create Account'."
+                detail="No account found with this phone number or email. If you are new to SusuRow, please tap 'Create Account'."
             )
         
-        if not verify_password(payload.password, user.hashed_password):
+        # If user account was originally created via Google without a password, securely initialize their password
+        if not user.hashed_password:
+            user.hashed_password = hash_password(payload.password)
+            db.commit()
+            db.refresh(user)
+        elif not verify_password(payload.password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect password. Please try again or use SMS Code to sign in."

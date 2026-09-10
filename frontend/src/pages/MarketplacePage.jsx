@@ -14,6 +14,7 @@ import { useUser } from '../context/UserContext';
 
 export const MarketplacePage = ({
   stats,
+  refreshKey,
   onSelectCircle,
   openCreateModal,
   openJoinCodeModal,
@@ -45,7 +46,7 @@ export const MarketplacePage = ({
 
   useEffect(() => {
     fetchCircles();
-  }, [frequencyFilter, rotationFilter]);
+  }, [frequencyFilter, rotationFilter, refreshKey]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

@@ -18,14 +18,16 @@ import { ProfilePage } from './pages/ProfilePage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import { InstallPwaBanner } from './components/InstallPwaBanner';
 import { OfflineNotice } from './components/OfflineNotice';
+import { PullToRefresh } from './components/PullToRefresh';
 import { getPlatformStats, getGroupByCode } from './api/client';
 import { ShieldCheck, Loader2, Globe, Building2, AlertTriangle, ArrowRight } from 'lucide-react';
 
 function AppContent() {
-  const { user, isAuthenticated, loading, isAuthModalOpen, openAuthModal, closeAuthModal } = useUser();
+  const { user, isAuthenticated, loading, isAuthModalOpen, openAuthModal, closeAuthModal, refreshProfile } = useUser();
   const [currentTab, setCurrentTab] = useState('marketplace'); // 'marketplace' | 'my-circles' | 'profile' | 'detail'
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [profileSubpage, setProfileSubpage] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState({
     total_pooled_ghs: 0.0,
     total_payouts_disbursed_ghs: 0.0,
@@ -50,6 +52,18 @@ function AppContent() {
       setStats(data);
     } catch (e) {
       console.error('Failed to load stats', e);
+    }
+  };
+
+  const handleRefreshAll = async () => {
+    try {
+      await Promise.allSettled([
+        fetchStats(),
+        refreshProfile ? refreshProfile() : Promise.resolve(),
+      ]);
+      setRefreshKey(prev => prev + 1);
+    } catch (err) {
+      console.error('Refresh error', err);
     }
   };
 
@@ -220,74 +234,78 @@ function AppContent() {
         onOpenFAQModal={() => setIsFAQModalOpen(true)}
       />
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {/* Action Required: Unverified KYC Top Banner */}
-        {isAuthenticated && user && !isKycComplete && (
-          <div className="mb-4 bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 border border-amber-300 dark:border-amber-600/40 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-                <AlertTriangle size={18} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md">
-                    Action Required
-                  </span>
+      {/* Main Content with Pull-To-Refresh */}
+      <PullToRefresh onRefresh={handleRefreshAll}>
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6">
+          {/* Action Required: Unverified KYC Top Banner */}
+          {isAuthenticated && user && !isKycComplete && (
+            <div className="mb-4 bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 border border-amber-300 dark:border-amber-600/40 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <AlertTriangle size={18} />
                 </div>
-                <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mt-0.5">
-                  Please complete your verification with your Ghana Card to unlock full features and circle payouts.
-                </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md">
+                      Action Required
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 font-medium mt-0.5">
+                    Please complete your verification with your Ghana Card to unlock full features and circle payouts.
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => navigateTo('profile', { subpage: 'kyc' })}
+                className="shrink-0 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Verify</span>
+                <ArrowRight size={14} />
+              </button>
             </div>
-            <button
-              onClick={() => navigateTo('profile', { subpage: 'kyc' })}
-              className="shrink-0 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5"
-            >
-              <span>Verify</span>
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        )}
+          )}
 
-        {currentTab === 'marketplace' && (
-          <MarketplacePage
-            stats={stats}
-            onSelectCircle={handleSelectCircle}
-            openCreateModal={handleOpenCreateModal}
-            openJoinCodeModal={() => setIsJoinCodeModalOpen(true)}
-            openCalculatorModal={() => setIsCalculatorModalOpen(true)}
-          />
-        )}
+          {currentTab === 'marketplace' && (
+            <MarketplacePage
+              stats={stats}
+              refreshKey={refreshKey}
+              onSelectCircle={handleSelectCircle}
+              openCreateModal={handleOpenCreateModal}
+              openJoinCodeModal={() => setIsJoinCodeModalOpen(true)}
+              openCalculatorModal={() => setIsCalculatorModalOpen(true)}
+            />
+          )}
 
-        {currentTab === 'detail' && selectedGroupId && (
-          <CircleDetailPage
-            groupId={selectedGroupId}
-            onBack={handleBack}
-          />
-        )}
+          {currentTab === 'detail' && selectedGroupId && (
+            <CircleDetailPage
+              groupId={selectedGroupId}
+              onBack={handleBack}
+            />
+          )}
 
-        {currentTab === 'my-circles' && (
-          <MyCirclesPage
-            onSelectCircle={handleSelectCircle}
-            openCreateModal={handleOpenCreateModal}
-          />
-        )}
+          {currentTab === 'my-circles' && (
+            <MyCirclesPage
+              refreshKey={refreshKey}
+              onSelectCircle={handleSelectCircle}
+              openCreateModal={handleOpenCreateModal}
+            />
+          )}
 
-        {currentTab === 'profile' && (
-          <ProfilePage
-            activeSubpage={profileSubpage}
-            setActiveSubpage={(subpage) => navigateTo('profile', { subpage })}
-            onBack={handleBack}
-            onOpenReferralModal={handleOpenReferralModal}
-            onOpenTermsModal={() => setIsTermsModalOpen(true)}
-          />
-        )}
+          {currentTab === 'profile' && (
+            <ProfilePage
+              activeSubpage={profileSubpage}
+              setActiveSubpage={(subpage) => navigateTo('profile', { subpage })}
+              onBack={handleBack}
+              onOpenReferralModal={handleOpenReferralModal}
+              onOpenTermsModal={() => setIsTermsModalOpen(true)}
+            />
+          )}
 
-        {currentTab === 'admin' && (
-          <AdminDashboardPage onBack={handleBack} />
-        )}
-      </main>
+          {currentTab === 'admin' && (
+            <AdminDashboardPage onBack={handleBack} />
+          )}
+        </main>
+      </PullToRefresh>
 
       {/* Footer with Coratech Global Corporate Branding */}
       <footer className="bg-white text-slate-600 border-t border-slate-200 py-8 mt-12">

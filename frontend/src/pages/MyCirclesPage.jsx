@@ -11,7 +11,7 @@ import { useUser } from '../context/UserContext';
 import { getUserGroups } from '../api/client';
 import { CircleCard } from '../components/CircleCard';
 
-export const MyCirclesPage = ({ onSelectCircle, openCreateModal }) => {
+export const MyCirclesPage = ({ onSelectCircle, openCreateModal, refreshKey }) => {
   const { user } = useUser();
   const [circles, setCircles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export const MyCirclesPage = ({ onSelectCircle, openCreateModal }) => {
 
   useEffect(() => {
     fetchUserCircles();
-  }, [user?.phone_number]);
+  }, [user?.phone_number, refreshKey]);
 
   const totalPotsValue = circles.reduce((acc, c) => acc + (c.total_pool || 0), 0);
 
