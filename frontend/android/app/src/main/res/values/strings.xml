@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SusuRow</string>
+    <string name="title_activity_main">SusuRow</string>
+    <string name="package_name">com.susurow.app</string>
+    <string name="custom_url_scheme">com.susurow.app</string>
+</resources>
