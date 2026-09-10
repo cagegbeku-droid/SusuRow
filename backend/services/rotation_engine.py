@@ -78,18 +78,40 @@ class RotationEngine:
     def check_and_advance_round(
         db: Session,
         group: SusuGroup,
-        requester_phone: Optional[str] = None,
-        force_by_creator: bool = False
+        requester_phone: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Evaluates if all enrolled members have paid their contribution for current_round,
-        OR if the circle creator manually disburses the total lump sum to the current round's recipient.
-        Executes lump-sum payout disbursement, boosts trust scores, resets payment flags,
-        and increments state machine to round N + 1.
+        STRICT FINANCIAL INVARIANT ENGINE:
+        A payout can ONLY be disbursed and advanced if:
+        1. The circle has 100% of required members enrolled (len(members) == group.members_count).
+        2. The circle is in ACTIVE rotation status.
+        3. EVERY single enrolled member has deposited their contribution for current_round into escrow.
+        4. The designated recipient has contributed their own round payment.
+        Creator bypasses and mock disbursements are strictly prohibited.
         """
         members = db.query(GroupMember).filter(GroupMember.group_id == group.id).all()
         if not members:
             return {"advanced": False, "reason": "No members in group"}
+
+        # 1. Enforce Full Enrollment
+        if len(members) < group.members_count:
+            return {
+                "advanced": False,
+                "reason": f"Circle is still recruiting ({len(members)} of {group.members_count} members enrolled). All {group.members_count} members must join before rotation begins.",
+                "all_paid": False
+            }
+
+        # Auto-activate circle if all members joined but status is still RECRUITING
+        if group.status == GroupStatus.RECRUITING.value and len(members) >= group.members_count:
+            group.status = GroupStatus.ACTIVE.value
+            db.commit()
+
+        if group.status != GroupStatus.ACTIVE.value:
+            return {
+                "advanced": False,
+                "reason": f"Circle is currently {group.status}. Payouts can only occur on ACTIVE circles.",
+                "all_paid": False
+            }
 
         if any(m.payout_position is None for m in members):
             for idx, m in enumerate(members, start=1):
@@ -97,32 +119,36 @@ class RotationEngine:
                     m.payout_position = idx
             db.commit()
 
-        clean_requester = (requester_phone or "").replace("+233", "0").replace(" ", "").strip()
-        clean_creator = (group.creator_id or "").replace("+233", "0").replace(" ", "").strip()
-        is_creator_action = force_by_creator and (not requester_phone or clean_requester == clean_creator or requester_phone == group.creator_id)
+        # 2. Enforce 100% Escrow Contribution Verification
+        all_paid = all(m.has_paid_current_round for m in members)
+        if not all_paid:
+            unpaid_members = [m.full_name for m in members if not m.has_paid_current_round]
+            unpaid_count = len(unpaid_members)
+            names_preview = ", ".join(unpaid_members[:3])
+            if unpaid_count > 3:
+                names_preview += f" and {unpaid_count - 3} others"
+            return {
+                "advanced": False,
+                "reason": f"Escrow incomplete: Waiting on {unpaid_count} member(s) ({names_preview}) to pay their Round {group.current_round} contribution (GH₵{group.contribution_amount:.2f} each).",
+                "all_paid": False
+            }
 
-        # 1. If not triggered directly by creator, enforce that the group is fully enrolled AND all members have paid
-        if not is_creator_action:
-            if len(members) < group.members_count:
-                return {
-                    "advanced": False,
-                    "reason": f"Circle is still recruiting ({len(members)} of {group.members_count} members enrolled). All members must join before pot can disburse.",
-                    "all_paid": False
-                }
-
-            all_paid = all(m.has_paid_current_round for m in members)
-            if not all_paid:
-                unpaid_count = sum(1 for m in members if not m.has_paid_current_round)
-                return {
-                    "advanced": False,
-                    "reason": f"Waiting on {unpaid_count} member(s) to complete Round {group.current_round} payment before total sum can disburse.",
-                    "all_paid": False
-                }
-
-        # Find designated recipient for this round
+        # 3. Find designated recipient for this round
         recipient = next((m for m in members if m.payout_position == group.current_round), None)
         if not recipient:
-            recipient = members[(group.current_round - 1) % len(members)]
+            return {
+                "advanced": False,
+                "reason": f"No designated member assigned to payout turn {group.current_round}.",
+                "all_paid": False
+            }
+
+        # 4. Verify recipient has paid their own share
+        if not recipient.has_paid_current_round:
+            return {
+                "advanced": False,
+                "reason": f"Turn recipient {recipient.full_name} must contribute their own round share before receiving payout.",
+                "all_paid": False
+            }
 
         # The lump sum is the full pool for the round
         payout_amount = round(float(group.total_pool or (group.contribution_amount * group.members_count)), 2)

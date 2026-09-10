@@ -18,7 +18,6 @@ import { ProfilePage } from './pages/ProfilePage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import { InstallPwaBanner } from './components/InstallPwaBanner';
 import { OfflineNotice } from './components/OfflineNotice';
-import { PullToRefresh } from './components/PullToRefresh';
 import { getPlatformStats, getGroupByCode } from './api/client';
 import { ShieldCheck, Loader2, Globe, Building2, AlertTriangle, ArrowRight } from 'lucide-react';
 
@@ -234,9 +233,8 @@ function AppContent() {
         onOpenFAQModal={() => setIsFAQModalOpen(true)}
       />
 
-      {/* Main Content with Pull-To-Refresh */}
-      <PullToRefresh onRefresh={handleRefreshAll}>
-        <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6">
+      {/* Main Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-6">
           {/* Action Required: Unverified KYC Top Banner */}
           {isAuthenticated && user && !isKycComplete && (
             <div className="mb-4 bg-gradient-to-r from-amber-500/10 via-amber-500/15 to-amber-500/10 border border-amber-300 dark:border-amber-600/40 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 shadow-xs">
@@ -305,7 +303,6 @@ function AppContent() {
             <AdminDashboardPage onBack={handleBack} />
           )}
         </main>
-      </PullToRefresh>
 
       {/* Footer with Coratech Global Corporate Branding */}
       <footer className="bg-white text-slate-600 border-t border-slate-200 py-8 mt-12">

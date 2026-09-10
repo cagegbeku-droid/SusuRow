@@ -57,13 +57,13 @@ export const RotationalTimeline = ({ group }) => {
         {!isCompleted && (
           <div className="flex items-center space-x-3 bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl">
             <div className="text-right">
-              <div className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Current Pot</div>
-              <div className="text-sm font-black text-slate-900 font-mono">GH₵{group.total_pool?.toLocaleString()}</div>
+              <div className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Escrow Balance</div>
+              <div className="text-sm font-black text-slate-900 font-mono">GH₵{(paidCount * (group.contribution_amount || 0)).toFixed(2)}</div>
             </div>
             <div className="h-7 w-px bg-slate-200"></div>
             <div className="text-left">
               <div className="text-[10px] font-bold text-slate-500">Paid</div>
-              <div className="text-xs font-black text-slate-900">{paidCount} of {totalMembers}</div>
+              <div className="text-xs font-black text-slate-900">{paidCount} of {group.members_count}</div>
             </div>
           </div>
         )}

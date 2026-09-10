@@ -31,22 +31,17 @@ def advance_round_manually(
 ):
     """
     Disburses the total lump sum to the current round's receiver.
-    Allowed if every member has completed payment for current_round,
-    OR if triggered by the circle creator.
+    Strictly allowed ONLY when the circle is 100% full AND every single member
+    has completed payment into escrow for current_round.
     """
     group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Circle not found")
 
-    clean_creator = (group.creator_id or "").replace("+233", "0").replace(" ", "").strip()
-    clean_req = (creator_phone or "").replace("+233", "0").replace(" ", "").strip()
-    is_creator = bool(clean_req and (clean_req == clean_creator or clean_req == group.creator_id))
-
     result = RotationEngine.check_and_advance_round(
         db=db,
         group=group,
-        requester_phone=creator_phone,
-        force_by_creator=is_creator
+        requester_phone=creator_phone
     )
     
     if not result.get("advanced"):
