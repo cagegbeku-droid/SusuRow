@@ -20,6 +20,12 @@ import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
 const GOOGLE_CLIENT_ID = "912069601596-uv6jcts8q2t1bg7sc4h8maju1odnd720.apps.googleusercontent.com";
 
+const isNativeAndroid = typeof window !== 'undefined' && (
+  !!window.Capacitor || 
+  window.location.hostname === 'localhost' || 
+  window.location.protocol === 'capacitor:'
+);
+
 export default function AuthModal({ isOpen, onClose }) {
   const { registerWithPassword, loginWithPassword, loginWithGoogle, requestOtp, verifyAndLogin } = useUser();
   const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
@@ -277,6 +283,12 @@ export default function AuthModal({ isOpen, onClose }) {
                   </>
                 )}
               </button>
+
+              {isNativeAndroid && (
+                <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-2.5 text-center text-emerald-800 text-[11px] font-medium leading-snug">
+                  🇬🇭 <strong>Recommended on Mobile:</strong> Sign in or register with your Ghana phone number below for instant MTN MoMo & Telecel wallet integration.
+                </div>
+              )}
 
               {/* Clean Divider */}
               <div className="relative flex py-1 items-center">
