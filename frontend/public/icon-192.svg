@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="susuBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#005B52" />
+      <stop offset="100%" stop-color="#003630" />
+    </linearGradient>
+    <linearGradient id="goldAcc" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="42" fill="url(#susuBg)"/>
+  <!-- Outer Rotating Track -->
+  <circle cx="96" cy="96" r="68" fill="none" stroke="url(#goldAcc)" stroke-width="10" stroke-dasharray="26 14"/>
+  <!-- Core Vault Circle -->
+  <circle cx="96" cy="96" r="42" fill="#003630" stroke="#00F2FE" stroke-width="3"/>
+  <!-- Ghana Cedi Emblem -->
+  <text x="96" y="110" font-size="44" font-weight="900" fill="#F59E0B" text-anchor="middle" font-family="'Outfit', sans-serif">₵</text>
+  <!-- Trust Sparkles -->
+  <circle cx="96" cy="28" r="5" fill="#00F2FE"/>
+  <circle cx="164" cy="96" r="5" fill="#00F2FE"/>
+  <circle cx="96" cy="164" r="5" fill="#00F2FE"/>
+  <circle cx="28" cy="96" r="5" fill="#00F2FE"/>
+</svg>

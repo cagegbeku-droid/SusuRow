@@ -16,6 +16,8 @@ import { CircleDetailPage } from './pages/CircleDetailPage';
 import { MyCirclesPage } from './pages/MyCirclesPage';
 import { ProfilePage } from './pages/ProfilePage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import { InstallPwaBanner } from './components/InstallPwaBanner';
+import { OfflineNotice } from './components/OfflineNotice';
 import { getPlatformStats, getGroupByCode } from './api/client';
 import { ShieldCheck, Loader2, Globe, Building2, AlertTriangle, ArrowRight } from 'lucide-react';
 
@@ -421,6 +423,12 @@ function AppContent() {
         isOpen={isFAQModalOpen}
         onClose={() => setIsFAQModalOpen(false)}
       />
+
+      {/* Offline Status Badge */}
+      <OfflineNotice />
+
+      {/* PWA Mobile App Install Banner */}
+      <InstallPwaBanner />
 
     </div>
   );
