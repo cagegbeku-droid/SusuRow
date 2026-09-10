@@ -155,40 +155,6 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
     }
   };
 
-  const handleDisbursePot = async () => {
-    if (!group) return;
-    if (!isFull) {
-      alert(`Circle is still recruiting (${group.enrolled_count} of ${group.members_count} members enrolled). All spots must be filled before rotation and payouts can begin.`);
-      return;
-    }
-    if (!allPaidForRound) {
-      alert(`Cannot disburse: not all members have contributed for Round ${group.current_round} yet. All contributions must be deposited into escrow first.`);
-      return;
-    }
-    const recipient = group.current_recipient || group.members?.find(m => m.payout_position === group.current_round) || group.members?.[0];
-    const recipientName = recipient?.full_name || 'the current turn member';
-    const totalPotFormatted = Number(group.total_pool || 0).toFixed(2);
-    
-    const confirmPrompt = `All ${group.members_count} members have contributed! Release total collected escrow of GH₵${totalPotFormatted} to ${recipientName} and advance cycle?`;
-
-    if (!window.confirm(confirmPrompt)) return;
-
-    setActionLoading(true);
-    try {
-      const res = await advanceRound(group.id, user?.phone_number);
-      if (res.success) {
-        alert(res.message || `Successfully disbursed GH₵${totalPotFormatted} to ${recipientName}!`);
-        await fetchDetail();
-      } else {
-        alert(res.message || 'Could not disburse pot.');
-      }
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to disburse pot.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
   const handleSendReminders = async () => {
     setActionLoading(true);
     try {
@@ -462,18 +428,34 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </div>
       )}
 
-      {/* 🔒 Escrow Funding Progress */}
+      {/* 💰 Round Contributions Status */}
       {isFull && !allPaidForRound && !isCompleted && (
         <div className="bg-sky-50/80 border border-sky-200/90 rounded-3xl p-4 text-xs flex items-center gap-3 shadow-xs">
           <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-800 flex items-center justify-center shrink-0 font-bold">
-            🔒
+            💰
           </div>
           <div>
             <div className="font-bold text-sky-950">
-              Round {group.current_round} Escrow in Progress
+              Round {group.current_round} Contributions: GH₵{group.contribution_amount} per member
             </div>
             <div className="text-sky-800/80 mt-0.5">
-              Contributions are locked in escrow until all {group.members_count} members contribute. Total pot of GH₵{Number(group.total_pool || 0).toFixed(2)} will automatically be ready to release to Turn #{group.current_round} ({group.current_recipient?.full_name || 'Designated Member'}).
+              When all {group.members_count} members contribute, the GH₵{Number(group.total_pool || 0).toFixed(2)} pot is sent automatically to Turn #{group.current_round} ({group.current_recipient?.full_name || 'the scheduled receiver'}) via Mobile Money.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isFull && allPaidForRound && !isCompleted && (
+        <div className="bg-emerald-50/90 border border-emerald-200 rounded-3xl p-4 text-xs flex items-center gap-3 shadow-xs">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-800 flex items-center justify-center shrink-0 font-bold">
+            ✓
+          </div>
+          <div>
+            <div className="font-bold text-emerald-950">
+              Round {group.current_round} Contributions Complete!
+            </div>
+            <div className="text-emerald-800/90 mt-0.5">
+              All contributions received. The GH₵{Number(group.total_pool || 0).toFixed(2)} pot is processed automatically to {group.current_recipient?.full_name || 'the turn recipient'}'s wallet.
             </div>
           </div>
         </div>
@@ -559,19 +541,6 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             >
               <Shuffle className="w-4 h-4 text-amber-600" />
               <span>Ballot Draw</span>
-            </button>
-          )}
-
-          {/* Disburse Button - ONLY available when 100% full AND 100% of members have deposited into escrow */}
-          {!isCompleted && isFull && allPaidForRound && (
-            <button
-              onClick={handleDisbursePot}
-              disabled={actionLoading}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-              title={`Release collected escrow of GH₵${Number(group.total_pool || 0).toFixed(2)} to ${group.current_recipient?.full_name || 'current receiver'}`}
-            >
-              <CheckCircle2 className="w-4 h-4 text-white" />
-              <span>Release Escrow to {group.current_recipient?.full_name?.split(' ')[0] || 'Receiver'} (GH₵{Number(group.total_pool || 0).toFixed(2)})</span>
             </button>
           )}
 

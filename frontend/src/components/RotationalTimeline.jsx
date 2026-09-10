@@ -49,7 +49,7 @@ export const RotationalTimeline = ({ group }) => {
             </span>
           </div>
           <p className="text-xs text-slate-600 mt-0.5">
-            Turn-by-turn payout schedule and lump-sum pot distribution state.
+            Turn-by-turn payout schedule. Payouts are sent directly to each member's Mobile Money wallet on their turn.
           </p>
         </div>
 
@@ -57,7 +57,7 @@ export const RotationalTimeline = ({ group }) => {
         {!isCompleted && (
           <div className="flex items-center space-x-3 bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl">
             <div className="text-right">
-              <div className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Escrow Balance</div>
+              <div className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Collected This Round</div>
               <div className="text-sm font-black text-slate-900 font-mono">GH₵{(paidCount * (group.contribution_amount || 0)).toFixed(2)}</div>
             </div>
             <div className="h-7 w-px bg-slate-200"></div>
@@ -154,7 +154,7 @@ export const RotationalTimeline = ({ group }) => {
                     </div>
                     <div className="text-[11px] font-semibold text-slate-600 mt-0.5">
                       {paidCount === totalMembers ? (
-                        <span className="text-emerald-700 font-bold">✓ All members paid. Ready for disbursement!</span>
+                        <span className="text-emerald-700 font-bold">✓ All contributions received! Sent automatically to wallet.</span>
                       ) : (
                         <span>{paidCount} of {totalMembers} paid for Round {currentRound}</span>
                       )}

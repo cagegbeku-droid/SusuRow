@@ -127,6 +127,17 @@ def get_group_detail(group_id: str, db: Session = Depends(get_db)):
     group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Susu circle not found")
+    
+    # Seamless background automation: If all members in an active group have paid,
+    # auto-advance and disburse silently without requiring user intervention.
+    if (group.status == GroupStatus.ACTIVE.value and 
+        len(group.members) == group.members_count and 
+        len(group.members) > 0 and 
+        all(m.has_paid_current_round for m in group.members)):
+        RotationEngine.check_and_advance_round(db, group)
+        db.commit()
+        db.refresh(group)
+
     return _build_detail_response(group)
 
 def _build_detail_response(group: SusuGroup) -> GroupDetailResponse:
