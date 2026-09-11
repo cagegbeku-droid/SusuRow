@@ -10,6 +10,7 @@ import {
   Copy,
   Check,
   Phone,
+  ShieldCheck,
   LogOut,
   LogIn,
   ChevronRight,
