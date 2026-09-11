@@ -2024,10 +2024,11 @@ export const ProfilePage = ({
       {/* User Identity Card (Header) */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center gap-4">
         <div className="w-14 h-14 rounded-2xl bg-sky-600 text-white font-bold text-xl flex items-center justify-center shadow-xs overflow-hidden shrink-0">
-          {user.avatar_url && !avatarError ? (
+          {(user.avatar_url || user.profile_image_url || user.picture) && !avatarError ? (
             <img 
-              src={user.avatar_url} 
+              src={user.avatar_url || user.profile_image_url || user.picture} 
               alt={user.full_name} 
+              referrerPolicy="no-referrer"
               onError={() => setAvatarError(true)}
               className="w-full h-full object-cover" 
             />

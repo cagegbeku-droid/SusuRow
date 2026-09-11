@@ -15,7 +15,15 @@ export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('susurow_auth_user');
-      return saved ? JSON.parse(saved) : null;
+      if (!saved) return null;
+      const parsed = JSON.parse(saved);
+      const pic = parsed?.avatar_url || parsed?.profile_image_url || parsed?.picture;
+      if (pic) {
+        parsed.avatar_url = pic;
+        parsed.profile_image_url = pic;
+        parsed.picture = pic;
+      }
+      return parsed;
     } catch {
       return null;
     }
@@ -51,9 +59,22 @@ export const UserProvider = ({ children }) => {
     if (savedToken) {
       try {
         const profile = await getProfile();
-        setUser(profile);
-        localStorage.setItem('susurow_auth_user', JSON.stringify(profile));
-        return profile;
+        let savedUser = null;
+        try {
+          const savedStr = localStorage.getItem('susurow_auth_user');
+          if (savedStr) savedUser = JSON.parse(savedStr);
+        } catch (e) {}
+
+        const pic = profile?.avatar_url || profile?.profile_image_url || profile?.picture || savedUser?.avatar_url || savedUser?.profile_image_url || savedUser?.picture;
+        const normalized = {
+          ...profile,
+          avatar_url: pic,
+          profile_image_url: pic,
+          picture: pic
+        };
+        setUser(normalized);
+        localStorage.setItem('susurow_auth_user', JSON.stringify(normalized));
+        return normalized;
       } catch (err) {
         console.warn('Failed to refresh profile', err);
       }
@@ -63,23 +84,18 @@ export const UserProvider = ({ children }) => {
 
   // Validate token on mount
   useEffect(() => {
-    const initAuth = async () => {
-      await refreshProfile();
+    const validateAuth = async () => {
+      if (token) {
+        await refreshProfile();
+      }
       setLoading(false);
     };
-
-    initAuth();
-  }, []);
+    validateAuth();
+  }, [token]);
 
   // 1. Password Registration
-  const registerWithPassword = async (fullName, phoneNumber, momoProvider, password) => {
-    const res = await apiRegisterUser({
-      full_name: fullName,
-      phone_number: phoneNumber,
-      momo_provider: momoProvider,
-      password: password
-    });
-
+  const registerWithPassword = async (payload) => {
+    const res = await apiRegister(payload);
     setToken(res.access_token);
     setUser(res.user);
     localStorage.setItem('susurow_auth_token', res.access_token);
@@ -88,10 +104,10 @@ export const UserProvider = ({ children }) => {
     return res;
   };
 
-  // 2. Password Login
-  const loginWithPassword = async (phoneNumber, password) => {
-    const res = await apiLoginUser({
-      phone_number: phoneNumber,
+  // 2. Password Sign-In
+  const loginWithPassword = async (phoneOrEmail, password) => {
+    const res = await apiLogin({
+      phone_number: phoneOrEmail,
       password: password
     });
 
@@ -106,10 +122,17 @@ export const UserProvider = ({ children }) => {
   // 3. Google Sign-In
   const handleGoogleAuth = async (googlePayload) => {
     const res = await apiLoginWithGoogle(googlePayload);
+    const pic = googlePayload.picture || res.user?.avatar_url || res.user?.profile_image_url || res.user?.picture;
+    const normalizedUser = {
+      ...res.user,
+      avatar_url: pic || res.user?.avatar_url,
+      profile_image_url: pic || res.user?.avatar_url,
+      picture: pic || res.user?.avatar_url
+    };
     setToken(res.access_token);
-    setUser(res.user);
+    setUser(normalizedUser);
     localStorage.setItem('susurow_auth_token', res.access_token);
-    localStorage.setItem('susurow_auth_user', JSON.stringify(res.user));
+    localStorage.setItem('susurow_auth_user', JSON.stringify(normalizedUser));
     setIsAuthModalOpen(false);
     return res;
   };

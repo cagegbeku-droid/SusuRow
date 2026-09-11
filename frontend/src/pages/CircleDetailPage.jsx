@@ -687,10 +687,19 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                           <div className="flex items-center gap-3">
                             <button
                               onClick={() => setSelectedProfileMember(member)}
-                              className="w-8 h-8 rounded-full bg-sky-100 text-sky-800 border border-sky-200 flex items-center justify-center font-black text-[11px] hover:ring-2 hover:ring-sky-400 hover:scale-105 transition-all cursor-pointer shrink-0 shadow-2xs"
+                              className="w-8 h-8 rounded-full bg-sky-100 text-sky-800 border border-sky-200 flex items-center justify-center font-black text-[11px] hover:ring-2 hover:ring-sky-400 hover:scale-105 transition-all cursor-pointer shrink-0 shadow-2xs overflow-hidden"
                               title="Click to view saver reliability and profile details"
                             >
-                              {getInitials(member.full_name)}
+                              {(member.avatar_url || (isCurrentUserRow && (user?.avatar_url || user?.profile_image_url || user?.picture))) ? (
+                                <img
+                                  src={member.avatar_url || (isCurrentUserRow ? (user?.avatar_url || user?.profile_image_url || user?.picture) : '')}
+                                  alt={member.full_name}
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                getInitials(member.full_name)
+                              )}
                             </button>
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="font-bold text-slate-900">{member.full_name}</span>
@@ -779,8 +788,17 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             </div>
 
             <div className="flex items-center gap-3.5 pb-4 border-b border-slate-100">
-              <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-800 border border-sky-200 flex items-center justify-center font-black text-lg shadow-xs">
-                {getInitials(selectedProfileMember.full_name)}
+              <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-800 border border-sky-200 flex items-center justify-center font-black text-lg shadow-xs overflow-hidden">
+                {selectedProfileMember.avatar_url || (selectedProfileMember.phone_number === user?.phone_number && (user?.avatar_url || user?.profile_image_url || user?.picture)) ? (
+                  <img
+                    src={selectedProfileMember.avatar_url || user?.avatar_url || user?.profile_image_url || user?.picture}
+                    alt={selectedProfileMember.full_name}
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  getInitials(selectedProfileMember.full_name)
+                )}
               </div>
               <div>
                 <h4 className="text-base font-bold text-slate-900">{selectedProfileMember.full_name}</h4>

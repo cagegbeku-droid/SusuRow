@@ -108,6 +108,8 @@ class UserProfile(BaseModel):
     username: Optional[str] = None
     email: Optional[str] = None
     avatar_url: Optional[str] = None
+    profile_image_url: Optional[str] = None
+    picture: Optional[str] = None
     momo_provider: Optional[str] = "MTN"
     tier: str = "BRONZE"
     points: int = 50

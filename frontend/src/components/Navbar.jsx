@@ -70,6 +70,10 @@ export default function Navbar({
   const [avatarError, setAvatarError] = useState(false);
   const dropdownRef = useRef(null);
 
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.avatar_url, user?.profile_image_url, user?.picture]);
+
   // Notifications State
   const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
   const [readNotifIds, setReadNotifIds] = useState(() => {
@@ -230,10 +234,11 @@ export default function Navbar({
                 className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200"
                 aria-label="User Profile Menu"
               >
-                {user?.profile_image_url && !avatarError ? (
+                {(user?.avatar_url || user?.profile_image_url || user?.picture) && !avatarError ? (
                   <img
-                    src={user.profile_image_url}
+                    src={user.avatar_url || user.profile_image_url || user.picture}
                     alt={user.full_name || 'Profile'}
+                    referrerPolicy="no-referrer"
                     className="w-7 h-7 rounded-full object-cover"
                     onError={() => setAvatarError(true)}
                   />
@@ -250,9 +255,19 @@ export default function Navbar({
                   className="absolute right-0 mt-2 w-60 rounded-2xl bg-white text-slate-800 shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-100"
                   onClick={() => setDropdownOpen(false)}
                 >
-                  <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50">
-                    <p className="text-xs font-bold text-slate-900 truncate">{user?.full_name}</p>
-                    <p className="text-[11px] font-mono text-slate-500 mt-0.5">{user?.phone_number || user?.email}</p>
+                  <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50 flex items-center gap-2.5">
+                    {(user?.avatar_url || user?.profile_image_url || user?.picture) && (
+                      <img
+                        src={user.avatar_url || user.profile_image_url || user.picture}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-900 truncate">{user?.full_name}</p>
+                      <p className="text-[11px] font-mono text-slate-500 mt-0.5 truncate">{user?.phone_number || user?.email}</p>
+                    </div>
                   </div>
 
                   <button

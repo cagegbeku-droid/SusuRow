@@ -176,10 +176,11 @@ export default function AppSidebar({
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className="w-11 h-11 rounded-2xl bg-sky-600 text-white font-bold text-base flex items-center justify-center shadow-xs overflow-hidden">
-                    {user?.avatar_url && !avatarError ? (
+                    {(user?.avatar_url || user?.profile_image_url || user?.picture) && !avatarError ? (
                       <img 
-                        src={user.avatar_url} 
+                        src={user.avatar_url || user.profile_image_url || user.picture} 
                         alt="" 
+                        referrerPolicy="no-referrer"
                         onError={() => setAvatarError(true)} 
                         className="w-full h-full object-cover rounded-2xl" 
                       />

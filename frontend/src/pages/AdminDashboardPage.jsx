@@ -1278,8 +1278,17 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center font-black">
-                  {selectedUserForModal.full_name?.charAt(0) || 'S'}
+                <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center font-black overflow-hidden shrink-0 border border-slate-200">
+                  {selectedUserForModal.avatar_url || selectedUserForModal.profile_image_url || selectedUserForModal.picture ? (
+                    <img
+                      src={selectedUserForModal.avatar_url || selectedUserForModal.profile_image_url || selectedUserForModal.picture}
+                      alt={selectedUserForModal.full_name || 'User'}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    selectedUserForModal.full_name?.charAt(0) || 'S'
+                  )}
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">

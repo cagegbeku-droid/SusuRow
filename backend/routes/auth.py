@@ -40,6 +40,8 @@ def _build_user_profile(user: User) -> UserProfile:
         username=user.username,
         email=user.email,
         avatar_url=user.avatar_url,
+        profile_image_url=user.avatar_url,
+        picture=user.avatar_url,
         momo_provider=user.momo_provider or "MTN",
         tier=user.tier or "BRONZE",
         points=user.points if user.points is not None else 50,
