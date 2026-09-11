@@ -138,6 +138,10 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
   const otherMembersCount = group.members?.filter(m => m.phone_number?.replace('+233', '0').replace(/\s+/g, '') !== cleanCreatorPhone).length || 0;
   const canDelete = isCreator && (!hasActiveContributions || isCompleted || otherMembersCount === 0);
 
+  // Active recipient: first member in sequence who has NOT received payout yet
+  const activeReceivingMember = group.members?.find(m => !m.has_received_payout && (m.payout_position || 1) >= (group.current_round || 1))
+    || group.members?.find(m => !m.has_received_payout);
+
   const handleCopyCode = () => {
     navigator.clipboard.writeText(group.invite_code);
     setCopiedCode(true);
@@ -377,11 +381,11 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </div>
       )}
 
-      {/* 💳 Hero Pot & Cycle Banner (Clean Light Theme) */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-xs">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+      {/* 💳 Hero Payout & Cycle Info (Compact) */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           
-          <div className="lg:col-span-8 space-y-3">
+          <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ${
                 isCompleted
@@ -390,11 +394,11 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold'
                   : 'bg-sky-50 text-sky-800 border border-sky-200 font-bold'
               }`}>
-                {isCompleted ? 'Cycle Completed' : group.status === 'ACTIVE' ? `Active Cycle • Round ${group.current_round} of ${group.members_count}` : 'Recruiting Group'}
+                {isCompleted ? 'Completed' : group.status === 'ACTIVE' ? `Round ${group.current_round} of ${group.members_count}` : 'Recruiting'}
               </span>
 
               <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                {group.frequency} Cycle
+                {group.frequency}
               </span>
 
               <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 capitalize">
@@ -403,49 +407,37 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
               <button
                 onClick={handleCopyCode}
-                className="inline-flex items-center gap-1 text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer"
-                title="Copy group code"
+                className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 transition-all cursor-pointer"
+                title="Copy invite code"
               >
-                {copiedCode ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-600" />}
-                <span>Code: {group.invite_code}</span>
+                {copiedCode ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-500" />}
+                <span>{group.invite_code}</span>
               </button>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
               {group.name}
             </h1>
-
-            {group.description && (
-              <p className="text-xs sm:text-sm text-slate-600 max-w-xl leading-relaxed font-normal">
-                {group.description}
-              </p>
-            )}
-
-            {group.commitment_deposit > 0 && (
-              <div className="inline-flex items-center gap-1.5 text-xs text-slate-700 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl font-medium">
-                <ShieldCheck className="w-4 h-4 text-sky-600 shrink-0" />
-                <span>Security Deposit: <strong>GH₵{group.commitment_deposit}</strong> per saver</span>
-              </div>
-            )}
           </div>
 
-          <div className="lg:col-span-4">
-            <div className="bg-slate-50 p-5 rounded-3xl border border-slate-200 shadow-xs space-y-3">
-              <div className="text-[10px] uppercase font-bold text-slate-500">
-                Total Payout Pot per Turn
+          {/* Quick Metrics */}
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex items-center gap-6 shrink-0">
+            <div>
+              <div className="text-[9px] uppercase font-bold text-slate-400">Total Payout</div>
+              <div className="text-xl sm:text-2xl font-bold text-sky-600 font-mono">
+                GH₵{Number(group.total_pool || 0).toLocaleString()}
               </div>
-              <div className="text-3xl sm:text-4xl font-bold text-sky-600 font-mono">
-                GH₵{Number(group.total_pool || 0).toFixed(2)}
+            </div>
+
+            <div className="h-8 w-px bg-slate-200" />
+
+            <div>
+              <div className="text-[9px] uppercase font-bold text-slate-400">Contribution</div>
+              <div className="text-xs font-bold text-slate-800 font-mono">
+                GH₵{Number(group.contribution_amount || 0).toLocaleString()}
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 text-xs">
-                <div>
-                  <div className="text-[10px] text-slate-500">Contribution</div>
-                  <div className="font-bold text-slate-900 font-mono">GH₵{Number(group.contribution_amount || 0).toFixed(2)}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-500">Savers</div>
-                  <div className="font-bold text-slate-900">{group.enrolled_count} of {group.members_count}</div>
-                </div>
+              <div className="text-[10px] font-bold text-slate-500 mt-0.5">
+                {group.enrolled_count}/{group.members_count} members
               </div>
             </div>
           </div>
@@ -453,97 +445,58 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </div>
       </div>
 
-      {/* 🎯 Saver Payout Turn Banner */}
-      {isEnrolled && enrolledMember?.payout_position && !isCompleted && (
-        <div className={`p-4 rounded-3xl border flex items-center justify-between gap-3 text-xs font-bold shadow-xs ${
-          enrolledMember.payout_position === group.current_round
-            ? 'bg-gradient-to-r from-amber-500/15 via-amber-500/20 to-amber-500/10 border-amber-300 text-amber-900'
-            : enrolledMember.has_received_payout
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-            : 'bg-sky-50 border-sky-200 text-sky-900'
-        }`}>
-          <div className="flex items-center gap-2.5">
-            {enrolledMember.payout_position === group.current_round ? (
-              <Sparkles size={18} className="text-amber-500 shrink-0 animate-pulse" />
-            ) : (
-              <Coins size={18} className="text-sky-600 shrink-0" />
-            )}
-            <div>
-              <div className="text-[11px] font-black uppercase tracking-wider text-slate-500">
-                {enrolledMember.payout_position === group.current_round ? '🎉 YOUR TURN THIS ROUND!' : 'YOUR SCHEDULED PAYOUT'}
-              </div>
-              <div className="text-sm font-bold mt-0.5">
-                {enrolledMember.payout_position === group.current_round
-                  ? `You are this round's winner! You receive the total pot of GH₵${Number(group.total_pool || 0).toFixed(2)}.`
-                  : enrolledMember.has_received_payout
-                  ? `You have received your pot payout of GH₵${Number(group.total_pool || 0).toFixed(2)} for this circle.`
-                  : `Round ${enrolledMember.payout_position} (${enrolledMember.payout_position - group.current_round} round${enrolledMember.payout_position - group.current_round > 1 ? 's' : ''} away) • Expected Pot: GH₵${Number(group.total_pool || 0).toFixed(2)}.`
-                }
-              </div>
+      {/* ℹ️ Group Description & How It Works */}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs space-y-3">
+        {group.description && (
+          <div>
+            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">About This Group</h3>
+            <p className="text-xs sm:text-sm text-slate-700 mt-1 leading-relaxed">
+              {group.description}
+            </p>
+          </div>
+        )}
+
+        <div className={group.description ? "pt-3 border-t border-slate-100" : ""}>
+          <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">How This Susu Works</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-900 block">1. Equal Contribution</span>
+              <span className="text-slate-600 text-[11px] mt-0.5 block">
+                Each member contributes GH₵{group.contribution_amount} {group.frequency.toLowerCase()}.
+              </span>
+            </div>
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-900 block">2. Lump Sum Payout</span>
+              <span className="text-slate-600 text-[11px] mt-0.5 block">
+                Each round, 1 member receives the total payout of GH₵{group.total_pool}.
+              </span>
+            </div>
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-900 block">3. Guaranteed Rotation</span>
+              <span className="text-slate-600 text-[11px] mt-0.5 block">
+                Turns cycle until all {group.members_count} members receive their payout.
+              </span>
             </div>
           </div>
-          <span className="shrink-0 text-[10px] font-black uppercase px-2.5 py-1 rounded-xl bg-white border border-slate-200 shadow-2xs">
-            Turn #{enrolledMember.payout_position}
-          </span>
         </div>
-      )}
+      </div>
 
-      {/* ⏳ Honest Recruiting Status */}
+      {/* ⏳ Recruiting Notice */}
       {!isFull && !isCompleted && (
-        <div className="bg-amber-50/80 border border-amber-200/90 rounded-3xl p-4 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0 font-bold">
-              ⏳
-            </div>
-            <div>
-              <div className="font-bold text-amber-900">
-                Recruiting: {group.enrolled_count} of {group.members_count} spots filled
-              </div>
-              <div className="text-amber-800/80 mt-0.5">
-                All {group.members_count} members must join before rotation turn order and contributions begin.
-              </div>
-            </div>
+        <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-3.5 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-amber-900">
+            <Users size={16} className="text-amber-700 shrink-0" />
+            <span>
+              Recruiting: <strong>{group.enrolled_count}/{group.members_count}</strong> members enrolled. Rotation begins once full.
+            </span>
           </div>
           <button
             onClick={() => setIsShareModalOpen(true)}
-            className="shrink-0 px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
+            className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Invite Members</span>
+            <span>Invite</span>
           </button>
-        </div>
-      )}
-
-      {/* 💰 Round Contributions Status */}
-      {isFull && !allPaidForRound && !isCompleted && (
-        <div className="bg-sky-50/80 border border-sky-200/90 rounded-3xl p-4 text-xs flex items-center gap-3 shadow-xs">
-          <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-800 flex items-center justify-center shrink-0 font-bold">
-            💰
-          </div>
-          <div>
-            <div className="font-bold text-sky-950">
-              Round {group.current_round} Contributions: GH₵{group.contribution_amount} per member
-            </div>
-            <div className="text-sky-800/80 mt-0.5">
-              When all {group.members_count} members contribute, the GH₵{Number(group.total_pool || 0).toFixed(2)} pot is sent automatically to Turn #{group.current_round} ({group.current_recipient?.full_name || 'the scheduled receiver'}) via Mobile Money.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isFull && allPaidForRound && !isCompleted && (
-        <div className="bg-emerald-50/90 border border-emerald-200 rounded-3xl p-4 text-xs flex items-center gap-3 shadow-xs">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-800 flex items-center justify-center shrink-0 font-bold">
-            ✓
-          </div>
-          <div>
-            <div className="font-bold text-emerald-950">
-              Round {group.current_round} Contributions Complete!
-            </div>
-            <div className="text-emerald-800/90 mt-0.5">
-              All contributions received. The GH₵{Number(group.total_pool || 0).toFixed(2)} pot is processed automatically to {group.current_recipient?.full_name || 'the turn recipient'}'s wallet.
-            </div>
-          </div>
         </div>
       )}
 
@@ -618,74 +571,95 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {group.members?.map((member) => {
-                const isCurrentRecipient = member.payout_position === group.current_round;
-                const isCurrentUserRow = member.phone_number?.replace('+233', '0').replace(/\s+/g, '') === cleanUserPhone;
+              {(() => {
+                const activeRecipient = !isCompleted 
+                  ? [...(group.members || [])]
+                      .sort((a, b) => (a.payout_position || 999) - (b.payout_position || 999))
+                      .find(m => !m.has_received_payout)
+                  : null;
 
-                return (
-                  <tr 
-                    key={member.id} 
-                    className={`hover:bg-slate-50/70 transition-colors ${
-                      isCurrentUserRow ? 'bg-sky-50/50' : ''
-                    }`}
-                  >
-                    <td className="py-3 px-4 font-semibold">
-                      {member.payout_position ? (
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                          isCurrentRecipient ? 'bg-amber-400 text-slate-950 shadow-xs' : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          {member.payout_position}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
+                return group.members?.map((member) => {
+                  const isReceived = isCompleted || member.has_received_payout;
+                  const isCurrentRecipient = !isCompleted && !isReceived && activeRecipient && member.id === activeRecipient.id;
+                  const isCurrentUserRow = member.phone_number?.replace('+233', '0').replace(/\s+/g, '') === cleanUserPhone;
 
-                    <td className="py-3 px-4">
-                      <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
-                        <span>{member.full_name}</span>
-                        {isCurrentUserRow && (
-                          <span className="bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[9px] px-1.5 py-0.2 rounded">
-                            YOU
+                  return (
+                    <tr 
+                      key={member.id} 
+                      className={`hover:bg-slate-50/70 transition-colors ${
+                        isCurrentRecipient 
+                          ? 'bg-amber-50/60' 
+                          : isCurrentUserRow 
+                          ? 'bg-sky-50/40' 
+                          : ''
+                      }`}
+                    >
+                      <td className="py-3 px-4 font-semibold">
+                        {member.payout_position ? (
+                          <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                            isReceived
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : isCurrentRecipient 
+                              ? 'bg-amber-400 text-slate-950 font-black ring-2 ring-amber-300 ring-offset-1 shadow-2xs' 
+                              : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {member.payout_position}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                          <span>{member.full_name}</span>
+                          {isCurrentUserRow && (
+                            <span className="bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[9px] px-1.5 py-0.2 rounded">
+                              YOU
+                            </span>
+                          )}
+                          {isCurrentRecipient && (
+                            <span className="bg-amber-300 text-slate-950 border border-amber-400 font-black text-[9px] px-2 py-0.5 rounded-full shadow-2xs">
+                              {isCurrentUserRow ? 'YOUR TURN TO RECEIVE' : 'RECEIVING THIS ROUND'}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-0.5 bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold px-1.5 py-0.2 rounded">
+                            <Star size={9} className="fill-amber-500 text-amber-500" />
+                            <span>{member.trust_score || 100}% Trust</span>
+                          </span>
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-500 mt-0.5">{member.phone_number}</div>
+                      </td>
+
+                      <td className="py-3 px-4">
+                        {getProviderBadge(member.momo_provider)}
+                      </td>
+
+                      <td className="py-3 px-4">
+                        {member.has_paid_current_round ? (
+                          <span className="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[11px] inline-flex items-center gap-1">
+                            <Check className="w-3 h-3 text-emerald-600" /> Paid
+                          </span>
+                        ) : (
+                          <span className="text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[11px]">
+                            Due
                           </span>
                         )}
-                        <span className="inline-flex items-center gap-0.5 bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold px-1.5 py-0.2 rounded">
-                          <Star size={9} className="fill-amber-500 text-amber-500" />
-                          <span>{member.trust_score || 100}% Trust</span>
-                        </span>
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-500 mt-0.5">{member.phone_number}</div>
-                    </td>
+                      </td>
 
-                    <td className="py-3 px-4">
-                      {getProviderBadge(member.momo_provider)}
-                    </td>
-
-                    <td className="py-3 px-4">
-                      {member.has_paid_current_round ? (
-                        <span className="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[11px] inline-flex items-center gap-1">
-                          <Check className="w-3 h-3 text-emerald-600" /> Paid
-                        </span>
-                      ) : (
-                        <span className="text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[11px]">
-                          Due
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="py-3 px-4">
-                      {member.has_received_payout ? (
-                        <span className="text-emerald-700 font-bold text-[11px] inline-flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Received
-                        </span>
-                      ) : isCurrentRecipient ? (
-                        <span className="text-slate-950 font-bold text-[11px] bg-amber-300 px-2 py-0.5 rounded-full shadow-xs">
-                          Current Turn
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 text-[11px]">Upcoming</span>
-                      )}
-                    </td>
+                      <td className="py-3 px-4">
+                        {isReceived ? (
+                          <span className="text-emerald-700 font-bold text-[11px] bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Received
+                          </span>
+                        ) : isCurrentRecipient ? (
+                          <span className="text-slate-950 font-black text-[11px] bg-amber-300 border border-amber-400 px-2 py-0.5 rounded-full shadow-2xs inline-flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 text-slate-950" /> {isCurrentUserRow ? 'Your Turn' : 'Receiving'}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 text-[11px]">Turn #{member.payout_position || '—'}</span>
+                        )}
+                      </td>
 
                     <td className="py-3 px-4 text-right">
                       {!member.has_paid_current_round && !isCompleted ? (
@@ -701,7 +675,8 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                     </td>
                   </tr>
                 );
-              })}
+              });
+            })()}
             </tbody>
           </table>
         </div>

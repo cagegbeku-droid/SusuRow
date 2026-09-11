@@ -114,7 +114,7 @@ export const SignatureCanvas = ({ onSave, initialSignature }) => {
         )}
       </div>
       <p className="text-[10px] text-slate-500">
-        Required by Bank of Ghana KYC rules before high-value lump-sum pot disbursement.
+        Required by Bank of Ghana KYC rules before high-value lump-sum payout disbursement.
       </p>
     </div>
   );

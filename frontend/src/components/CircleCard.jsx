@@ -13,31 +13,26 @@ export const CircleCard = ({ circle, onSelect }) => {
   const isActive = circle.status === 'ACTIVE';
   const isRecruiting = circle.status === 'RECRUITING';
 
-  const memberProgress = Math.min(
-    Math.round((circle.enrolled_count / circle.members_count) * 100),
-    100
-  );
-
   return (
     <div
       onClick={() => onSelect(circle)}
-      className="bg-white rounded-3xl p-5 border border-slate-150 shadow-xs hover:border-slate-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4 group"
+      className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:border-slate-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-3 group"
     >
       {/* Top Header */}
-      <div className="space-y-2.5">
+      <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             {/* Category Icon Badge */}
-            <div className="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-sm shrink-0 border border-sky-100">
-              <Wallet size={20} className="stroke-[2.2]" />
+            <div className="w-9 h-9 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-sm shrink-0 border border-sky-100">
+              <Wallet size={17} className="stroke-[2.2]" />
             </div>
 
-            <div>
-              <h3 className="text-base font-bold text-slate-900 group-hover:text-sky-600 transition-colors line-clamp-1">
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-slate-900 group-hover:text-sky-600 transition-colors truncate">
                 {circle.name}
               </h3>
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
                 <span>{circle.frequency}</span>
                 <span>•</span>
                 <span className="capitalize">{circle.rotation_type.toLowerCase()}</span>
@@ -46,7 +41,7 @@ export const CircleCard = ({ circle, onSelect }) => {
           </div>
 
           <div className="flex flex-col items-end gap-1 shrink-0">
-            <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full ${
+            <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
               isCompleted
                 ? 'bg-slate-100 text-slate-600'
                 : isActive
@@ -59,75 +54,51 @@ export const CircleCard = ({ circle, onSelect }) => {
             {/* User Specific Next Payout Indicator */}
             {circle.user_payout_position && !isCompleted && (
               circle.user_payout_position === circle.current_round ? (
-                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500 text-white shadow-xs animate-pulse">
-                  🎉 Your Payout!
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-400 text-slate-950 shadow-2xs">
+                  Your Turn
                 </span>
               ) : circle.user_has_received_payout ? (
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
                   ✓ Received
                 </span>
               ) : (
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800">
-                  Payout: Round {circle.user_payout_position}
+                <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-sky-100 text-sky-800">
+                  Turn #{circle.user_payout_position}
                 </span>
               )
             )}
           </div>
 
         </div>
-
-        {circle.description && (
-          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed font-normal">
-            {circle.description}
-          </p>
-        )}
       </div>
 
       {/* Metrics Row */}
-      <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 grid grid-cols-2 gap-3 items-center">
+      <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 grid grid-cols-2 gap-2 items-center">
         <div>
-          <div className="text-[10px] uppercase font-bold text-slate-400">Total Pot per Turn</div>
-          <div className="text-lg font-bold text-slate-900 font-mono">
+          <div className="text-[9px] uppercase font-bold text-slate-400">Total Payout</div>
+          <div className="text-base font-bold text-slate-900 font-mono">
             GH₵{circle.total_pool?.toLocaleString()}
           </div>
         </div>
 
         <div className="text-right">
-          <div className="text-[10px] uppercase font-bold text-slate-400">Contribution</div>
-          <div className="text-sm font-bold text-slate-800 font-mono">
+          <div className="text-[9px] uppercase font-bold text-slate-400">Contribution</div>
+          <div className="text-xs font-bold text-slate-800 font-mono">
             GH₵{circle.contribution_amount}
           </div>
         </div>
       </div>
 
-      {/* Progress Track */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-          <span className="text-[11px] text-slate-500">
-            {circle.enrolled_count} of {circle.members_count} Savers
-          </span>
-          <span className="text-[11px] font-mono font-bold text-sky-600">
-            {memberProgress}%
-          </span>
+      {/* Card Action Row with 1/5 Member Counter (No Horizontal Bar) */}
+      <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+        <div className="flex items-center gap-1.5 text-slate-600 font-bold text-[11px]">
+          <Users size={13} className="text-slate-400" />
+          <span>{circle.enrolled_count}/{circle.members_count} members</span>
         </div>
 
-        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-          <div
-            className="bg-sky-500 h-full rounded-full transition-all duration-500"
-            style={{ width: `${memberProgress}%` }}
-          />
-        </div>
-      </div>
-
-      {/* Card Action Row */}
-      <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-        <span className="text-[11px] font-semibold text-slate-500">
-          {circle.commitment_deposit > 0 ? `GH₵${circle.commitment_deposit} Deposit` : '0% Loan Interest'}
-        </span>
-
-        <div className="inline-flex items-center gap-1 text-xs font-bold text-sky-600 group-hover:translate-x-0.5 transition-transform">
-          <span>View Group</span>
-          <ChevronRight size={14} />
+        <div className="inline-flex items-center gap-1 font-bold text-sky-600 group-hover:translate-x-0.5 transition-transform text-xs">
+          <span>View</span>
+          <ChevronRight size={13} />
         </div>
       </div>
 

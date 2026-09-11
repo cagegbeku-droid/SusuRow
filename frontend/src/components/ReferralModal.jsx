@@ -101,7 +101,7 @@ export const ReferralModal = ({ isOpen, onClose }) => {
                 if (navigator.share) {
                   navigator.share({
                     title: 'Join me on SusuRow',
-                    text: 'Save and rotate money together with 0% interest.',
+                    text: 'Save and rotate money together in verified circles.',
                     url: shareUrl
                   }).catch(() => {});
                 } else {

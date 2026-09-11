@@ -415,7 +415,7 @@ function AppContent() {
               <ul className="space-y-1.5 text-xs text-slate-600 font-medium">
                 <li><button onClick={() => setIsTermsModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Terms of Service & Privacy</button></li>
                 <li><button onClick={handleOpenReferralModal} className="hover:text-sky-600 transition-colors cursor-pointer">• Refer & Earn Hub</button></li>
-                <li><button onClick={() => setIsCalculatorModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Pot Calculator</button></li>
+                <li><button onClick={() => setIsCalculatorModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Payout Calculator</button></li>
                 <li><button onClick={() => setIsJoinCodeModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Enter Group Code</button></li>
               </ul>
             </div>

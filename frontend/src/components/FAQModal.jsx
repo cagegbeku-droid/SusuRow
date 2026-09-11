@@ -20,15 +20,15 @@ const FAQ_DATA = [
     items: [
       {
         q: "What is SusuRow and how does it work?",
-        a: "SusuRow is a modern digital ROSCA (Rotating Savings and Credit Association) platform. Groups of savers pool equal contributions on a schedule (daily, weekly, or monthly). In every round, one member takes home the entire lump-sum pot until everyone in the group has had their turn with 0% loan interest."
+        a: "SusuRow is a modern digital ROSCA (Rotating Savings and Credit Association) platform. Groups of savers pool equal contributions on a schedule (daily, weekly, or monthly). In every round, one member takes home the entire lump-sum payout until everyone in the group has had their turn."
       },
       {
         q: "What is the difference between Sequential, Ballot, and Bidding?",
-        a: "• Sequential: Payout positions are fixed in order (1st, 2nd, 3rd...).\n• Ballot: Positions are randomly shuffled using a fair verifiable random draw.\n• Bidding: In each round, members bid discounts if they need the pot urgently."
+        a: "• Sequential: Payout positions are fixed in order (1st, 2nd, 3rd...).\n• Ballot: Positions are randomly shuffled using a fair verifiable random draw.\n• Bidding: In each round, members bid discounts if they need the payout urgently."
       },
       {
-        q: "How does the lump-sum pot payout reach my phone?",
-        a: "When a round completes, our automated rotation engine sends the entire pot directly into your registered Mobile Money wallet or linked Bank Account."
+        q: "How does the lump-sum payout reach my phone?",
+        a: "When a round completes, our automated rotation engine sends the full payout directly into your registered Mobile Money wallet or linked Bank Account."
       },
       {
         q: "What happens if a member delays their contribution?",

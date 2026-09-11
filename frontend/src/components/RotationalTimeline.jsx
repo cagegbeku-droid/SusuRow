@@ -71,105 +71,110 @@ export const RotationalTimeline = ({ group }) => {
 
       {/* Visual Stepper Steps */}
       <div className="space-y-3">
-        {members.map((member, index) => {
-          const position = member.payout_position || (index + 1);
-          const isPast = isCompleted || position < currentRound;
-          const isCurrent = !isCompleted && position === currentRound;
-          const isUpcoming = !isCompleted && position > currentRound;
+        {(() => {
+          // The active recipient is the first member in order who has NOT received their payout yet
+          const activeRecipient = !isCompleted ? members.find(m => !m.has_received_payout) : null;
 
-          const payoutRecord = group.payouts?.find(p => p.round_number === position);
+          return members.map((member, index) => {
+            const position = member.payout_position || (index + 1);
+            const isReceived = isCompleted || member.has_received_payout;
+            const isCurrent = !isCompleted && !isReceived && activeRecipient && member.id === activeRecipient.id;
+            const isUpcoming = !isCompleted && !isReceived && !isCurrent;
 
-          return (
-            <div
-              key={member.id}
-              className={`relative rounded-2xl transition-all p-4 border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
-                isCurrent
-                  ? 'bg-sky-50/80 border-sky-300 ring-1 ring-sky-300 shadow-sm'
-                  : isPast
-                  ? 'bg-emerald-50/50 border-emerald-200 text-slate-800'
-                  : 'bg-slate-50/70 border-slate-200 opacity-80 hover:opacity-100'
-              }`}
-            >
-              {/* Left: Step Icon & Member Info */}
-              <div className="flex items-center space-x-3.5">
-                
-                {/* Step Position Icon */}
-                <div className="relative shrink-0">
-                  {isPast ? (
-                    <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center border border-emerald-300">
-                      <CheckCircle2 size={20} />
-                    </div>
-                  ) : isCurrent ? (
-                    <div className="w-9 h-9 rounded-full bg-amber-400 text-slate-900 flex items-center justify-center font-black text-sm shadow-sm">
-                      <Sparkles size={16} />
-                    </div>
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs border border-slate-300">
-                      <span>#{position}</span>
-                    </div>
-                  )}
-                </div>
+            const payoutRecord = group.payouts?.find(p => p.round_number === position);
 
-                {/* Member Details */}
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-bold text-slate-900">{member.full_name}</span>
-                    {getProviderBadge(member.momo_provider)}
-                    {isCurrent && (
-                      <span className="bg-amber-400 text-slate-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-                        Current Turn
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 text-xs text-slate-600 font-mono mt-0.5">
-                    <span>{member.phone_number}</span>
-                    {member.bid_amount > 0 && (
-                      <span className="text-amber-700 font-bold">
-                        • Bid: GH₵{member.bid_amount}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Right: Status / Amount */}
-              <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end space-x-4 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
-                {isPast ? (
-                  <div className="text-right">
-                    <div className="text-xs font-bold text-emerald-700 flex items-center gap-1 justify-end">
-                      <span>Received Pot:</span>
-                      <strong className="text-sm font-black text-slate-900 font-mono">GH₵{payoutRecord?.amount || group.total_pool}</strong>
-                    </div>
-                    {payoutRecord && (
-                      <div className="text-[10px] font-mono text-slate-500">
-                        Ref: {payoutRecord.transaction_reference}
+            return (
+              <div
+                key={member.id}
+                className={`relative rounded-2xl transition-all p-3.5 sm:p-4 border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                  isCurrent
+                    ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-300 shadow-xs'
+                    : isReceived
+                    ? 'bg-emerald-50/40 border-emerald-200 text-slate-800'
+                    : 'bg-slate-50/70 border-slate-200 opacity-80 hover:opacity-100'
+                }`}
+              >
+                {/* Left: Step Icon & Member Info */}
+                <div className="flex items-center space-x-3.5">
+                  {/* Step Position Icon */}
+                  <div className="relative shrink-0">
+                    {isReceived ? (
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center border border-emerald-300">
+                        <CheckCircle2 size={18} />
+                      </div>
+                    ) : isCurrent ? (
+                      <div className="w-8 h-8 rounded-full bg-amber-400 text-slate-900 flex items-center justify-center font-black text-xs shadow-xs">
+                        <Sparkles size={15} />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs border border-slate-300">
+                        <span>#{position}</span>
                       </div>
                     )}
                   </div>
-                ) : isCurrent ? (
-                  <div className="text-right">
-                    <div className="text-xs font-bold text-sky-800">
-                      Receiving Pot: <span className="text-sm font-black text-slate-900 font-mono">GH₵{group.total_pool?.toLocaleString()}</span>
+
+                  {/* Member Details */}
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs sm:text-sm font-bold text-slate-900">{member.full_name}</span>
+                      {getProviderBadge(member.momo_provider)}
+                      {isCurrent && (
+                        <span className="bg-amber-400 text-slate-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                          Receiving This Round
+                        </span>
+                      )}
+                      {isReceived && (
+                        <span className="bg-emerald-100 text-emerald-800 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                          Received
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[11px] font-semibold text-slate-600 mt-0.5">
-                      {paidCount === totalMembers ? (
-                        <span className="text-emerald-700 font-bold">✓ All contributions received! Sent automatically to wallet.</span>
-                      ) : (
-                        <span>{paidCount} of {totalMembers} paid for Round {currentRound}</span>
+                    
+                    <div className="flex items-center space-x-3 text-xs text-slate-600 font-mono mt-0.5">
+                      <span>{member.phone_number}</span>
+                      {member.bid_amount > 0 && (
+                        <span className="text-amber-700 font-bold">
+                          • Bid: GH₵{member.bid_amount}
+                        </span>
                       )}
                     </div>
                   </div>
-                ) : (
-                  <div className="text-right text-xs text-slate-600">
-                    <div className="font-semibold text-slate-800">Turn #{position}</div>
-                    <div className="text-[11px] font-mono">Pot: GH₵{group.total_pool?.toLocaleString()}</div>
-                  </div>
-                )}
+                </div>
+
+                {/* Right: Status / Amount */}
+                <div className="w-full sm:w-auto flex items-center justify-between sm:justify-end space-x-4 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-200">
+                  {isReceived ? (
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-emerald-700 flex items-center gap-1 justify-end">
+                        <span>Received:</span>
+                        <strong className="text-xs sm:text-sm font-black text-slate-900 font-mono">GH₵{payoutRecord?.amount || group.total_pool}</strong>
+                      </div>
+                      {payoutRecord && (
+                        <div className="text-[10px] font-mono text-slate-500">
+                          Ref: {payoutRecord.transaction_reference}
+                        </div>
+                      )}
+                    </div>
+                  ) : isCurrent ? (
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-slate-900">
+                        Payout: <span className="text-xs sm:text-sm font-black text-sky-600 font-mono">GH₵{group.total_pool?.toLocaleString()}</span>
+                      </div>
+                      <div className="text-[11px] font-semibold text-slate-500 mt-0.5">
+                        <span>{paidCount} of {totalMembers} contributed</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-right text-xs text-slate-600">
+                      <div className="font-semibold text-slate-800">Turn #{position}</div>
+                      <div className="text-[11px] font-mono text-slate-500">Payout: GH₵{group.total_pool?.toLocaleString()}</div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          });
+        })()}
       </div>
 
     </div>

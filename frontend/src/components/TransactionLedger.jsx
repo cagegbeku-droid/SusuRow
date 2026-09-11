@@ -37,7 +37,7 @@ export const TransactionLedger = ({ payments = [], payouts = [], members = [] })
         round_number: po.round_number,
         amount: po.amount,
         phone_number: po.recipient_phone,
-        full_name: po.member_name || member?.full_name || 'Pot Recipient',
+        full_name: po.member_name || member?.full_name || 'Turn Recipient',
         momo_provider: po.momo_provider,
         transaction_reference: po.transaction_reference,
         status: po.status,
@@ -71,7 +71,7 @@ export const TransactionLedger = ({ payments = [], payouts = [], members = [] })
         <Receipt className="w-10 h-10 text-slate-400 mx-auto mb-2" />
         <p className="text-sm font-bold text-slate-900">No transactions recorded yet</p>
         <p className="text-xs text-slate-600 mt-1 font-medium">
-          Contributions and pot payouts will appear here with live references.
+          Contributions and payouts will appear here with live references.
         </p>
       </div>
     );

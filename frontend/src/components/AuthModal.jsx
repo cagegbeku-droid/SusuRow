@@ -250,7 +250,7 @@ export default function AuthModal({ isOpen, onClose }) {
           </h2>
           <p className="text-xs text-sky-100 mt-0.5">
             {tab === 'login' && 'Access your rotating Susu circles and MoMo wallets.'}
-            {tab === 'register' && 'Save together in verified circles with 0% interest.'}
+            {tab === 'register' && 'Save and rotate money together in verified circles.'}
             {tab === 'otp' && `Enter the 6-digit code sent to ${phoneNumber}`}
           </p>
         </div>
@@ -523,7 +523,7 @@ export default function AuthModal({ isOpen, onClose }) {
               </div>
 
               <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
-                💡 This MoMo number will be your automated payment and pot payout wallet.
+                💡 This MoMo number will be your automated payment and payout wallet.
               </p>
 
               <button

@@ -116,7 +116,7 @@ export const MyCirclesPage = ({ onSelectCircle, openCreateModal, refreshKey }) =
           </div>
 
           <div className="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-200 text-center min-w-[120px]">
-            <div className="text-[10px] text-slate-500 uppercase font-bold">Total Pot Value</div>
+            <div className="text-[10px] text-slate-500 uppercase font-bold">Total Payout Value</div>
             <div className="text-xl font-bold text-sky-600 font-mono mt-0.5">
               GH₵{totalPotsValue.toLocaleString()}
             </div>

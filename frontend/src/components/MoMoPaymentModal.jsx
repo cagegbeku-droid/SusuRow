@@ -351,7 +351,7 @@ export const MoMoPaymentModal = ({
               <div className="flex justify-between items-center text-slate-900">
                 <span className="font-semibold flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  Round Contribution (100% to Pot)
+                  Round Contribution (100% to Group Payout)
                 </span>
                 <span className="font-mono font-bold text-slate-950">GH₵{baseAmount.toFixed(2)}</span>
               </div>
@@ -373,7 +373,7 @@ export const MoMoPaymentModal = ({
             </div>
 
             <div className="pt-2 border-t border-dashed border-slate-200 flex items-center justify-between text-[11px] text-slate-600 font-medium">
-              <span>Recipient Pot Payout:</span>
+              <span>Recipient Payout:</span>
               <span className="font-bold text-emerald-700">100% Intact & Undiluted</span>
             </div>
           </div>

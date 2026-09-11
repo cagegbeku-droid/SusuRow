@@ -357,7 +357,7 @@ export default function AppSidebar({
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
-            {/* Pot Calculator */}
+            {/* Payout Calculator */}
             <button
               onClick={() => {
                 onClose();
@@ -369,7 +369,7 @@ export default function AppSidebar({
                 <div className="p-1.5 rounded-xl bg-slate-100 text-slate-600">
                   <Calculator size={16} />
                 </div>
-                <span>Cycle Pot Calculator</span>
+                <span>Susu Payout Calculator</span>
               </div>
               <ChevronRight size={14} className="text-slate-400" />
             </button>

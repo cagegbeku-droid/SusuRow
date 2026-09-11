@@ -76,7 +76,7 @@ export const TermsModal = ({ isOpen, onClose }) => {
                   <span>1. Peer-to-Peer Rotational Savings (ROSCA)</span>
                 </h4>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  SusuRow operates strictly as a digitized Rotating Savings and Credit Association (ROSCA). All member contributions are pooled collectively and disbursed to the scheduled turn recipient with <strong>zero percent (0%) interest</strong>.
+                  SusuRow operates strictly as a digitized Rotating Savings and Credit Association (ROSCA). All member contributions are pooled collectively and disbursed to the scheduled turn recipient directly.
                 </p>
               </div>
 
@@ -96,7 +96,7 @@ export const TermsModal = ({ isOpen, onClose }) => {
                   <span>3. Escrow Security Deposits & Default Deterrence</span>
                 </h4>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  For circles requiring an upfront commitment deposit, funds are locked in escrow for the full cycle. If a member defaults beyond the 24-hour grace window, escrow funds are deployed to safeguard the round winner's pot, and emergency contacts are notified.
+                  For circles requiring an upfront commitment deposit, funds are locked in escrow for the full cycle. If a member defaults beyond the 24-hour grace window, escrow funds are deployed to safeguard the round recipient's payout, and emergency contacts are notified.
                 </p>
               </div>
 
@@ -141,7 +141,7 @@ export const TermsModal = ({ isOpen, onClose }) => {
                   <span>3. No Data Selling / Controlled Purpose</span>
                 </h4>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Your identity and financial information are utilized exclusively for pot disbursements, circle tracking, and regulatory KYC. We never sell, lease, or monetize user data.
+                  Your identity and financial information are utilized exclusively for payout disbursements, circle tracking, and regulatory KYC. We never sell, lease, or monetize user data.
                 </p>
               </div>
 
@@ -190,7 +190,7 @@ export const TermsModal = ({ isOpen, onClose }) => {
                   <span>Payment Infrastructure Partners</span>
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Payments and pot settlements are processed in partnership with Bank of Ghana licensed payment gateways (Paystack Ghana) and registered Mobile Money operators (MTN Mobile Money, Telecel Cash, and AT Money).
+                  Payments and payout settlements are processed in partnership with Bank of Ghana licensed payment gateways (Paystack Ghana) and registered Mobile Money operators (MTN Mobile Money, Telecel Cash, and AT Money).
                 </p>
               </div>
 

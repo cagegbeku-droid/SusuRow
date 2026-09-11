@@ -108,7 +108,7 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
 
           <h2 className="text-xl sm:text-2xl font-bold text-white">
             {step === 1 && 'Group Basics & Schedule'}
-            {step === 2 && 'Contributions & Pot'}
+            {step === 2 && 'Contributions & Payout'}
             {step === 3 && 'Turn Order & Security'}
           </h2>
           <p className="text-xs text-sky-100 mt-0.5">
@@ -184,9 +184,9 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
           {step === 2 && (
             <div className="space-y-4">
               
-              {/* Pot Preview Box */}
+              {/* Payout Preview Box */}
               <div className="bg-sky-50 rounded-3xl p-4 border border-sky-200 text-center space-y-1">
-                <div className="text-[10px] uppercase font-bold text-sky-800">Total Pot per Turn</div>
+                <div className="text-[10px] uppercase font-bold text-sky-800">Total Payout per Turn</div>
                 <div className="text-3xl font-black text-sky-900 font-mono">
                   GH₵{totalPool.toFixed(2)}
                 </div>

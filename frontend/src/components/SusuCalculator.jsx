@@ -34,20 +34,20 @@ export const SusuCalculator = ({ isOpen, onClose, onLaunchCircle }) => {
           </div>
 
           <h2 className="text-xl font-black text-slate-900">
-            Cycle Pot Calculator
+            Susu Payout Calculator
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            Estimate total lump-sum pot returns and schedules
+            Estimate total lump-sum payout and schedules
           </p>
         </div>
 
         {/* Calculator Body */}
         <div className="p-5 sm:p-6 space-y-4">
           
-          {/* Pot Display Box */}
+          {/* Payout Display Box */}
           <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 text-center space-y-2">
             <div className="text-[10px] uppercase font-bold text-slate-600 tracking-wider">
-              Total Payout Pot per Turn
+              Total Lump Sum Payout
             </div>
             
             <div className="text-3xl sm:text-4xl font-black text-slate-900 font-mono">

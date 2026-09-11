@@ -649,7 +649,7 @@ export const ProfilePage = ({
             <div className="p-4 flex items-center justify-between">
               <div>
                 <span className="text-sm font-bold text-slate-900 block">Payout Alerts</span>
-                <span className="text-xs text-slate-600">When pot arrives in MoMo</span>
+                <span className="text-xs text-slate-600">When payout arrives in MoMo</span>
               </div>
               <button
                 onClick={() => toggleNotification('payoutAlerts')}
@@ -754,7 +754,7 @@ export const ProfilePage = ({
             </div>
 
             <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-              💡 This number is automatically saved as both your contribution wallet and your pot withdrawal wallet until you change it.
+              💡 This number is automatically saved as both your contribution wallet and your payout withdrawal wallet until you change it.
             </p>
 
             {paymentWalletSaved ? (
@@ -799,7 +799,7 @@ export const ProfilePage = ({
           </button>
           <div>
             <h2 className="text-lg font-bold text-slate-900">Withdrawal Methods</h2>
-            <p className="text-xs text-slate-600">Where your lump sum pot goes</p>
+            <p className="text-xs text-slate-600">Where your lump sum payout goes</p>
           </div>
         </div>
 
@@ -953,7 +953,7 @@ export const ProfilePage = ({
             <p className="font-bold text-slate-900">How it works:</p>
             {autoDebitEnabled ? (
               <p className="leading-relaxed">
-                When your circle contribution is due, SusuRow automatically deducts and credits your share to the group pot using your authorized 4-digit PIN. You do not need to be with your phone or confirm any prompts. Once paid, all prompts and reminders stop for the rest of the round.
+                When your circle contribution is due, SusuRow automatically deducts and credits your share to the group payout using your authorized 4-digit PIN. You do not need to be with your phone or confirm any prompts. Once paid, all prompts and reminders stop for the rest of the round.
               </p>
             ) : (
               <p className="leading-relaxed">
@@ -1832,10 +1832,10 @@ export const ProfilePage = ({
           <div>
             <h4 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
               <ShieldCheck size={14} className="text-emerald-600" />
-              <span>Rotational Integrity (0% Interest ROSCA)</span>
+              <span>Rotational Integrity (Peer Savings ROSCA)</span>
             </h4>
             <p className="text-slate-600 mt-1 leading-relaxed">
-              SusuRow operates strictly under traditional rotational savings mechanisms. Turns progress in sequential, ballot, or bidding order. Zero interest is charged on savings pots.
+              SusuRow operates strictly under traditional rotational savings mechanisms. Turns progress in sequential, ballot, or bidding order. 100% of contributions are pooled and disbursed directly without interest charges.
             </p>
           </div>
 
@@ -1909,17 +1909,17 @@ export const ProfilePage = ({
               <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-600" />
             </summary>
             <p className="text-slate-700 mt-2 leading-relaxed font-medium">
-              Members contribute a set amount each cycle. Every round, one member receives the entire collective pot until all members have had their turn.
+              Members contribute a set amount each cycle. Every round, one member receives the entire collective payout until all members have had their turn.
             </p>
           </details>
 
           <details className="bg-white rounded-2xl border border-slate-200 p-4 text-xs group shadow-xs">
             <summary className="font-bold text-slate-900 cursor-pointer flex justify-between items-center">
-              <span>How do I receive my pot?</span>
+              <span>How do I receive my payout?</span>
               <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-600" />
             </summary>
             <p className="text-slate-700 mt-2 leading-relaxed font-medium">
-              When all contributions for your round are collected, the system automatically disburses the full pot directly to your verified Mobile Money wallet.
+              When all contributions for your round are collected, the system automatically disburses the full payout directly to your verified Mobile Money wallet.
             </p>
           </details>
 
@@ -2108,7 +2108,7 @@ export const ProfilePage = ({
               <Wallet size={18} className="text-slate-900" />
               <div>
                 <span className="text-xs font-bold text-slate-900 block">Withdrawal Methods</span>
-                <span className="text-[11px] text-slate-700 font-medium">Where your lump sum pot goes</span>
+                <span className="text-[11px] text-slate-700 font-medium">Where your lump sum payout goes</span>
               </div>
             </div>
             <ChevronRight size={15} className="text-slate-600" />

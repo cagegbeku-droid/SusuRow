@@ -92,7 +92,7 @@ export const RegulatoryModal = ({ isOpen, onClose }) => {
               <div className="flex items-start gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold text-slate-900 text-[11px]">0% Loan Interest & Transparent Peer Rotation</div>
+                  <div className="font-bold text-slate-900 text-[11px]">Transparent Peer Rotation & Direct Payouts</div>
                   <div className="text-[10px] text-slate-600">100% of collected group contributions are disbursed to the round's designated saver.</div>
                 </div>
               </div>

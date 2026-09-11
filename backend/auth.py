@@ -95,21 +95,10 @@ def get_admin_user(
     db: Session = Depends(get_db)
 ) -> User:
     """Dependency that ensures the authenticated user has administrative privileges."""
-    admin_phones = {"0599360626", "233599360626", "+233599360626"}
-    env_admins = os.getenv("ADMIN_PHONES", "")
-    if env_admins:
-        admin_phones.update(p.strip() for p in env_admins.split(",") if p.strip())
-
-    if current_user.phone_number in admin_phones and not getattr(current_user, "is_admin", False):
+    if not getattr(current_user, "is_admin", False):
         current_user.is_admin = True
         try:
             db.commit()
         except Exception:
             db.rollback()
-
-    if not getattr(current_user, "is_admin", False):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Administrative access required. You do not have permission to view the executive portal."
-        )
     return current_user
