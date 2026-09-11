@@ -14,6 +14,8 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import { NotificationsDropdown } from './NotificationsDropdown';
+import { SupportChatModal } from './SupportChatModal';
 
 export default function Navbar({
   activeView,
@@ -25,6 +27,8 @@ export default function Navbar({
 }) {
   const { user, isAuthenticated, logout, openAuthModal } = useUser();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -85,24 +89,40 @@ export default function Navbar({
             <HelpCircle size={18} />
           </button>
 
-          {/* Notifications Button (🔔 - Clean without fake red badge) */}
-          <button
-            onClick={() => {
-              if (!isAuthenticated) openAuthModal();
-              else setActiveView('my-circles');
-            }}
-            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border border-slate-200"
-            title="Notifications"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
-          </button>
+          {/* Notifications Button (🔔 with interactive dropdown) */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                if (!isAuthenticated) openAuthModal();
+                else setNotifOpen(prev => !prev);
+              }}
+              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border border-slate-200 relative"
+              title="Notifications"
+              aria-label="Notifications"
+            >
+              <Bell size={18} />
+              {isAuthenticated && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-sky-600 ring-2 ring-white" />
+              )}
+            </button>
 
-          {/* Chat Button (💬) */}
+            {/* Notifications Dropdown */}
+            <NotificationsDropdown
+              isOpen={notifOpen}
+              onClose={() => setNotifOpen(false)}
+              user={user}
+              onNavigate={(view) => {
+                setNotifOpen(false);
+                setActiveView(view);
+              }}
+            />
+          </div>
+
+          {/* Chat & Support Button (💬) */}
           <button
             onClick={() => {
               if (!isAuthenticated) openAuthModal();
-              else setActiveView('my-circles');
+              else setChatModalOpen(true);
             }}
             className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border border-slate-200"
             title="Chat & Support"
@@ -110,6 +130,14 @@ export default function Navbar({
           >
             <MessageCircle size={18} />
           </button>
+
+          {/* Chat & Support Modal */}
+          <SupportChatModal
+            isOpen={chatModalOpen}
+            onClose={() => setChatModalOpen(false)}
+            onOpenMyCircles={() => setActiveView('my-circles')}
+            onOpenFAQ={onOpenFAQModal}
+          />
 
           {/* User Profile Thumbnail or Sign In */}
           {isAuthenticated ? (

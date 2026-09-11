@@ -27,7 +27,8 @@ class GhanaSMSService:
         if clean_phone.startswith("233"):
             clean_phone = "0" + clean_phone[3:]
 
-        intl_phone = "233" + clean_phone[1:] if clean_phone.startswith("0") else clean_phone
+        # Ensure message is clearly branded with SusuRow
+        formatted_message = message if (message.startswith("[SusuRow]") or message.startswith("SusuRow:")) else f"[SusuRow] {message}"
 
         # 1. Arkesel Ghana Gateway
         if arkesel_key:
@@ -41,7 +42,7 @@ class GhanaSMSService:
                         },
                         json={
                             "sender": arkesel_sender,
-                            "message": message,
+                            "message": formatted_message,
                             "recipients": [intl_phone]
                         }
                     )
@@ -54,7 +55,7 @@ class GhanaSMSService:
                         retry_resp = await client.post(
                             "https://sms.arkesel.com/api/v2/sms/send",
                             headers={"api-key": arkesel_key, "Content-Type": "application/json"},
-                            json={"sender": "Arkesel", "message": message, "recipients": [intl_phone]}
+                            json={"sender": "Arkesel", "message": formatted_message, "recipients": [intl_phone]}
                         )
                         if retry_resp.status_code == 200:
                             print(f"[SMS Gateway Success - Fallback Sender]: Dispatched to {intl_phone}")

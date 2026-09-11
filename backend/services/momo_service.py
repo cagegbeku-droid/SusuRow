@@ -9,8 +9,8 @@ from models import MoMoWebhookLog, MoMoProvider
 
 class GhanaMoMoService:
     @staticmethod
-    def generate_transaction_ref(prefix: str = "MOMO") -> str:
-        """Generates an authentic Ghanaian telecom mobile money transaction reference (e.g. MOMO-GHS-7K9A2F)."""
+    def generate_transaction_ref(prefix: str = "SR-MOMO") -> str:
+        """Generates an authentic Ghanaian telecom mobile money transaction reference branded for SusuRow (e.g. SR-MOMO-260911-7K9A2F)."""
         suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         timestamp = datetime.utcnow().strftime("%y%m%d")
         return f"{prefix}-{timestamp}-{suffix}"

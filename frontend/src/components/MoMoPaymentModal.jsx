@@ -228,12 +228,12 @@ export const MoMoPaymentModal = ({
         {/* Header */}
         <div className="bg-slate-50 p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-sm">
+            <div className="w-8 h-8 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
               ₵
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Mobile Money Payment</h3>
-              <p className="text-xs text-slate-600 font-mono font-bold">Round {group.current_round} • {group.name}</p>
+              <h3 className="text-sm font-bold text-slate-900">SusuRow Mobile Money Payment</h3>
+              <p className="text-xs text-slate-600 font-mono font-bold">SusuRow Round {group.current_round} • {group.name}</p>
             </div>
           </div>
 
@@ -247,12 +247,12 @@ export const MoMoPaymentModal = ({
 
         <div className="p-5 space-y-4">
           
-          {/* SUCCESS BANNER */}
+          {/* SUCCESS BANNER / RECEIPT */}
           {paymentStatus === 'SUCCESS' && (
             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-900 text-xs space-y-1 text-center animate-in zoom-in-95">
               <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-600 mb-1" />
-              <p className="font-bold text-sm text-slate-900">Payment Verified & Settled!</p>
-              <p className="text-xs text-slate-700 font-medium">Your contribution has been recorded and confirmed.</p>
+              <p className="font-bold text-sm text-slate-900">SusuRow Payment Verified & Settled!</p>
+              <p className="text-xs text-slate-700 font-medium">Official SusuRow Digital Receipt: Your contribution is locked in Bank-Tiered Escrow.</p>
             </div>
           )}
 
@@ -263,9 +263,9 @@ export const MoMoPaymentModal = ({
                 <Clock className="w-8 h-8 text-sky-600 animate-pulse" />
               </div>
               <div>
-                <p className="font-bold text-slate-900 text-sm">Payment Prompt Sent to {cleanPhone || phoneNumber}</p>
+                <p className="font-bold text-slate-900 text-sm">SusuRow Prompt Sent to {cleanPhone || phoneNumber}</p>
                 <p className="text-xs text-slate-700 mt-1 font-medium leading-relaxed">
-                  Please check your phone to approve the payment of <strong className="font-mono text-slate-950">GH₵{totalCharged.toFixed(2)}</strong>.
+                  Please check your phone to approve the payment of <strong className="font-mono text-slate-950">GH₵{totalCharged.toFixed(2)}</strong>. Reference starts with <strong className="font-mono text-slate-950">SR-</strong>.
                 </p>
               </div>
 
