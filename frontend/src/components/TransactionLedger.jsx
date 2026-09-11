@@ -82,7 +82,7 @@ export const TransactionLedger = ({ payments = [], payouts = [], members = [] })
       <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
         <div className="flex items-center space-x-2">
           <Receipt className="w-5 h-5 text-sky-600" />
-          <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">Payment & Payout History</h3>
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">Payments</h3>
         </div>
         <span className="text-xs text-slate-700 font-bold">
           {events.length} Transaction{events.length > 1 ? 's' : ''}

@@ -582,52 +582,49 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </div>
       </div>
 
-      {/* 📑 Section Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200">
+      {/* 📑 Segmented Pill Tabs (Equal width, 0 horizontal scrolling, styled like image) */}
+      <div className="w-full bg-slate-100 p-1 rounded-2xl border border-slate-200 grid grid-cols-3 gap-1">
         <button
           onClick={() => setActiveTab('members')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-2xl transition-all cursor-pointer shrink-0 flex items-center gap-2 ${
+          className={`py-2 px-1 text-xs font-bold rounded-xl transition-all cursor-pointer text-center truncate ${
             activeTab === 'members'
               ? 'bg-sky-600 text-white shadow-xs'
-              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <Users className="w-3.5 h-3.5" />
-          <span>Group Members in Rotation ({group.enrolled_count}/{group.members_count})</span>
+          Group Rotation
         </button>
 
         <button
           onClick={() => setActiveTab('timeline')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-2xl transition-all cursor-pointer shrink-0 flex items-center gap-2 ${
+          className={`py-2 px-1 text-xs font-bold rounded-xl transition-all cursor-pointer text-center truncate ${
             activeTab === 'timeline'
               ? 'bg-sky-600 text-white shadow-xs'
-              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <RotateCw className="w-3.5 h-3.5" />
-          <span>Rotational Cycle Timeline</span>
+          Rotation Cycle
         </button>
 
         <button
           onClick={() => setActiveTab('history')}
-          className={`px-4 py-2.5 text-xs font-bold rounded-2xl transition-all cursor-pointer shrink-0 flex items-center gap-2 ${
+          className={`py-2 px-1 text-xs font-bold rounded-xl transition-all cursor-pointer text-center truncate ${
             activeTab === 'history'
               ? 'bg-sky-600 text-white shadow-xs'
-              : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <Coins className="w-3.5 h-3.5" />
-          <span>Payment & Payout History</span>
+          Payments
         </button>
       </div>
 
-      {/* 👥 Sub-section 1: Group Members Table */}
+      {/* 👥 Sub-section 1: Group Rotation Table */}
       {activeTab === 'members' && (
         <div className="bg-white rounded-3xl overflow-hidden shadow-xs border border-slate-200 animate-in fade-in duration-150">
           <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-sky-600" />
-              <h3 className="text-sm font-bold text-slate-900">Group Members in Rotation</h3>
+              <h3 className="text-sm font-bold text-slate-900">Group Rotation</h3>
             </div>
             <span className="text-xs text-slate-500 font-semibold">
               {group.enrolled_count} of {group.members_count} Enrolled
@@ -719,12 +716,12 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                           )}
                         </td>
 
-                        {/* Payout Status: Flashing light green pulsing indicator for current turn, tick for settled */}
+                        {/* Payout Status: Flashing light green pulsing indicator for current turn, Received when settled */}
                         <td className="py-3.5 px-4 text-right">
                           {isReceived ? (
                             <span className="inline-flex items-center gap-1 text-emerald-700 font-bold text-xs bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
                               <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
-                              <span>Settled</span>
+                              <span>Received</span>
                             </span>
                           ) : isCurrentRecipient ? (
                             <span className="inline-flex items-center gap-2 text-emerald-800 font-bold text-xs bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
@@ -748,14 +745,14 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </div>
       )}
 
-      {/* 🔄 Sub-section 2: Rotational Cycle Timeline */}
+      {/* 🔄 Sub-section 2: Rotation Cycle */}
       {activeTab === 'timeline' && (
         <div className="animate-in fade-in duration-150">
-          <RotationalTimeline group={group} />
+          <RotationalTimeline group={group} onProfileClick={setSelectedProfileMember} />
         </div>
       )}
 
-      {/* 📜 Sub-section 3: Payment & Payout History */}
+      {/* 📜 Sub-section 3: Payments */}
       {activeTab === 'history' && (
         <div className="animate-in fade-in duration-150">
           <TransactionLedger 
