@@ -143,7 +143,11 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
   const isCreator = cleanUserPhone === cleanCreatorPhone || user?.phone_number === group.creator_id;
 
   const enrolledMember = group.members?.find(
-    m => m.phone_number?.replace('+233', '0').replace(/\s+/g, '') === cleanUserPhone || m.phone_number === user?.phone_number
+    m => (user?.id && m.user_id === user.id) ||
+         (user?.email && m.email && m.email.toLowerCase() === user.email.toLowerCase()) ||
+         (cleanUserPhone && m.phone_number?.replace('+233', '0').replace(/\s+/g, '') === cleanUserPhone) ||
+         (user?.phone_number && m.phone_number === user.phone_number) ||
+         (user?.full_name && m.full_name && m.full_name.trim().toLowerCase() === user.full_name.trim().toLowerCase())
   );
   const isEnrolled = Boolean(enrolledMember);
   const isFull = group.enrolled_count >= group.members_count;
@@ -569,8 +573,8 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             </button>
           )}
 
-          {/* Payments are strictly enabled only when the group is 100% full and active */}
-          {isFull && isEnrolled && !enrolledMember?.has_paid_current_round && !isCompleted && (
+          {/* Payments are enabled when circle is full/active and user has not paid */}
+          {(isFull || group.status === 'ACTIVE') && isEnrolled && !enrolledMember?.has_paid_current_round && !isCompleted && (
             <button
               onClick={() => openMoMoModalForUser(enrolledMember, false)}
               className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
@@ -723,6 +727,16 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                             <span className="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[11px] inline-flex items-center gap-1">
                               <Check className="w-3 h-3 text-emerald-600 stroke-[2.5]" /> Paid
                             </span>
+                          ) : (isCurrentUserRow || (enrolledMember && member.id === enrolledMember.id)) && !isCompleted ? (
+                            <button
+                              type="button"
+                              onClick={() => openMoMoModalForUser(member, false)}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full text-[11px] shadow-xs inline-flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 animate-pulse hover:animate-none"
+                              title={`Tap to pay your GH₵${group.contribution_amount} round contribution manually via Mobile Money`}
+                            >
+                              <Smartphone className="w-3 h-3" />
+                              <span>Pay GH₵{group.contribution_amount}</span>
+                            </button>
                           ) : (
                             <span className="text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-[11px]">
                               Due

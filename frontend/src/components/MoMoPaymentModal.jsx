@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { initiatePayment, verifyPayment, configureAutoDebit } from '../api/client';
 import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
+import { useUser } from '../context/UserContext';
 
 const PAYSTACK_PUBLIC_KEY = "pk_live_91afa1d8fbd591e8d5ae17327033f2cb3a33148a";
 
@@ -23,9 +24,17 @@ export const MoMoPaymentModal = ({
   isEscrow = false,
   onPaymentSuccess
 }) => {
+  const { user } = useUser();
   const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
-  const [momoProvider, setMomoProvider] = useState(member?.momo_provider || 'MTN');
-  const [phoneNumber, setPhoneNumber] = useState(member?.phone_number || '');
+  const [momoProvider, setMomoProvider] = useState(member?.momo_provider || user?.momo_provider || 'MTN');
+  const [phoneNumber, setPhoneNumber] = useState(member?.phone_number || user?.phone_number || '');
+
+  useEffect(() => {
+    if (member || user) {
+      setPhoneNumber(member?.phone_number || user?.phone_number || '');
+      setMomoProvider(member?.momo_provider || user?.momo_provider || 'MTN');
+    }
+  }, [member, isOpen, user]);
   const [optInAutoDebit, setOptInAutoDebit] = useState(false);
   const baseAmount = Number(
     isEscrow ? (group?.commitment_deposit || 0) : (group?.contribution_amount || 0)
