@@ -371,9 +371,7 @@ function AppContent() {
                   GHANA DIGITAL ROSCA
                 </span>
               </div>
-              <p className="text-xs text-slate-500 max-w-md">
-                Communal Susu rotational savings with automated Ghana Mobile Money payouts. Engineered by <strong className="text-slate-800">Coratech Global</strong>.
-              </p>
+
 
               <div className="pt-1 flex items-center gap-4 text-xs font-semibold text-slate-500">
                 <a 

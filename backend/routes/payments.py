@@ -65,6 +65,12 @@ async def initiate_payment(payload: PaymentInitiateRequest, db: Session = Depend
     if group.status == GroupStatus.COMPLETED.value:
         raise HTTPException(status_code=400, detail="This circle is completed. No more contributions accepted.")
 
+    if group.enrolled_count < group.members_count:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Group is recruiting ({group.enrolled_count}/{group.members_count} members). All spots must be filled before payments can begin."
+        )
+
     raw_base = float(group.commitment_deposit if payload.is_commitment_deposit else group.contribution_amount)
     fees = calculate_fees(raw_base)
     base_amount = fees["base_amount"]
