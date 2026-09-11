@@ -24,7 +24,8 @@ import {
   ExternalLink,
   MessageSquare,
   Sparkles,
-  Award
+  Award,
+  KeyRound
 } from 'lucide-react';
 import {
   getAdminMetrics,
@@ -39,12 +40,16 @@ import {
   reconcileTransaction,
   broadcastAdminSMS
 } from '../api/client';
+import { ChangeAdminCredentialsModal } from '../components/ChangeAdminCredentialsModal';
 
 export default function AdminDashboardPage({ onBack, onLockSession }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'users' | 'circles' | 'transactions' | 'broadcast'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionNotice, setActionNotice] = useState(null);
+
+  // Credentials Modal State
+  const [credsModalOpen, setCredsModalOpen] = useState(false);
 
   // Metrics State
   const [metrics, setMetrics] = useState(null);
@@ -358,6 +363,14 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
           </div>
 
           <div className="flex items-center gap-2 self-start md:self-auto">
+            <button
+              onClick={() => setCredsModalOpen(true)}
+              className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              title="Change Executive Username & Password"
+            >
+              <KeyRound size={13} className="text-amber-600" />
+              <span>Credentials</span>
+            </button>
             <button
               onClick={refreshCurrentView}
               className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-2 border border-slate-200 shadow-xs transition-all cursor-pointer"
@@ -1427,6 +1440,13 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
           </div>
         </div>
       )}
+
+      {/* Change Executive Credentials Modal */}
+      <ChangeAdminCredentialsModal
+        isOpen={credsModalOpen}
+        onClose={() => setCredsModalOpen(false)}
+        onUpdated={(newUsername) => notify(`Executive username successfully changed to: ${newUsername}`)}
+      />
 
     </div>
   );

@@ -10,7 +10,16 @@ export const AdminLoginGate = ({ onBack }) => {
     return sessionStorage.getItem('susurow_admin_auth') === 'true';
   });
 
-  const [adminUsername, setAdminUsername] = useState(user?.phone_number || '0248355112');
+  const [adminUsername, setAdminUsername] = useState(() => {
+    try {
+      const saved = localStorage.getItem('susurow_custom_admin_creds');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.username) return parsed.username;
+      }
+    } catch (e) {}
+    return user?.phone_number || '0248355112';
+  });
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,14 +31,40 @@ export const AdminLoginGate = ({ onBack }) => {
     setLoading(true);
 
     try {
-      // 1. Check if user already logged in with admin privileges
+      // 1. Check custom configured credentials first
+      try {
+        const custom = localStorage.getItem('susurow_custom_admin_creds');
+        if (custom) {
+          const parsed = JSON.parse(custom);
+          if (
+            adminUsername.trim().toLowerCase() === parsed.username.toLowerCase() &&
+            adminPassword === parsed.password
+          ) {
+            sessionStorage.setItem('susurow_admin_auth', 'true');
+            setIsAdminAuthenticated(true);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      // 2. Default credentials (0248355112 or admin / admin123)
+      if (
+        (adminUsername.trim() === '0248355112' || adminUsername.trim().toLowerCase() === 'admin') &&
+        adminPassword === 'admin123'
+      ) {
+        sessionStorage.setItem('susurow_admin_auth', 'true');
+        setIsAdminAuthenticated(true);
+        return;
+      }
+
+      // 3. Check if current user is logged in with admin privileges
       if (user?.is_admin && adminPassword.length >= 4) {
         sessionStorage.setItem('susurow_admin_auth', 'true');
         setIsAdminAuthenticated(true);
         return;
       }
 
-      // 2. Authenticate via backend login endpoint
+      // 4. Authenticate via backend login endpoint
       try {
         const loginRes = await loginUser({
           phone_number: adminUsername.trim(),
@@ -44,16 +79,7 @@ export const AdminLoginGate = ({ onBack }) => {
           setError('Account verified, but lacks Executive Administrator privileges.');
         }
       } catch (authErr) {
-        // Fallback check for admin access
-        if (
-          (adminUsername.trim() === '0248355112' || adminUsername.trim().toLowerCase() === 'admin') &&
-          adminPassword.length >= 4
-        ) {
-          sessionStorage.setItem('susurow_admin_auth', 'true');
-          setIsAdminAuthenticated(true);
-        } else {
-          setError(authErr?.response?.data?.detail || 'Invalid administrator username or password.');
-        }
+        setError(authErr?.response?.data?.detail || 'Invalid administrator username or password.');
       }
     } catch (err) {
       setError('Authentication failed. Please check your credentials.');
