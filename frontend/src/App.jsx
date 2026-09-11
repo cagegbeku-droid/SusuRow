@@ -17,6 +17,7 @@ import { MyCirclesPage } from './pages/MyCirclesPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminLoginGate } from './components/AdminLoginGate';
 import { InstallPwaBanner } from './components/InstallPwaBanner';
+import { InstallAppModal } from './components/InstallAppModal';
 import { OfflineNotice } from './components/OfflineNotice';
 import { getPlatformStats, getGroupByCode } from './api/client';
 import { App as CapApp } from '@capacitor/app';
@@ -45,6 +46,7 @@ function AppContent() {
   const [isCalculatorModalOpen, setIsCalculatorModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isFAQModalOpen, setIsFAQModalOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -191,9 +193,13 @@ function AppContent() {
 
     window.addEventListener('keydown', handleKeyDown);
 
+    const handleOpenInstall = () => setIsInstallModalOpen(true);
+    window.addEventListener('trigger-open-install-modal', handleOpenInstall);
+
     return () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('trigger-open-install-modal', handleOpenInstall);
       if (appUrlListener && typeof appUrlListener.remove === 'function') {
         appUrlListener.remove();
       }
@@ -263,6 +269,7 @@ function AppContent() {
         onOpenCalculator={() => setIsCalculatorModalOpen(true)}
         onOpenReferralModal={handleOpenReferralModal}
         onOpenTermsModal={() => setIsTermsModalOpen(true)}
+        onOpenInstallModal={() => setIsInstallModalOpen(true)}
       />
 
       {/* Top Navbar */}
@@ -413,13 +420,7 @@ function AppContent() {
               <ul className="space-y-1.5 text-xs text-slate-600 font-medium">
                 <li><button onClick={() => setIsTermsModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Terms of Service & Privacy</button></li>
                 <li><button onClick={handleOpenReferralModal} className="hover:text-sky-600 transition-colors cursor-pointer">• Refer & Earn Hub</button></li>
-                <li><button onClick={() => {
-                  if (window.deferredPrompt) {
-                    window.deferredPrompt.prompt();
-                  } else {
-                    window.dispatchEvent(new CustomEvent('trigger-pwa-install'));
-                  }
-                }} className="hover:text-sky-600 transition-colors cursor-pointer">• Install SusuRow App</button></li>
+                <li><button onClick={() => setIsInstallModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Install SusuRow App</button></li>
               </ul>
             </div>
 
@@ -496,7 +497,13 @@ function AppContent() {
       <OfflineNotice />
 
       {/* PWA Mobile App Install Banner */}
-      <InstallPwaBanner />
+      <InstallPwaBanner onOpenInstallModal={() => setIsInstallModalOpen(true)} />
+
+      {/* Official Install App Modal (Direct Android APK + iOS / Desktop PWA) */}
+      <InstallAppModal 
+        isOpen={isInstallModalOpen} 
+        onClose={() => setIsInstallModalOpen(false)} 
+      />
 
     </div>
   );

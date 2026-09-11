@@ -32,7 +32,8 @@ export default function AppSidebar({
   onOpenJoinCodeModal,
   onOpenCalculator,
   onOpenReferralModal,
-  onOpenTermsModal
+  onOpenTermsModal,
+  onOpenInstallModal
 }) {
   const {
     user,
@@ -333,7 +334,9 @@ export default function AppSidebar({
             <button
               onClick={() => {
                 onClose();
-                if (window.deferredPrompt) {
+                if (onOpenInstallModal) {
+                  onOpenInstallModal();
+                } else if (window.deferredPrompt) {
                   window.deferredPrompt.prompt();
                 } else {
                   window.dispatchEvent(new CustomEvent('trigger-pwa-install'));

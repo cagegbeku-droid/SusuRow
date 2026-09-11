@@ -47,3 +47,4 @@ Thumbs.db
 *.apk
 *.aab
 !backend/static/SusuRow.apk
+!frontend/public/SusuRow.apk

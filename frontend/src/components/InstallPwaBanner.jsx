@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, X, Smartphone, Share2, PlusSquare } from 'lucide-react';
 
-export const InstallPwaBanner = () => {
+export const InstallPwaBanner = ({ onOpenInstallModal }) => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showBanner, setShowBanner] = useState(false);
   const [isIos, setIsIos] = useState(false);
@@ -15,12 +15,6 @@ export const InstallPwaBanner = () => {
       return; // App is already installed and opened as native app
     }
 
-    // Check if user previously dismissed today
-    const dismissedAt = localStorage.getItem('susurow_pwa_dismissed');
-    if (dismissedAt && Date.now() - parseInt(dismissedAt, 10) < 24 * 60 * 60 * 1000) {
-      return;
-    }
-
     // Detect iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
@@ -31,48 +25,58 @@ export const InstallPwaBanner = () => {
       e.preventDefault();
       window.deferredPrompt = e;
       setDeferredPrompt(e);
-      setShowBanner(true);
+      // Only auto-show banner if not dismissed today
+      const dismissedAt = localStorage.getItem('susurow_pwa_dismissed');
+      if (!dismissedAt || Date.now() - parseInt(dismissedAt, 10) >= 24 * 60 * 60 * 1000) {
+        setShowBanner(true);
+      }
     };
 
     const handleTriggerInstall = () => {
-      setShowBanner(true);
-      if (window.deferredPrompt) {
+      if (onOpenInstallModal) {
+        onOpenInstallModal();
+      } else if (window.deferredPrompt) {
         window.deferredPrompt.prompt();
-      } else if (isIosDevice) {
-        setShowIosGuide(true);
+      } else {
+        setShowBanner(true);
       }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('trigger-pwa-install', handleTriggerInstall);
 
-    // If on iOS and not standalone, show prompt after brief delay
+    // If on iOS and not standalone, show prompt after brief delay if not dismissed
     if (isIosDevice) {
-      const timer = setTimeout(() => {
-        setShowBanner(true);
-      }, 3500);
-      return () => clearTimeout(timer);
+      const dismissedAt = localStorage.getItem('susurow_pwa_dismissed');
+      if (!dismissedAt || Date.now() - parseInt(dismissedAt, 10) >= 24 * 60 * 60 * 1000) {
+        const timer = setTimeout(() => {
+          setShowBanner(true);
+        }, 3500);
+        return () => clearTimeout(timer);
+      }
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('trigger-pwa-install', handleTriggerInstall);
     };
-  }, []);
+  }, [onOpenInstallModal]);
 
   const handleInstallClick = async () => {
-    if (isIos) {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`[PWA] Install prompt outcome: ${outcome}`);
+      setDeferredPrompt(null);
+      setShowBanner(false);
+    } else if (onOpenInstallModal) {
+      setShowBanner(false);
+      onOpenInstallModal();
+    } else if (isIos) {
       setShowIosGuide(true);
-      return;
+    } else {
+      window.dispatchEvent(new CustomEvent('trigger-open-install-modal'));
     }
-
-    if (!deferredPrompt) return;
-
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`[PWA] Install prompt outcome: ${outcome}`);
-    setDeferredPrompt(null);
-    setShowBanner(false);
   };
 
   const handleDismiss = () => {
