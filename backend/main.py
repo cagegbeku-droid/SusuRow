@@ -199,6 +199,11 @@ def download_app():
         status_code=404
     )
 
+@app.get("/admin")
+def admin_portal_redirect():
+    """Redirects to the internal executive management console."""
+    return RedirectResponse(url="/?tab=admin")
+
 @app.get("/join", response_class=HTMLResponse)
 @app.get("/invite/{code}", response_class=HTMLResponse)
 def web_join_landing(

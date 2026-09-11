@@ -131,10 +131,15 @@ function AppContent() {
 
     window.addEventListener('popstate', handlePopState);
 
-    // Check URL parameters for direct invite code or referral code
+    // Check URL parameters for direct invite code, referral code, or admin management portal
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     const ref = params.get('ref');
+    const tab = params.get('tab');
+
+    if (tab === 'admin' || window.location.pathname === '/admin') {
+      navigateTo('admin');
+    }
 
     if (code) {
       getGroupByCode(code).then(group => {
