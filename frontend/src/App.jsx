@@ -19,6 +19,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import { InstallPwaBanner } from './components/InstallPwaBanner';
 import { OfflineNotice } from './components/OfflineNotice';
 import { getPlatformStats, getGroupByCode } from './api/client';
+import { App as CapApp } from '@capacitor/app';
 import { ShieldCheck, Loader2, Globe, Building2, AlertTriangle, ArrowRight } from 'lucide-react';
 
 function AppContent() {
@@ -145,8 +146,37 @@ function AppContent() {
       localStorage.setItem('susurow_referred_by', ref);
     }
 
+    // Native mobile deep link listener (susurow://join?code=... or https://susurow.onrender.com/join?code=...)
+    let appUrlListener = null;
+    try {
+      CapApp.addListener('appUrlOpen', (event) => {
+        try {
+          const url = new URL(event.url);
+          const deepCode = url.searchParams.get('code') || url.pathname.split('/').pop();
+          if (deepCode && deepCode.startsWith('SUSU-')) {
+            getGroupByCode(deepCode).then(group => {
+              navigateTo('detail', { groupId: group.id });
+            }).catch(console.error);
+          }
+          const deepRef = url.searchParams.get('ref');
+          if (deepRef) {
+            localStorage.setItem('susurow_referred_by', deepRef);
+          }
+        } catch (e) {
+          console.warn('Could not parse deep link URL:', event.url, e);
+        }
+      }).then(handle => {
+        appUrlListener = handle;
+      });
+    } catch (e) {
+      // Browser environment fallback
+    }
+
     return () => {
       window.removeEventListener('popstate', handlePopState);
+      if (appUrlListener && typeof appUrlListener.remove === 'function') {
+        appUrlListener.remove();
+      }
     };
   }, []);
 

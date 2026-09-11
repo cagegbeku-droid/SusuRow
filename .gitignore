@@ -46,3 +46,4 @@ Thumbs.db
 # Android binaries
 *.apk
 *.aab
+!backend/static/SusuRow.apk

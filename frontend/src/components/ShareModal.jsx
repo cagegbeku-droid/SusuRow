@@ -14,6 +14,8 @@ import {
 
 import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
 
+import { getGroupInviteUrl } from '../utils/shareUtils';
+
 export const ShareModal = ({
   isOpen,
   onClose,
@@ -25,38 +27,42 @@ export const ShareModal = ({
   frequency
 }) => {
   const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
-  const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   if (!isOpen) return null;
 
-  const origin = window.location.origin;
-  const shareUrl = inviteCode 
-    ? `${origin}?code=${inviteCode}`
-    : origin;
+  const shareUrl = getGroupInviteUrl(inviteCode);
 
-  const shareText = `🇬🇭 Join my Susu Group "${groupName || 'SusuRow'}" on SusuRow!\n💰 Contribution: GH₵${contributionAmount || '200'} (${frequency || 'Weekly'})\n🔒 Group Code: ${inviteCode}\n\n👉 Join directly here: ${shareUrl}`;
+  const shareText = `🇬🇭 Join my Susu Group "${groupName || 'SusuRow'}" on SusuRow!\n💰 Contribution: GH₵${contributionAmount || '200'} (${frequency || 'Weekly'})\n🔒 Group Code: ${inviteCode}\n\n👉 Join directly or download app here:\n${shareUrl}`;
 
-  const handleCopy = () => {
+  const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(inviteCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2500);
   };
 
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `Join ${groupName} on SusuRow`,
+          title: `Join ${groupName || 'SusuRow'} on SusuRow`,
           text: shareText,
           url: shareUrl
         });
       } catch (err) {
         if (err.name !== 'AbortError') {
-          handleCopy();
+          handleCopyLink();
         }
       }
     } else {
-      handleCopy();
+      handleCopyLink();
     }
   };
 
@@ -88,23 +94,43 @@ export const ShareModal = ({
         {/* Modal Body */}
         <div className="p-5 sm:p-6 space-y-4">
           
-          {/* Invite Code Card */}
+          {/* Invite Code & Public Web Link Card */}
           {inviteCode && (
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-3">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-slate-500">Invite Code</span>
-                <div className="font-mono text-xl font-black text-slate-900 tracking-wider">
-                  {inviteCode}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500">Group Invite Code</span>
+                  <div className="font-mono text-xl font-black text-slate-900 tracking-wider">
+                    {inviteCode}
+                  </div>
                 </div>
+
+                <button
+                  onClick={handleCopyCode}
+                  className="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                >
+                  {copiedCode ? <Check size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                  <span>{copiedCode ? 'Code Copied' : 'Copy Code'}</span>
+                </button>
               </div>
 
-              <button
-                onClick={handleCopy}
-                className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
-              >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                <span>{copied ? 'Copied' : 'Copy Link'}</span>
-              </button>
+              {/* Public Web Invite Link */}
+              <div className="pt-2 border-t border-slate-200 flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Public Web Link</div>
+                  <div className="text-xs font-mono text-sky-700 truncate font-medium">
+                    {shareUrl}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCopyLink}
+                  className="shrink-0 px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                >
+                  {copiedLink ? <Check size={13} /> : <Copy size={13} />}
+                  <span>{copiedLink ? 'Link Copied' : 'Copy Link'}</span>
+                </button>
+              </div>
             </div>
           )}
 

@@ -23,6 +23,7 @@ import {
   User
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import { getReferralInviteUrl } from '../utils/shareUtils';
 
 export default function AppSidebar({
   isOpen,
@@ -72,14 +73,14 @@ export default function AppSidebar({
   }, [isOpen]);
 
   const handleCopyCode = () => {
-    const shareUrl = `${window.location.origin}?ref=${referralCode}`;
+    const shareUrl = getReferralInviteUrl(referralCode);
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
 
   const handleWhatsAppShare = () => {
-    const shareUrl = `${window.location.origin}?ref=${referralCode}`;
+    const shareUrl = getReferralInviteUrl(referralCode);
     const text = encodeURIComponent(
       `Hello! Join me on SusuRow to save together with zero loan interest.\n\nInvite Code: ${referralCode}\nJoin here: ${shareUrl}`
     );

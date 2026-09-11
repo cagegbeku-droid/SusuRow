@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useModalBackdropClose } from '../hooks/useModalBackdropClose';
+import { getReferralInviteUrl } from '../utils/shareUtils';
 
 export const ReferralModal = ({ isOpen, onClose }) => {
   const { handleBackdropClick } = useModalBackdropClose(isOpen, onClose);
@@ -21,7 +22,7 @@ export const ReferralModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
-  const shareUrl = `${window.location.origin}?ref=${referralCode}`;
+  const shareUrl = getReferralInviteUrl(referralCode);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl);

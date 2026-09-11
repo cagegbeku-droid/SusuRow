@@ -420,10 +420,11 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             </div>
           </div>
           <button
-            onClick={handleCopyCode}
-            className="shrink-0 px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+            onClick={() => setIsShareModalOpen(true)}
+            className="shrink-0 px-3.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
           >
-            {copiedCode ? 'Copied!' : 'Share Invite Code'}
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Invite Members</span>
           </button>
         </div>
       )}
