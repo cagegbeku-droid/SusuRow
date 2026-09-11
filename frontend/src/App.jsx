@@ -177,8 +177,23 @@ function AppContent() {
       // Browser environment fallback
     }
 
+    // Global shortcut Ctrl+Shift+A (or Cmd+Shift+A) to open Executive Admin Console
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        setCurrentTab((prev) => {
+          const next = prev === 'admin' ? 'marketplace' : 'admin';
+          navigateTo(next);
+          return next;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
     return () => {
       window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('keydown', handleKeyDown);
       if (appUrlListener && typeof appUrlListener.remove === 'function') {
         appUrlListener.remove();
       }

@@ -111,18 +111,6 @@ export default function Navbar({
             <MessageCircle size={18} />
           </button>
 
-          {/* Executive Admin Quick Trigger */}
-          {isAuthenticated && user?.is_admin && (
-            <button
-              onClick={() => setActiveView('admin')}
-              className="px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/40 text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-              title="Executive Admin Panel"
-            >
-              <ShieldCheck size={14} className="text-amber-400" />
-              <span className="hidden sm:inline">Admin</span>
-            </button>
-          )}
-
           {/* User Profile Thumbnail or Sign In */}
           {isAuthenticated ? (
             <div className="relative" ref={dropdownRef}>
@@ -144,7 +132,7 @@ export default function Navbar({
 
               {dropdownOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-56 rounded-2xl bg-white text-slate-800 shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-100"
+                  className="absolute right-0 mt-2 w-60 rounded-2xl bg-white text-slate-800 shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-100"
                   onClick={() => setDropdownOpen(false)}
                 >
                   <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50">
@@ -155,10 +143,13 @@ export default function Navbar({
                   {user?.is_admin && (
                     <button
                       onClick={() => setActiveView('admin')}
-                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-amber-700 hover:bg-amber-50 flex items-center gap-2 cursor-pointer transition-colors border-b border-slate-100"
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-amber-700 hover:bg-amber-50 flex items-center justify-between cursor-pointer transition-colors border-b border-slate-100"
                     >
-                      <ShieldCheck size={15} className="text-amber-600" />
-                      <span>Executive Admin Panel</span>
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck size={15} className="text-amber-600" />
+                        <span>Executive Admin</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-normal text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Ctrl+Shift+A</span>
                     </button>
                   )}
 

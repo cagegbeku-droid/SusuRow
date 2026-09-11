@@ -332,10 +332,10 @@ export default function AppSidebar({
                   <div className={`p-1.5 rounded-xl ${activeView === 'admin' ? 'bg-amber-500 text-slate-950' : 'bg-amber-200 text-amber-900'}`}>
                     <ShieldCheck size={16} />
                   </div>
-                  <span>Executive Admin Panel</span>
+                  <span>Executive Admin</span>
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full shadow-xs">
-                  ADMIN
+                <span className="text-[10px] font-mono text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full shadow-xs">
+                  Ctrl+Shift+A
                 </span>
               </button>
             )}
