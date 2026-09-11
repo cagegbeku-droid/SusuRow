@@ -4,12 +4,18 @@ import {
   Sparkles, 
   RotateCw
 } from 'lucide-react';
+import { useUser } from '../context/UserContext';
 
 export const RotationalTimeline = ({ group, onProfileClick }) => {
+  const { user } = useUser();
   if (!group || !group.members) return null;
 
   const currentRound = group.current_round || 1;
   const isCompleted = group.status === 'COMPLETED';
+
+  const cleanUserPhone = user?.phone_number
+    ? user.phone_number.replace('+233', '0').replace(/\s+/g, '')
+    : '';
 
   // Sort members by payout_position
   const members = [...group.members].sort((a, b) => (a.payout_position || 999) - (b.payout_position || 999));
@@ -74,6 +80,15 @@ export const RotationalTimeline = ({ group, onProfileClick }) => {
             const isCurrent = !isCompleted && !isReceived && activeRecipient && member.id === activeRecipient.id;
             const payoutRecord = group.payouts?.find(p => p.round_number === position);
 
+            const isCurrentUser = (
+              (user?.id && member.user_id === user.id) ||
+              (user?.email && member.email && member.email.toLowerCase() === user.email.toLowerCase()) ||
+              (cleanUserPhone && member.phone_number?.replace('+233', '0').replace(/\s+/g, '') === cleanUserPhone) ||
+              (user?.full_name && member.full_name && member.full_name.trim().toLowerCase() === user.full_name.trim().toLowerCase())
+            );
+
+            const avatarSrc = member.avatar_url || member.profile_image_url || member.picture || (isCurrentUser ? (user?.avatar_url || user?.profile_image_url || user?.picture) : '');
+
             return (
               <div
                 key={member.id}
@@ -82,6 +97,8 @@ export const RotationalTimeline = ({ group, onProfileClick }) => {
                     ? 'bg-emerald-50/30 border-emerald-200'
                     : isReceived
                     ? 'bg-emerald-50/20 border-emerald-100 text-slate-800'
+                    : isCurrentUser
+                    ? 'bg-sky-50/40 border-sky-200'
                     : 'bg-white border-slate-200/80 hover:border-slate-300'
                 }`}
               >
@@ -100,14 +117,28 @@ export const RotationalTimeline = ({ group, onProfileClick }) => {
                   <button
                     type="button"
                     onClick={() => onProfileClick && onProfileClick(member)}
-                    className="w-8 h-8 rounded-full bg-sky-100 text-sky-800 border border-sky-200 flex items-center justify-center font-black text-[11px] hover:ring-2 hover:ring-sky-400 hover:scale-105 transition-all cursor-pointer shrink-0 shadow-2xs"
+                    className="w-8 h-8 rounded-full bg-sky-100 text-sky-800 border border-sky-200 flex items-center justify-center font-black text-[11px] hover:ring-2 hover:ring-sky-400 hover:scale-105 transition-all cursor-pointer shrink-0 shadow-2xs overflow-hidden"
                     title="View saver reliability and profile details"
                   >
-                    {getInitials(member.full_name)}
+                    {avatarSrc ? (
+                      <img
+                        src={avatarSrc}
+                        alt={member.full_name || 'Saver'}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      getInitials(member.full_name)
+                    )}
                   </button>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs sm:text-sm font-bold text-slate-900">{member.full_name}</span>
+                    {isCurrentUser && (
+                      <span className="bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[9px] px-1.5 py-0.2 rounded">
+                        YOU
+                      </span>
+                    )}
                   </div>
                 </div>
 

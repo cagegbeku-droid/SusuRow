@@ -652,7 +652,12 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                   return group.members?.map((member) => {
                     const isReceived = isCompleted || member.has_received_payout;
                     const isCurrentRecipient = !isCompleted && !isReceived && activeRecipient && member.id === activeRecipient.id;
-                    const isCurrentUserRow = member.phone_number?.replace('+233', '0').replace(/\s+/g, '') === cleanUserPhone;
+                    const isCurrentUserRow = (
+                      (user?.id && member.user_id === user.id) ||
+                      (user?.email && member.email && member.email.toLowerCase() === user.email.toLowerCase()) ||
+                      (cleanUserPhone && member.phone_number?.replace('+233', '0').replace(/\s+/g, '') === cleanUserPhone) ||
+                      (user?.full_name && member.full_name && member.full_name.trim().toLowerCase() === user.full_name.trim().toLowerCase())
+                    );
 
                     return (
                       <tr 
@@ -789,16 +794,25 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
             <div className="flex items-center gap-3.5 pb-4 border-b border-slate-100">
               <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-800 border border-sky-200 flex items-center justify-center font-black text-lg shadow-xs overflow-hidden">
-                {selectedProfileMember.avatar_url || (selectedProfileMember.phone_number === user?.phone_number && (user?.avatar_url || user?.profile_image_url || user?.picture)) ? (
-                  <img
-                    src={selectedProfileMember.avatar_url || user?.avatar_url || user?.profile_image_url || user?.picture}
-                    alt={selectedProfileMember.full_name}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  getInitials(selectedProfileMember.full_name)
-                )}
+                {(() => {
+                  const isModalCurrentUser = (
+                    (user?.id && selectedProfileMember.user_id === user.id) ||
+                    (user?.email && selectedProfileMember.email && selectedProfileMember.email.toLowerCase() === user.email.toLowerCase()) ||
+                    (cleanUserPhone && selectedProfileMember.phone_number?.replace('+233', '0').replace(/\s+/g, '') === cleanUserPhone) ||
+                    (user?.full_name && selectedProfileMember.full_name && selectedProfileMember.full_name.trim().toLowerCase() === user.full_name.trim().toLowerCase())
+                  );
+                  const pic = selectedProfileMember.avatar_url || selectedProfileMember.profile_image_url || selectedProfileMember.picture || (isModalCurrentUser ? (user?.avatar_url || user?.profile_image_url || user?.picture) : '');
+                  return pic ? (
+                    <img
+                      src={pic}
+                      alt={selectedProfileMember.full_name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    getInitials(selectedProfileMember.full_name)
+                  );
+                })()}
               </div>
               <div>
                 <h4 className="text-base font-bold text-slate-900">{selectedProfileMember.full_name}</h4>
