@@ -29,11 +29,22 @@ export const InstallPwaBanner = () => {
     // Listen for Chrome / Android / Edge install prompt
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
+      window.deferredPrompt = e;
       setDeferredPrompt(e);
       setShowBanner(true);
     };
 
+    const handleTriggerInstall = () => {
+      setShowBanner(true);
+      if (window.deferredPrompt) {
+        window.deferredPrompt.prompt();
+      } else if (isIosDevice) {
+        setShowIosGuide(true);
+      }
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('trigger-pwa-install', handleTriggerInstall);
 
     // If on iOS and not standalone, show prompt after brief delay
     if (isIosDevice) {
@@ -45,6 +56,7 @@ export const InstallPwaBanner = () => {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('trigger-pwa-install', handleTriggerInstall);
     };
   }, []);
 

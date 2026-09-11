@@ -10,12 +10,50 @@ import {
   Users,
   Gift,
   PlusCircle,
-  ChevronDown,
-  ShieldCheck
+  ChevronDown
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { NotificationsDropdown } from './NotificationsDropdown';
 import { SupportChatModal } from './SupportChatModal';
+
+const DEFAULT_NOTIFICATIONS = [
+  {
+    id: 'notif-1',
+    type: 'VERIFIED',
+    title: 'Account Officially Verified',
+    message: 'Your Ghana Card Tier-1 verification is active. You have full access to Susu circles and automated Mobile Money payouts.',
+    category: 'Compliance',
+    time: 'Just now',
+    sender: 'SusuRow Compliance'
+  },
+  {
+    id: 'notif-2',
+    type: 'PAYOUT',
+    title: 'Automated Payout Turn Scheduled',
+    message: 'When it is your turn to receive the cycle pot, payouts disburse directly to your registered Mobile Money wallet.',
+    category: 'Rotation',
+    time: '1 hour ago',
+    sender: 'SusuRow Rotation Engine'
+  },
+  {
+    id: 'notif-3',
+    type: 'PAYMENT',
+    title: 'Round Contribution Protection',
+    message: 'All circle deposits are 100% safeguarded under automated Bank of Ghana tiered escrow underwriting.',
+    category: 'Escrow',
+    time: 'Today',
+    sender: 'SusuRow Escrow'
+  },
+  {
+    id: 'notif-4',
+    type: 'UPDATE',
+    title: 'Platform Update: Instant Settlements',
+    message: 'SusuRow upgraded to full-width segmented navigation with instant MoMo prompt settlements.',
+    category: 'Update',
+    time: 'Yesterday',
+    sender: 'SusuRow Organization'
+  }
+];
 
 export default function Navbar({
   activeView,
@@ -31,6 +69,42 @@ export default function Navbar({
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Notifications State
+  const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
+  const [readNotifIds, setReadNotifIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('susurow_read_notifs');
+      return saved ? JSON.parse(saved) : ['notif-4'];
+    } catch (e) {
+      return ['notif-4'];
+    }
+  });
+
+  const unreadCount = notifications.filter(n => !readNotifIds.includes(n.id)).length;
+
+  const handleMarkRead = (id) => {
+    setReadNotifIds(prev => {
+      if (prev.includes(id)) return prev;
+      const updated = [...prev, id];
+      try {
+        localStorage.setItem('susurow_read_notifs', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const handleMarkAllRead = () => {
+    const allIds = notifications.map(n => n.id);
+    setReadNotifIds(allIds);
+    try {
+      localStorage.setItem('susurow_read_notifs', JSON.stringify(allIds));
+    } catch (e) {}
+  };
+
+  const handleDismissNotif = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -101,8 +175,11 @@ export default function Navbar({
               aria-label="Notifications"
             >
               <Bell size={18} />
-              {isAuthenticated && (
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-sky-600 ring-2 ring-white" />
+              {/* Show unread number badge; if all are read (unreadCount === 0), nothing is displayed */}
+              {isAuthenticated && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-sky-600 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-white leading-none">
+                  {unreadCount}
+                </span>
               )}
             </button>
 
@@ -111,6 +188,12 @@ export default function Navbar({
               isOpen={notifOpen}
               onClose={() => setNotifOpen(false)}
               user={user}
+              notifications={notifications}
+              readNotifIds={readNotifIds}
+              onMarkRead={handleMarkRead}
+              onMarkAllRead={handleMarkAllRead}
+              onDismiss={handleDismissNotif}
+              unreadCount={unreadCount}
               onNavigate={(view) => {
                 setNotifOpen(false);
                 setActiveView(view);
@@ -139,23 +222,27 @@ export default function Navbar({
             onOpenFAQ={onOpenFAQModal}
           />
 
-          {/* User Profile Thumbnail or Sign In */}
+          {/* User Profile Avatar / Sign In */}
           {isAuthenticated ? (
             <div className="relative" ref={dropdownRef}>
               <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="w-9 h-9 rounded-full bg-sky-600 text-white font-bold flex items-center justify-center text-xs shadow-xs overflow-hidden cursor-pointer ring-2 ring-slate-100 hover:ring-sky-200 transition-all"
+                onClick={() => setDropdownOpen(prev => !prev)}
+                className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 transition-colors cursor-pointer border border-slate-200"
+                aria-label="User Profile Menu"
               >
-                {user?.avatar_url && !avatarError ? (
+                {user?.profile_image_url && !avatarError ? (
                   <img
-                    src={user.avatar_url}
-                    alt={user.full_name}
+                    src={user.profile_image_url}
+                    alt={user.full_name || 'Profile'}
+                    className="w-7 h-7 rounded-full object-cover"
                     onError={() => setAvatarError(true)}
-                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span>{user.full_name ? user.full_name.charAt(0).toUpperCase() : 'C'}</span>
+                  <div className="w-7 h-7 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
+                    {user?.full_name ? user.full_name.charAt(0).toUpperCase() : 'S'}
+                  </div>
                 )}
+                <ChevronDown size={14} className="text-slate-400 mr-1 hidden sm:inline" />
               </button>
 
               {dropdownOpen && (
@@ -167,19 +254,6 @@ export default function Navbar({
                     <p className="text-xs font-bold text-slate-900 truncate">{user?.full_name}</p>
                     <p className="text-[11px] font-mono text-slate-500 mt-0.5">{user?.phone_number || user?.email}</p>
                   </div>
-
-                  {user?.is_admin && (
-                    <button
-                      onClick={() => setActiveView('admin')}
-                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-amber-700 hover:bg-amber-50 flex items-center justify-between cursor-pointer transition-colors border-b border-slate-100"
-                    >
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck size={15} className="text-amber-600" />
-                        <span>Executive Admin</span>
-                      </div>
-                      <span className="text-[10px] font-mono font-normal text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">Ctrl+Shift+A</span>
-                    </button>
-                  )}
 
                   <button
                     onClick={() => setActiveView('profile')}

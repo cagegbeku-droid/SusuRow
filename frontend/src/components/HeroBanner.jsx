@@ -33,14 +33,6 @@ export const HeroBanner = ({ openCreateModal, openCalculatorModal }) => {
           <span>Create Group</span>
         </button>
 
-        <button
-          onClick={openCalculatorModal}
-          className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-colors cursor-pointer shadow-xs"
-          title="Payout Calculator"
-          aria-label="Calculator"
-        >
-          <SlidersHorizontal size={16} />
-        </button>
       </div>
     </div>
   );

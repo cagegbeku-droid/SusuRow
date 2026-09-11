@@ -4,15 +4,12 @@ import {
   Compass,
   Users,
   PlusCircle,
-  Calculator,
-  KeyRound,
+  Download,
   Gift,
   Share2,
   Copy,
   Check,
   Phone,
-  ShieldCheck,
-  Eye,
   LogOut,
   LogIn,
   ChevronRight,
@@ -41,8 +38,6 @@ export default function AppSidebar({
     isAuthenticated,
     logout,
     openAuthModal,
-    isSeniorMode,
-    toggleSeniorMode,
     referralCode
   } = useUser();
 
@@ -237,7 +232,7 @@ export default function AppSidebar({
           {/* Navigation Links */}
           <div className="space-y-1">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-1">
-              Menu Navigation
+              Menu
             </div>
 
             {/* Explore Susu Groups */}
@@ -315,31 +310,6 @@ export default function AppSidebar({
               <ChevronRight size={14} className={activeView === 'profile' ? 'text-sky-600' : 'text-slate-400'} />
             </button>
 
-            {/* Executive Admin Panel */}
-            {isAuthenticated && user?.is_admin && (
-              <button
-                onClick={() => {
-                  setActiveView('admin');
-                  onClose();
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
-                  activeView === 'admin'
-                    ? 'bg-slate-900 text-amber-400 border border-amber-500/40 shadow-xs'
-                    : 'text-amber-800 bg-amber-50/70 hover:bg-amber-100/70 border border-amber-200/60'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`p-1.5 rounded-xl ${activeView === 'admin' ? 'bg-amber-500 text-slate-950' : 'bg-amber-200 text-amber-900'}`}>
-                    <ShieldCheck size={16} />
-                  </div>
-                  <span>Executive Admin</span>
-                </div>
-                <span className="text-[10px] font-mono text-amber-900 bg-amber-200/80 px-2 py-0.5 rounded-full shadow-xs">
-                  Ctrl+Shift+A
-                </span>
-              </button>
-            )}
-
             {/* Create New Group */}
             <button
               onClick={() => {
@@ -357,36 +327,23 @@ export default function AppSidebar({
               <ChevronRight size={14} className="text-slate-400" />
             </button>
 
-            {/* Payout Calculator */}
+            {/* Install App */}
             <button
               onClick={() => {
                 onClose();
-                onOpenCalculator();
+                if (window.deferredPrompt) {
+                  window.deferredPrompt.prompt();
+                } else {
+                  window.dispatchEvent(new CustomEvent('trigger-pwa-install'));
+                }
               }}
               className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
             >
               <div className="flex items-center gap-3">
-                <div className="p-1.5 rounded-xl bg-slate-100 text-slate-600">
-                  <Calculator size={16} />
+                <div className="p-1.5 rounded-xl bg-sky-100 text-sky-700">
+                  <Download size={16} />
                 </div>
-                <span>Susu Payout Calculator</span>
-              </div>
-              <ChevronRight size={14} className="text-slate-400" />
-            </button>
-
-            {/* Enter Group Code */}
-            <button
-              onClick={() => {
-                onClose();
-                onOpenJoinCodeModal();
-              }}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-1.5 rounded-xl bg-slate-100 text-slate-600">
-                  <KeyRound size={16} />
-                </div>
-                <span>Enter Group Code</span>
+                <span>Install App</span>
               </div>
               <ChevronRight size={14} className="text-slate-400" />
             </button>
@@ -492,33 +449,6 @@ export default function AppSidebar({
               <span>coratechglobal.com</span>
               <ExternalLink size={11} />
             </a>
-          </div>
-
-          {/* Senior / High-Legibility Mode Switch */}
-          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-3.5 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Eye size={15} className="text-sky-600" />
-                <span className="text-xs font-bold text-slate-900">Large Text Mode</span>
-              </div>
-              <button
-                onClick={toggleSeniorMode}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
-                  isSeniorMode ? 'bg-sky-600' : 'bg-slate-300'
-                }`}
-                role="switch"
-                aria-checked={isSeniorMode}
-              >
-                <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                    isSeniorMode ? 'translate-x-4' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-            <p className="text-[10px] text-slate-500">
-              Enlarges buttons and text for comfortable viewing.
-            </p>
           </div>
 
         </div>

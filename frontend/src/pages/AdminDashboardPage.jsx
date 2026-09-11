@@ -40,7 +40,7 @@ import {
   broadcastAdminSMS
 } from '../api/client';
 
-export default function AdminDashboardPage({ onBack }) {
+export default function AdminDashboardPage({ onBack, onLockSession }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'users' | 'circles' | 'transactions' | 'broadcast'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -366,10 +366,18 @@ export default function AdminDashboardPage({ onBack }) {
               <RefreshCw size={14} className={loading || usersLoading || circlesLoading || txLoading ? 'animate-spin' : ''} />
               <span>Refresh</span>
             </button>
-            <div className="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs font-bold flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Gateway Online</span>
             </div>
+            <button
+              onClick={onLockSession || onBack}
+              className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Lock and Exit Administrative Session"
+            >
+              <Lock size={13} />
+              <span>Lock Session</span>
+            </button>
           </div>
         </div>
 

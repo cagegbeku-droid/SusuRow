@@ -15,7 +15,7 @@ import { MarketplacePage } from './pages/MarketplacePage';
 import { CircleDetailPage } from './pages/CircleDetailPage';
 import { MyCirclesPage } from './pages/MyCirclesPage';
 import { ProfilePage } from './pages/ProfilePage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
+import { AdminLoginGate } from './components/AdminLoginGate';
 import { InstallPwaBanner } from './components/InstallPwaBanner';
 import { OfflineNotice } from './components/OfflineNotice';
 import { getPlatformStats, getGroupByCode } from './api/client';
@@ -350,7 +350,7 @@ function AppContent() {
           )}
 
           {currentTab === 'admin' && (
-            <AdminDashboardPage onBack={handleBack} />
+            <AdminLoginGate onBack={handleBack} />
           )}
         </main>
 
@@ -413,8 +413,13 @@ function AppContent() {
               <ul className="space-y-1.5 text-xs text-slate-600 font-medium">
                 <li><button onClick={() => setIsTermsModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Terms of Service & Privacy</button></li>
                 <li><button onClick={handleOpenReferralModal} className="hover:text-sky-600 transition-colors cursor-pointer">• Refer & Earn Hub</button></li>
-                <li><button onClick={() => setIsCalculatorModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Payout Calculator</button></li>
-                <li><button onClick={() => setIsJoinCodeModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Enter Group Code</button></li>
+                <li><button onClick={() => {
+                  if (window.deferredPrompt) {
+                    window.deferredPrompt.prompt();
+                  } else {
+                    window.dispatchEvent(new CustomEvent('trigger-pwa-install'));
+                  }
+                }} className="hover:text-sky-600 transition-colors cursor-pointer">• Install SusuRow App</button></li>
               </ul>
             </div>
 
