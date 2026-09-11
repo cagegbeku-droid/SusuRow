@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ArrowLeft, 
   Copy, 
@@ -22,7 +22,8 @@ import {
   ChevronRight,
   MessageSquare,
   Bell,
-  Star
+  Star,
+  MoreHorizontal
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { 
@@ -59,6 +60,23 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [reminderStatus, setReminderStatus] = useState(null);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!isMoreMenuOpen) return;
+    const handleClickOutside = (e) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isMoreMenuOpen]);
 
   const fetchDetail = async () => {
     setLoading(true);
@@ -222,67 +240,134 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
   return (
     <div className="space-y-6 pb-12">
       
-      {/* 🧭 Top Navigation & Actions */}
+      {/* 🧭 Modern Top Navigation & Actions */}
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer shadow-xs"
+          className="w-10 h-10 rounded-full bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 transition-all cursor-pointer shadow-xs active:scale-95"
+          title="Back"
+          aria-label="Back"
         >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
+          <ArrowLeft className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-2">
-          {/* Chat Button */}
-          <button
-            onClick={() => setIsChatModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer shadow-xs"
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-sky-600" />
-            <span>Group Chat</span>
-          </button>
-
           {/* Share */}
           <button
             onClick={() => setIsShareModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer shadow-xs"
+            className="w-10 h-10 rounded-full bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 transition-all cursor-pointer shadow-xs active:scale-95"
+            title="Share Circle"
+            aria-label="Share"
           >
-            <Share2 className="w-3.5 h-3.5 text-sky-600" />
-            <span>Share</span>
+            <Share2 className="w-4 h-4 text-sky-600" />
           </button>
 
-          {/* Send SMS Due Reminders (Creator Only) */}
-          {isCreator && group.status === 'ACTIVE' && (
+          {/* More Options (Three Horizontal Dots) */}
+          <div className="relative" ref={moreMenuRef}>
             <button
-              onClick={handleSendReminders}
-              disabled={actionLoading}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs transition-all cursor-pointer shadow-xs"
-              title="Send SMS Payment Reminders to Due Members"
+              onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+              className="w-10 h-10 rounded-full bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="More options"
+              aria-label="More"
             >
-              <Bell className="w-3.5 h-3.5 text-amber-600" />
-              <span className="hidden sm:inline">SMS Reminders</span>
+              <MoreHorizontal className="w-5 h-5 text-slate-700" />
             </button>
-          )}
 
-          {/* Delete (Creator Only) */}
-          {isCreator && (
-            <button
-              onClick={() => setIsDeleteConfirmOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs transition-all cursor-pointer shadow-xs"
-              title="Delete Group"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete</span>
-            </button>
-          )}
+            {isMoreMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                <button
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    setIsChatModalOpen(true);
+                  }}
+                  className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <MessageSquare className="w-4 h-4 text-sky-600" />
+                  <span>Group Chat</span>
+                </button>
 
-          <button
-            onClick={fetchDetail}
-            className="p-2 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-800 transition-all cursor-pointer shadow-xs"
-            title="Refresh"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
+                <button
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    fetchDetail();
+                  }}
+                  className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4 text-slate-600" />
+                  <span>Refresh Details</span>
+                </button>
+
+                {isCreator && group.status === 'ACTIVE' && (
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      handleSendReminders();
+                    }}
+                    disabled={actionLoading}
+                    className="w-full px-4 py-2.5 text-left text-xs font-bold text-amber-800 hover:bg-amber-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Bell className="w-4 h-4 text-amber-600" />
+                    <span>Send SMS Reminders</span>
+                  </button>
+                )}
+
+                {group.rotation_type === 'BIDDING' && isEnrolled && !isCompleted && (
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setIsBiddingModalOpen(true);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Gavel className="w-4 h-4 text-sky-600" />
+                    <span>Place Bid</span>
+                  </button>
+                )}
+
+                {group.rotation_type === 'BALLOT' && !isCompleted && (
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      setIsBallotModalOpen(true);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Shuffle className="w-4 h-4 text-amber-600" />
+                    <span>Ballot Draw</span>
+                  </button>
+                )}
+
+                {isCreator && isCompleted && (
+                  <button
+                    onClick={() => {
+                      setIsMoreMenuOpen(false);
+                      handleReopenGroup();
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-xs font-bold text-sky-800 hover:bg-sky-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <RotateCw className="w-4 h-4 text-sky-600" />
+                    <span>Reopen Circle</span>
+                  </button>
+                )}
+
+                {isCreator && (
+                  <>
+                    <div className="my-1 border-t border-slate-100" />
+                    <button
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        setIsDeleteConfirmOpen(true);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                      <span>Delete Circle</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -481,25 +566,12 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {isCreator && (
-            <span className="px-3.5 py-2 rounded-2xl bg-sky-50 text-sky-700 font-bold border border-sky-200 text-xs flex items-center gap-1.5 shadow-xs">
-              👑 Circle Leader
-            </span>
-          )}
-
-          {isEnrolled && !isCreator && (
-            <span className="px-3.5 py-2 rounded-2xl bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 text-xs flex items-center gap-1.5 shadow-xs">
-              <CheckCircle2 size={13} className="text-emerald-600" />
-              <span>Enrolled Member</span>
-            </span>
-          )}
-
+        <div className="flex items-center gap-2">
           {!isEnrolled && !isCreator && !isFull && !isCompleted && (
             <button
               onClick={handleJoinCircle}
               disabled={actionLoading}
-              className="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+              className="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
             >
               <PlusCircle className="w-4 h-4 text-white" />
               <span>Join Group</span>
@@ -509,50 +581,10 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           {isEnrolled && !enrolledMember?.has_paid_current_round && !isCompleted && (
             <button
               onClick={() => openMoMoModalForUser(enrolledMember, false)}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <Smartphone className="w-4 h-4" />
               <span>Pay GH₵{group.contribution_amount}</span>
-            </button>
-          )}
-
-          {/* Group Chat Button */}
-          <button
-            onClick={() => setIsChatModalOpen(true)}
-            className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-2xl border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <MessageSquare className="w-4 h-4 text-sky-600" />
-            <span>Chat</span>
-          </button>
-
-          {group.rotation_type === 'BIDDING' && isEnrolled && !isCompleted && (
-            <button
-              onClick={() => setIsBiddingModalOpen(true)}
-              className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-2xl border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <Gavel className="w-4 h-4 text-sky-600" />
-              <span>Place Bid</span>
-            </button>
-          )}
-
-          {group.rotation_type === 'BALLOT' && !isCompleted && (
-            <button
-              onClick={() => setIsBallotModalOpen(true)}
-              className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-2xl border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <Shuffle className="w-4 h-4 text-amber-600" />
-              <span>Ballot Draw</span>
-            </button>
-          )}
-
-          {isCreator && isCompleted && (
-            <button
-              onClick={handleReopenGroup}
-              disabled={actionLoading}
-              className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <RotateCw className="w-4 h-4" />
-              <span>Reopen Circle for New Members</span>
             </button>
           )}
         </div>
