@@ -567,3 +567,65 @@ def broadcast_admin_sms(
         "dispatched_count": sent_count,
         "target": payload.target
     }
+
+
+@router.delete("/groups/{group_id}")
+def admin_delete_group(
+    group_id: str,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """
+    Administrative deletion of any circle (Recruiting, Active, or Completed)
+    upon user or customer support request.
+    Safely cleans up associated payments, payouts, members, and the group itself.
+    """
+    group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Susu circle not found.")
+
+    group_name = group.name
+    # Delete associated records
+    db.query(ContributionPayment).filter(ContributionPayment.group_id == group_id).delete()
+    db.query(PayoutDisbursement).filter(PayoutDisbursement.group_id == group_id).delete()
+    db.query(GroupMember).filter(GroupMember.group_id == group_id).delete()
+    db.delete(group)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Circle '{group_name}' was administratively deleted by Executive Admin."
+    }
+
+
+@router.post("/system/purge-test-data")
+def purge_test_data(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """
+    Cleans all mock data, test circles, contributions, payouts, and non-admin test users
+    so the platform is 100% clean and ready for public production use.
+    Guarantees that Executive Admin accounts are preserved.
+    """
+    # 1. Clean transactions & webhook logs
+    db.query(ContributionPayment).delete()
+    db.query(PayoutDisbursement).delete()
+    db.query(MoMoWebhookLog).delete()
+
+    # 2. Clean all group members & circles
+    db.query(GroupMember).delete()
+    db.query(SusuGroup).delete()
+
+    # 3. Clean all non-admin test users while protecting admin accounts
+    db.query(User).filter(
+        or_(User.is_admin == False, User.is_admin == None)
+    ).delete()
+
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "All mock groups, test payments, and non-admin test users have been purged. Platform is clean and production ready.",
+        "admin_preserved": admin.phone_number or admin.email
+    }

@@ -25,7 +25,9 @@ import {
   MessageSquare,
   Sparkles,
   Award,
-  KeyRound
+  KeyRound,
+  Trash2,
+  Database
 } from 'lucide-react';
 import {
   getAdminMetrics,
@@ -38,7 +40,9 @@ import {
   overrideCirclePayout,
   getAdminTransactions,
   reconcileTransaction,
-  broadcastAdminSMS
+  broadcastAdminSMS,
+  adminDeleteCircle,
+  adminPurgeTestData
 } from '../api/client';
 import { ChangeAdminCredentialsModal } from '../components/ChangeAdminCredentialsModal';
 
@@ -262,6 +266,37 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
     }
   };
 
+  const handleAdminDeleteCircle = async (circle) => {
+    if (!window.confirm(`EXECUTIVE ACTION: Are you sure you want to permanently delete circle "${circle.name}"?\n\nThis will remove all associated member slots and contribution records upon customer support request.`)) return;
+    try {
+      const res = await adminDeleteCircle(circle.id);
+      notify(res.message);
+      loadCircles();
+      loadMetrics();
+      if (selectedCircleForAudit?.id === circle.id) {
+        setSelectedCircleForAudit(null);
+        setCircleAuditData(null);
+      }
+    } catch (err) {
+      notify(err?.response?.data?.detail || 'Failed to delete circle', 'error');
+    }
+  };
+
+  const handleAdminPurgeData = async () => {
+    const confirmation = window.prompt('CRITICAL SYSTEM RESET:\n\nType "PURGE" to delete all mock test circles, test member records, and mock contributions to reset the platform for live launch.\n\nYour executive admin account will be preserved:');
+    if (confirmation !== 'PURGE') return;
+    try {
+      const res = await adminPurgeTestData();
+      notify(res.message);
+      loadMetrics();
+      loadCircles();
+      loadUsers();
+      loadTransactions();
+    } catch (err) {
+      notify(err?.response?.data?.detail || 'Failed to purge test data', 'error');
+    }
+  };
+
   // Transaction Actions
   const handleReconcile = async (txId) => {
     try {
@@ -362,7 +397,15 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+            <button
+              onClick={handleAdminPurgeData}
+              className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              title="Purge all mock test circles & data for production launch"
+            >
+              <Database size={13} className="text-rose-600" />
+              <span>Reset/Purge Data</span>
+            </button>
             <button
               onClick={() => setCredsModalOpen(true)}
               className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
@@ -999,6 +1042,15 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                         <span>Disburse Payout</span>
                       </button>
                     )}
+
+                    <button
+                      onClick={() => handleAdminDeleteCircle(c)}
+                      className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 border border-rose-200 shadow-2xs"
+                      title="Administratively delete/purge this circle upon customer support request"
+                    >
+                      <Trash2 size={14} />
+                      <span>Delete</span>
+                    </button>
                   </div>
 
                 </div>

@@ -27,6 +27,7 @@ def auto_migrate_schema():
     migrations = [
         ("users", "username", "VARCHAR(50)"),
         ("users", "email", "VARCHAR(120)"),
+        ("users", "hashed_password", "VARCHAR(256)"),
         ("users", "avatar_url", "TEXT"),
         ("users", "security_pin_hash", "VARCHAR(256)"),
         ("users", "tier", "VARCHAR(20) DEFAULT 'BRONZE'"),

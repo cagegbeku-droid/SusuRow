@@ -290,5 +290,15 @@ export const broadcastAdminSMS = async (payload) => {
   return res.data;
 };
 
+export const adminDeleteCircle = async (groupId) => {
+  const res = await api.delete(`/admin/groups/${groupId}`);
+  return res.data;
+};
+
+export const adminPurgeTestData = async () => {
+  const res = await api.post('/admin/system/purge-test-data');
+  return res.data;
+};
+
 export default api;
 
