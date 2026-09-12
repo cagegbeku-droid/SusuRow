@@ -1,20 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Menu,
-  HelpCircle,
   Bell,
-  MessageCircle,
   LogIn,
   LogOut,
   User,
   Users,
   Gift,
   PlusCircle,
-  ChevronDown
+  ChevronDown,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { NotificationsDropdown } from './NotificationsDropdown';
-import { SupportChatModal } from './SupportChatModal';
 
 export default function Navbar({
   activeView,
@@ -192,16 +190,6 @@ export default function Navbar({
         {/* Right: Actions (Help ?, Bell 🔔, Chat 💬, Profile) */}
         <div className="flex items-center gap-2 sm:gap-3">
           
-          {/* Help Button (?) */}
-          <button
-            onClick={onOpenFAQModal}
-            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border border-slate-200"
-            title="Help & FAQs"
-            aria-label="Help"
-          >
-            <HelpCircle size={18} />
-          </button>
-
           {/* Notifications Button (🔔 with interactive dropdown) */}
           <div className="relative">
             <button
@@ -214,7 +202,6 @@ export default function Navbar({
               aria-label="Notifications"
             >
               <Bell size={18} />
-              {/* Show unread number badge; if all are read (unreadCount === 0), nothing is displayed */}
               {isAuthenticated && unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-sky-600 text-white text-[10px] font-black flex items-center justify-center ring-2 ring-white leading-none">
                   {unreadCount}
@@ -240,26 +227,19 @@ export default function Navbar({
             />
           </div>
 
-          {/* Chat & Support Button (💬) */}
+          {/* Settings & Support Gear Button (⚙️) */}
           <button
-            onClick={() => {
-              if (!isAuthenticated) openAuthModal();
-              else setChatModalOpen(true);
-            }}
-            className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors cursor-pointer border border-slate-200"
-            title="Chat & Support"
-            aria-label="Chat"
+            onClick={() => setActiveView('settings')}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer border ${
+              activeView === 'settings'
+                ? 'bg-sky-50 border-sky-300 text-sky-600'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+            }`}
+            title="Settings & Support"
+            aria-label="Settings and Support"
           >
-            <MessageCircle size={18} />
+            <SettingsIcon size={18} />
           </button>
-
-          {/* Chat & Support Modal */}
-          <SupportChatModal
-            isOpen={chatModalOpen}
-            onClose={() => setChatModalOpen(false)}
-            onOpenMyCircles={() => setActiveView('my-circles')}
-            onOpenFAQ={onOpenFAQModal}
-          />
 
           {/* User Profile Avatar / Sign In */}
           {isAuthenticated ? (
@@ -327,6 +307,14 @@ export default function Navbar({
                   >
                     <Gift size={15} className="text-amber-500" />
                     <span>Refer Friends</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveView('settings')}
+                    className="w-full px-4 py-2.5 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <SettingsIcon size={15} className="text-sky-600" />
+                    <span>Settings & Support</span>
                   </button>
 
                   <button

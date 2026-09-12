@@ -3,7 +3,8 @@ import {
   Home, 
   Compass, 
   LayoutGrid, 
-  User 
+  User,
+  Settings 
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
@@ -47,17 +48,24 @@ export default function MobileBottomNav({
       label: 'Profile',
       icon: User,
       target: 'profile'
+    },
+    {
+      id: 'settings',
+      label: 'Settings',
+      icon: Settings,
+      target: 'settings'
     }
   ];
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 py-2 px-4 shadow-lg md:hidden">
+    <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 py-1.5 px-2 shadow-lg md:hidden">
       <div className="max-w-md mx-auto flex items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = (item.id === 'marketplace' && activeView === 'marketplace') ||
                            (item.id === 'my-circles' && activeView === 'my-circles') ||
-                           (item.id === 'profile' && activeView === 'profile');
+                           (item.id === 'profile' && activeView === 'profile') ||
+                           (item.id === 'settings' && activeView === 'settings');
 
           return (
             <button

@@ -18,7 +18,8 @@ import {
   MessageCircle,
   Building2,
   FileText,
-  User
+  User,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { getReferralInviteUrl } from '../utils/shareUtils';
@@ -311,6 +312,27 @@ export default function AppSidebar({
                 <span>Profile, KYC & Wallets</span>
               </div>
               <ChevronRight size={14} className={activeView === 'profile' ? 'text-sky-600' : 'text-slate-400'} />
+            </button>
+
+            {/* Settings & Support */}
+            <button
+              onClick={() => {
+                setActiveView('settings');
+                onClose();
+              }}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                activeView === 'settings'
+                  ? 'bg-sky-50 text-sky-700 border border-sky-200/80 shadow-xs'
+                  : 'text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-1.5 rounded-xl ${activeView === 'settings' ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                  <SettingsIcon size={16} />
+                </div>
+                <span>Settings & Support</span>
+              </div>
+              <ChevronRight size={14} className={activeView === 'settings' ? 'text-sky-600' : 'text-slate-400'} />
             </button>
 
             {/* Create New Group */}

@@ -11,10 +11,12 @@ import { JoinCodeModal } from './components/JoinCodeModal';
 import { SusuCalculator } from './components/SusuCalculator';
 import { TermsModal } from './components/TermsModal';
 import { FAQModal } from './components/FAQModal';
+import { SupportChatModal } from './components/SupportChatModal';
 import { MarketplacePage } from './pages/MarketplacePage';
 import { CircleDetailPage } from './pages/CircleDetailPage';
 import { MyCirclesPage } from './pages/MyCirclesPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { SettingsPage } from './pages/SettingsPage';
 import { AdminLoginGate } from './components/AdminLoginGate';
 import { InstallPwaBanner } from './components/InstallPwaBanner';
 import { InstallAppModal } from './components/InstallAppModal';
@@ -47,6 +49,7 @@ function AppContent() {
   const [isCalculatorModalOpen, setIsCalculatorModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [isFAQModalOpen, setIsFAQModalOpen] = useState(false);
+  const [isSupportChatOpen, setIsSupportChatOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   const fetchStats = async () => {
@@ -357,6 +360,19 @@ function AppContent() {
             />
           )}
 
+          {currentTab === 'settings' && (
+            <SettingsPage
+              onBack={handleBack}
+              onNavigate={navigateTo}
+              onOpenFAQModal={() => setIsFAQModalOpen(true)}
+              onOpenSupportChat={() => setIsSupportChatOpen(true)}
+              onOpenTermsModal={() => setIsTermsModalOpen(true)}
+              onOpenInstallModal={() => setIsInstallModalOpen(true)}
+              onOpenReferralModal={handleOpenReferralModal}
+              onOpenCalculator={() => setIsCalculatorModalOpen(true)}
+            />
+          )}
+
           {currentTab === 'admin' && (
             <AdminLoginGate onBack={handleBack} />
           )}
@@ -420,6 +436,7 @@ function AppContent() {
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-3">Platform & Legal</h4>
               <ul className="space-y-1.5 text-xs text-slate-600 font-medium">
                 <li><button onClick={() => setIsTermsModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Terms of Service & Privacy</button></li>
+                <li><button onClick={() => navigateTo('settings')} className="hover:text-sky-600 transition-colors cursor-pointer">• Settings & Support</button></li>
                 <li><button onClick={handleOpenReferralModal} className="hover:text-sky-600 transition-colors cursor-pointer">• Refer & Earn Hub</button></li>
                 <li><button onClick={() => setIsInstallModalOpen(true)} className="hover:text-sky-600 transition-colors cursor-pointer">• Install SusuRow App</button></li>
               </ul>
@@ -492,6 +509,12 @@ function AppContent() {
       <FAQModal
         isOpen={isFAQModalOpen}
         onClose={() => setIsFAQModalOpen(false)}
+      />
+      <SupportChatModal
+        isOpen={isSupportChatOpen}
+        onClose={() => setIsSupportChatOpen(false)}
+        onOpenMyCircles={() => navigateTo('my-circles')}
+        onOpenFAQ={() => setIsFAQModalOpen(true)}
       />
 
       {/* Offline Status Badge */}
