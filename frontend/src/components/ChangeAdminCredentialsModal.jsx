@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, KeyRound, Lock, Eye, EyeOff, X, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { KeyRound, Eye, EyeOff, X, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { adminChangeCredentials } from '../api/client';
 
 export const ChangeAdminCredentialsModal = ({ isOpen, onClose, onUpdated }) => {
-  const [currentUsername, setCurrentUsername] = useState('0248355112');
-  const [newUsername, setNewUsername] = useState('');
+  const [newPhone, setNewPhone] = useState('0599360626');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -16,16 +17,9 @@ export const ChangeAdminCredentialsModal = ({ isOpen, onClose, onUpdated }) => {
       const saved = localStorage.getItem('susurow_custom_admin_creds');
       if (saved) {
         const parsed = JSON.parse(saved);
-        setCurrentUsername(parsed.username || '0248355112');
-        setNewUsername(parsed.username || '0248355112');
-      } else {
-        setCurrentUsername('0248355112');
-        setNewUsername('0248355112');
+        if (parsed.username) setNewPhone(parsed.username);
       }
-    } catch (e) {
-      setCurrentUsername('0248355112');
-      setNewUsername('0248355112');
-    }
+    } catch (e) {}
     setNewPassword('');
     setConfirmPassword('');
     setError(null);
@@ -34,19 +28,19 @@ export const ChangeAdminCredentialsModal = ({ isOpen, onClose, onUpdated }) => {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
-    const cleanUsername = newUsername.trim();
-    if (cleanUsername.length < 3) {
-      setError('Administrator username must be at least 3 characters long.');
+    const cleanPhone = newPhone.trim();
+    if (cleanPhone.length < 9) {
+      setError('Please enter a valid administrator phone number (e.g. 0599360626).');
       return;
     }
 
     if (newPassword.length < 4) {
-      setError('Executive password must be at least 4 characters long.');
+      setError('New password must be at least 4 characters long.');
       return;
     }
 
@@ -55,106 +49,97 @@ export const ChangeAdminCredentialsModal = ({ isOpen, onClose, onUpdated }) => {
       return;
     }
 
+    setLoading(true);
     try {
-      const creds = {
-        username: cleanUsername,
+      const res = await adminChangeCredentials({
+        new_phone: cleanPhone,
+        new_password: newPassword,
+        new_username: cleanPhone
+      });
+
+      if (res && res.access_token) {
+        localStorage.setItem('susurow_auth_token', res.access_token);
+      }
+
+      localStorage.setItem('susurow_custom_admin_creds', JSON.stringify({
+        username: cleanPhone,
         password: newPassword,
         updatedAt: new Date().toISOString()
-      };
-      localStorage.setItem('susurow_custom_admin_creds', JSON.stringify(creds));
-      setSuccess('Executive credentials updated successfully! Use these new credentials for future portal logins.');
-      if (onUpdated) onUpdated(cleanUsername);
+      }));
+
+      setSuccess('Credentials updated successfully in the database! Use your new phone and password for future logins.');
+      if (onUpdated) onUpdated(cleanPhone);
 
       setTimeout(() => {
         onClose();
       }, 1800);
     } catch (err) {
-      setError('Failed to save updated credentials.');
+      console.error('Change credentials error:', err);
+      setError(err.response?.data?.detail || 'Failed to update credentials. Please check your connection.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleResetDefaults = () => {
-    if (!window.confirm('Reset executive credentials back to default (0248355112 / admin123)?')) return;
-    localStorage.removeItem('susurow_custom_admin_creds');
-    setCurrentUsername('0248355112');
-    setNewUsername('0248355112');
-    setNewPassword('');
-    setConfirmPassword('');
-    setSuccess('Executive credentials reset to defaults (0248355112 / admin123).');
-    if (onUpdated) onUpdated('0248355112');
-    setTimeout(() => onClose(), 1500);
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
       >
         {/* Modal Header */}
-        <div className="bg-slate-50 border-b border-slate-100 p-5 flex items-center justify-between">
+        <div className="bg-white border-b border-slate-100 p-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shadow-xs">
               <KeyRound size={18} />
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 leading-tight">Change Executive Credentials</h3>
-              <p className="text-[11px] text-slate-500 font-medium">Update username and sign-in password</p>
+              <p className="text-[11px] text-slate-500 font-medium">Update your admin phone number and password</p>
             </div>
           </div>
-
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Current Info & Form */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          
           {error && (
-            <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+            <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
               <AlertCircle size={16} className="shrink-0 text-red-600" />
               <span>{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+            <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
               <Check size={16} className="shrink-0 text-emerald-600" />
               <span>{success}</span>
             </div>
           )}
 
-          {/* Current Active Username */}
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-            <span className="text-slate-500 font-medium">Current Admin Username:</span>
-            <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-200">
-              {currentUsername}
-            </span>
-          </div>
-
-          {/* New Username */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              New Administrator Username / ID
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Admin Phone Number
             </label>
             <input
               type="text"
               required
-              value={newUsername}
-              onChange={(e) => setNewUsername(e.target.value)}
-              placeholder="e.g. Courage, Director, or 0248355112"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+              value={newPhone}
+              onChange={(e) => setNewPhone(e.target.value)}
+              placeholder="e.g. 0599360626"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
             />
           </div>
 
-          {/* New Password */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              New Executive Password
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              New Password
             </label>
             <div className="relative">
               <input
@@ -162,8 +147,8 @@ export const ChangeAdminCredentialsModal = ({ isOpen, onClose, onUpdated }) => {
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new executive password"
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all pr-10"
+                placeholder="Enter new password (min 4 characters)"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 pr-10"
               />
               <button
                 type="button"
@@ -175,9 +160,8 @@ export const ChangeAdminCredentialsModal = ({ isOpen, onClose, onUpdated }) => {
             </div>
           </div>
 
-          {/* Confirm Password */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            <label className="block text-xs font-bold text-slate-700 mb-1">
               Confirm New Password
             </label>
             <input
@@ -185,38 +169,32 @@ export const ChangeAdminCredentialsModal = ({ isOpen, onClose, onUpdated }) => {
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter new executive password"
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+              placeholder="Re-enter new password"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
             />
           </div>
 
-          {/* Submit Button */}
-          <div className="pt-2 space-y-2">
-            <button
-              type="submit"
-              className="w-full py-3 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-amber-400 font-bold text-xs rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Check size={16} />
-              <span>Save & Update Credentials</span>
-            </button>
-
+          <div className="pt-2 flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={handleResetDefaults}
-              className="w-full py-2 text-[11px] font-bold text-slate-400 hover:text-slate-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
             >
-              <RefreshCw size={12} />
-              <span>Reset to Defaults (0248355112 / admin123)</span>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {loading && <Loader2 size={14} className="animate-spin" />}
+              <span>{loading ? 'Saving...' : 'Save & Apply'}</span>
             </button>
           </div>
         </form>
-
-        <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
-          <span className="text-[10px] text-slate-400 font-medium">
-            SusuRow Security • Passwords are protected in encrypted device storage
-          </span>
-        </div>
       </div>
     </div>
   );
 };
+
+export default ChangeAdminCredentialsModal;

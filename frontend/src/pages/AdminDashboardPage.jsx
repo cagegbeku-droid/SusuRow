@@ -1,2058 +1,769 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShieldCheck,
-  TrendingUp,
   Users,
   CreditCard,
-  AlertTriangle,
   CheckCircle2,
   XCircle,
   RefreshCw,
   Search,
-  Filter,
-  Send,
   ArrowLeft,
   DollarSign,
-  Lock,
-  Unlock,
-  Eye,
-  Check,
-  X,
-  Phone,
-  Clock,
-  ChevronRight,
-  ExternalLink,
-  MessageSquare,
-  Sparkles,
-  Award,
   KeyRound,
   Trash2,
-  Database,
-  Building2,
   Wallet,
-  Receipt,
+  AlertCircle,
   ArrowDownRight,
-  ShieldAlert
+  Send,
+  Lock
 } from 'lucide-react';
 import {
   getAdminMetrics,
   getAdminUsers,
   updateUserKycStatus,
   toggleUserFreeze,
-  toggleUserAdmin,
   getAdminCircles,
-  getAdminCircleMembers,
-  overrideCirclePayout,
   getAdminTransactions,
-  reconcileTransaction,
-  broadcastAdminSMS,
   adminDeleteCircle,
-  adminPurgeTestData,
   getAdminTreasury,
   adminWithdrawRevenue
 } from '../api/client';
 import { ChangeAdminCredentialsModal } from '../components/ChangeAdminCredentialsModal';
 
 export default function AdminDashboardPage({ onBack, onLockSession }) {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'treasury' | 'users' | 'circles' | 'transactions' | 'broadcast'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'circles' | 'users' | 'transactions'
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [actionNotice, setActionNotice] = useState(null);
 
   // Credentials Modal State
   const [credsModalOpen, setCredsModalOpen] = useState(false);
+  const [currentAdminPhone, setCurrentAdminPhone] = useState('0599360626');
 
-  // Metrics State
-  const [metrics, setMetrics] = useState(null);
+  // Metrics & Treasury State
+  const [metrics, setMetrics] = useState({
+    financials: {
+      active_float_ghs: 0,
+      total_volume_ghs: 0,
+      total_payouts_disbursed_ghs: 0,
+      net_revenue_ghs: 0
+    },
+    circles: { active_count: 0, total_count: 0 },
+    savers: { total_savers: 0, verified_savers: 0 }
+  });
+  const [treasury, setTreasury] = useState({ available_balance_ghs: 0, total_collected_ghs: 0 });
 
-  // Treasury & Withdrawal State
-  const [treasury, setTreasury] = useState(null);
-  const [treasuryLoading, setTreasuryLoading] = useState(false);
-  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
-  const [withdrawMethod, setWithdrawMethod] = useState('MOMO'); // 'MOMO' | 'BANK'
-  const [withdrawDestination, setWithdrawDestination] = useState('MTN Mobile Money');
-  const [withdrawAccountNumber, setWithdrawAccountNumber] = useState('0599360626');
-  const [withdrawAccountName, setWithdrawAccountName] = useState('Coratech Global Enterprise');
-  const [withdrawBranch, setWithdrawBranch] = useState('');
+  // Withdrawal form modal state
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [withdrawNote, setWithdrawNote] = useState('');
-  const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
-  const [activeReceipt, setActiveReceipt] = useState(null);
+  const [withdrawPhone, setWithdrawPhone] = useState('0599360626');
+  const [withdrawName, setWithdrawName] = useState('Coratech Executive');
+  const [withdrawProvider, setWithdrawProvider] = useState('MTN');
+  const [withdrawing, setWithdrawing] = useState(false);
 
-  // Users Tab State
+  // Data lists
+  const [circles, setCircles] = useState([]);
+  const [circleSearch, setCircleSearch] = useState('');
+  const [circlesLoading, setCirclesLoading] = useState(false);
+
   const [users, setUsers] = useState([]);
-  const [totalUsers, setTotalUsers] = useState(0);
   const [userSearch, setUserSearch] = useState('');
-  const [kycFilter, setKycFilter] = useState('ALL');
-  const [selectedUserForModal, setSelectedUserForModal] = useState(null);
   const [usersLoading, setUsersLoading] = useState(false);
 
-  // Circles Tab State
-  const [circles, setCircles] = useState([]);
-  const [circleFilter, setCircleFilter] = useState('ALL');
-  const [circleSearch, setCircleSearch] = useState('');
-  const [selectedCircleForAudit, setSelectedCircleForAudit] = useState(null);
-  const [circleAuditData, setCircleAuditData] = useState(null);
-  const [circlesLoading, setCirclesLoading] = useState(false);
-  const [auditLoading, setAuditLoading] = useState(false);
-
-  // Transactions Tab State
   const [transactions, setTransactions] = useState([]);
-  const [txFilter, setTxFilter] = useState('ALL');
   const [txSearch, setTxSearch] = useState('');
   const [txLoading, setTxLoading] = useState(false);
 
-  // Broadcast Tab State
-  const [broadcastTarget, setBroadcastTarget] = useState('ALL_USERS');
-  const [broadcastGroupId, setBroadcastGroupId] = useState('');
-  const [broadcastMessage, setBroadcastMessage] = useState('');
-  const [broadcastSending, setBroadcastSending] = useState(false);
-  const [broadcastResult, setBroadcastResult] = useState(null);
-
-  // Show action feedback notice
   const notify = (msg, type = 'success') => {
     setActionNotice({ msg, type });
-    setTimeout(() => setActionNotice(null), 4500);
+    setTimeout(() => setActionNotice(null), 4000);
   };
 
-  // Fetch High-Level Metrics
-  const loadMetrics = useCallback(async () => {
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      setError(null);
-      const data = await getAdminMetrics();
-      setMetrics(data);
+      const [m, t] = await Promise.allSettled([
+        getAdminMetrics(),
+        getAdminTreasury()
+      ]);
+      if (m.status === 'fulfilled' && m.value) setMetrics(m.value);
+      if (t.status === 'fulfilled' && t.value) setTreasury(t.value);
     } catch (err) {
-      console.warn('Failed to load admin metrics:', err);
-      setMetrics(prev => prev || {
-        financials: {
-          total_volume_ghs: 0,
-          total_payouts_disbursed_ghs: 0,
-          active_float_ghs: 0,
-          net_revenue_ghs: 0,
-          gateway_fees_ghs: 0,
-          commission_fees_ghs: 0,
-          platform_fees_ghs: 0,
-        },
-        savers: {
-          total_savers: 0,
-          verified_savers: 0,
-          pending_kyc: 0,
-          unverified_savers: 0,
-          kyc_completion_rate: 100,
-        },
-        circles: {
-          active_count: 0,
-          recruiting_count: 0,
-          completed_count: 0,
-          overdue_count: 0,
-        },
-        risk: {
-          frozen_users: 0,
-          failed_payments_24h: 0,
-        }
-      });
+      console.warn('Failed to load metrics:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Fetch Users
-  const loadUsers = useCallback(async () => {
-    try {
-      setUsersLoading(true);
-      const data = await getAdminUsers({
-        query: userSearch || undefined,
-        kyc_status: kycFilter !== 'ALL' ? kycFilter : undefined,
-        limit: 50
-      });
-      setUsers(data.users || []);
-      setTotalUsers(data.total || 0);
-    } catch (err) {
-      console.error('Failed to load admin users:', err);
-      notify(err?.response?.data?.detail || 'Failed to fetch savers list', 'error');
-    } finally {
-      setUsersLoading(false);
-    }
-  }, [userSearch, kycFilter]);
-
-  // Fetch Circles
   const loadCircles = useCallback(async () => {
+    setCirclesLoading(true);
     try {
-      setCirclesLoading(true);
-      const data = await getAdminCircles({
-        status_filter: circleFilter !== 'ALL' ? circleFilter : undefined,
-        query: circleSearch || undefined
-      });
-      setCircles(data || []);
+      const data = await getAdminCircles({ query: circleSearch || undefined });
+      setCircles(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Failed to load admin circles:', err);
-      notify(err?.response?.data?.detail || 'Failed to fetch circles list', 'error');
+      console.error('Failed to load circles:', err);
+      notify(err?.response?.data?.detail || 'Failed to load savings groups', 'error');
     } finally {
       setCirclesLoading(false);
     }
-  }, [circleFilter, circleSearch]);
+  }, [circleSearch]);
 
-  // Fetch Transactions
-  const loadTransactions = useCallback(async () => {
+  const loadUsers = useCallback(async () => {
+    setUsersLoading(true);
     try {
-      setTxLoading(true);
-      const data = await getAdminTransactions({
-        tx_type: txFilter,
-        query: txSearch || undefined,
-        limit: 50
-      });
-      setTransactions(data || []);
+      const data = await getAdminUsers({ query: userSearch || undefined, limit: 100 });
+      setUsers(data?.users || []);
     } catch (err) {
-      console.error('Failed to load admin transactions:', err);
-      notify(err?.response?.data?.detail || 'Failed to fetch transactions ledger', 'error');
+      console.error('Failed to load users:', err);
+      notify(err?.response?.data?.detail || 'Failed to load members', 'error');
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [userSearch]);
+
+  const loadTransactions = useCallback(async () => {
+    setTxLoading(true);
+    try {
+      const data = await getAdminTransactions({ query: txSearch || undefined, limit: 100 });
+      setTransactions(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load transactions:', err);
+      notify(err?.response?.data?.detail || 'Failed to load payments', 'error');
     } finally {
       setTxLoading(false);
     }
-  }, [txFilter, txSearch]);
+  }, [txSearch]);
 
-  const loadTreasury = useCallback(async () => {
+  useEffect(() => {
+    loadData();
     try {
-      setTreasuryLoading(true);
-      const data = await getAdminTreasury();
-      setTreasury(data);
-    } catch (err) {
-      console.warn('Failed to load treasury data:', err);
-    } finally {
-      setTreasuryLoading(false);
-    }
-  }, []);
+      const saved = localStorage.getItem('susurow_custom_admin_creds');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.username) {
+          setCurrentAdminPhone(parsed.username);
+          setWithdrawPhone(parsed.username);
+        }
+      }
+    } catch (e) {}
+  }, [loadData]);
 
   useEffect(() => {
-    loadMetrics();
-    loadTreasury();
-  }, [loadMetrics, loadTreasury]);
-
-  useEffect(() => {
+    if (activeTab === 'circles') loadCircles();
     if (activeTab === 'users') loadUsers();
-    else if (activeTab === 'circles') loadCircles();
-    else if (activeTab === 'transactions') loadTransactions();
-    else if (activeTab === 'treasury' || activeTab === 'overview') loadTreasury();
-  }, [activeTab, loadUsers, loadCircles, loadTransactions, loadTreasury]);
+    if (activeTab === 'transactions') loadTransactions();
+  }, [activeTab, loadCircles, loadUsers, loadTransactions]);
 
-  // Executive Revenue Withdrawal Handler
-  const handleAdminWithdraw = async (e) => {
-    e?.preventDefault();
-    const num = parseFloat(withdrawAmount);
-    if (isNaN(num) || num <= 0) {
-      notify('Please enter a valid withdrawal amount.', 'error');
-      return;
-    }
-    const avail = treasury?.available_balance_ghs ?? 0;
-    if (num > avail) {
-      notify(`Withdrawal amount (GH₵${num.toFixed(2)}) cannot exceed available revenue of GH₵${avail.toFixed(2)}. Member escrow savings are protected.`, 'error');
-      return;
-    }
-    if (!withdrawAccountNumber.trim()) {
-      notify('Please provide the beneficiary wallet/account number.', 'error');
-      return;
-    }
-    if (!withdrawAccountName.trim()) {
-      notify('Please provide the beneficiary account name.', 'error');
-      return;
-    }
-
-    try {
-      setWithdrawSubmitting(true);
-      const res = await adminWithdrawRevenue({
-        amount: num,
-        method: withdrawMethod,
-        destination: withdrawDestination,
-        account_number: withdrawAccountNumber.trim(),
-        account_name: withdrawAccountName.trim(),
-        branch: withdrawBranch.trim() || undefined,
-        note: withdrawNote.trim() || undefined
-      });
-      notify(`Revenue withdrawal of GH₵${num.toFixed(2)} disbursed to ${withdrawDestination} successfully!`);
-      setActiveReceipt(res.receipt);
-      setWithdrawAmount('');
-      setWithdrawModalOpen(false);
-      loadTreasury();
-      loadMetrics();
-    } catch (err) {
-      notify(err?.response?.data?.detail || 'Failed to process revenue withdrawal.', 'error');
-    } finally {
-      setWithdrawSubmitting(false);
-    }
-  };
-
-  // User Actions
-  const handleUpdateKYC = async (userId, newStatus) => {
-    try {
-      await updateUserKycStatus(userId, newStatus, 'Updated via executive console');
-      notify(`Saver KYC updated to ${newStatus}`);
-      loadUsers();
-      loadMetrics();
-      if (selectedUserForModal?.id === userId) {
-        setSelectedUserForModal(prev => prev ? { ...prev, kyc_status: newStatus } : null);
-      }
-    } catch (err) {
-      notify(err?.response?.data?.detail || 'Failed to update KYC status', 'error');
-    }
-  };
-
-  const handleToggleFreeze = async (userId) => {
-    try {
-      const res = await toggleUserFreeze(userId);
-      notify(res.message);
-      loadUsers();
-    } catch (err) {
-      notify(err?.response?.data?.detail || 'Failed to update freeze status', 'error');
-    }
-  };
-
-  const handleToggleAdmin = async (userId) => {
-    if (!window.confirm('Are you sure you want to toggle administrator privileges for this user?')) return;
-    try {
-      const res = await toggleUserAdmin(userId);
-      notify(res.message);
-      loadUsers();
-    } catch (err) {
-      notify(err?.response?.data?.detail || 'Failed to update admin status', 'error');
-    }
-  };
-
-  // Circle Actions
-  const handleOpenCircleAudit = async (circle) => {
-    setSelectedCircleForAudit(circle);
-    try {
-      setAuditLoading(true);
-      const audit = await getAdminCircleMembers(circle.id);
-      setCircleAuditData(audit);
-    } catch (err) {
-      notify(err?.response?.data?.detail || 'Failed to load circle members audit', 'error');
-    } finally {
-      setAuditLoading(false);
-    }
-  };
-
-  const handleOverridePayout = async (groupId) => {
-    if (!window.confirm('CONFIRM EMERGENCY PAYOUT: This will immediately disburse the payout to the scheduled recipient and advance the round. Proceed?')) return;
-    try {
-      const res = await overrideCirclePayout(groupId);
-      notify(res.message);
-      loadCircles();
-      loadMetrics();
-      if (selectedCircleForAudit?.id === groupId) {
-        const audit = await getAdminCircleMembers(groupId);
-        setCircleAuditData(audit);
-      }
-    } catch (err) {
-      notify(err?.response?.data?.detail || 'Failed to execute payout override', 'error');
-    }
-  };
-
-  const handleAdminDeleteCircle = async (circle) => {
-    if (!window.confirm(`EXECUTIVE ACTION: Are you sure you want to permanently delete circle "${circle.name}"?\n\nThis will remove all associated member slots and contribution records upon customer support request.`)) return;
+  const handleDeleteCircle = async (circle) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${circle.name}"?`)) return;
     try {
       const res = await adminDeleteCircle(circle.id);
-      notify(res.message);
+      notify(res?.message || 'Circle deleted successfully.');
       loadCircles();
-      loadMetrics();
-      if (selectedCircleForAudit?.id === circle.id) {
-        setSelectedCircleForAudit(null);
-        setCircleAuditData(null);
-      }
+      loadData();
     } catch (err) {
-      notify(err?.response?.data?.detail || 'Failed to delete circle', 'error');
+      notify(err?.response?.data?.detail || 'Failed to delete circle.', 'error');
     }
   };
 
-  const handleAdminPurgeData = async () => {
-    const confirmation = window.prompt('CRITICAL SYSTEM RESET:\n\nType "PURGE" to delete all mock test circles, test member records, and mock contributions to reset the platform for live launch.\n\nYour executive admin account will be preserved:');
-    if (confirmation !== 'PURGE') return;
+  const handleVerifyKyc = async (user) => {
     try {
-      const res = await adminPurgeTestData();
-      notify(res.message);
-      loadMetrics();
-      loadCircles();
+      await updateUserKycStatus(user.id, 'VERIFIED', 'Verified by executive admin');
+      notify(`KYC for ${user.full_name || user.phone_number} approved!`);
       loadUsers();
-      loadTransactions();
     } catch (err) {
-      notify(err?.response?.data?.detail || 'Failed to purge test data', 'error');
+      notify(err?.response?.data?.detail || 'Failed to update KYC status.', 'error');
     }
   };
 
-  // Transaction Actions
-  const handleReconcile = async (txId) => {
+  const handleToggleFreeze = async (user) => {
     try {
-      const res = await reconcileTransaction(txId, 'Manually reconciled via admin console');
-      notify(res.message);
-      loadTransactions();
-      loadMetrics();
+      const res = await toggleUserFreeze(user.id);
+      notify(res?.message || 'Member status updated.');
+      loadUsers();
     } catch (err) {
-      notify(err?.response?.data?.detail || 'Failed to reconcile transaction', 'error');
+      notify(err?.response?.data?.detail || 'Failed to toggle user status.', 'error');
     }
   };
 
-  // SMS Broadcast Action
-  const handleSendBroadcast = async (e) => {
+  const handleWithdrawSubmit = async (e) => {
     e.preventDefault();
-    if (!broadcastMessage.trim()) {
-      notify('Please enter a message to broadcast', 'error');
+    const num = Number(withdrawAmount);
+    if (!num || num <= 0) {
+      alert('Please enter a valid withdrawal amount.');
       return;
     }
-    if (!window.confirm(`Are you sure you want to broadcast this SMS via Arkesel to ${broadcastTarget}?`)) return;
-
+    setWithdrawing(true);
     try {
-      setBroadcastSending(true);
-      setBroadcastResult(null);
-      const res = await broadcastAdminSMS({
-        message: broadcastMessage.trim(),
-        target: broadcastTarget,
-        group_id: broadcastTarget === 'CIRCLE_MEMBERS' ? broadcastGroupId : undefined
+      const res = await adminWithdrawRevenue({
+        amount: num,
+        method: 'MOMO',
+        destination: withdrawProvider,
+        account_number: withdrawPhone.trim(),
+        account_name: withdrawName.trim()
       });
-      setBroadcastResult(res);
-      notify(`SMS broadcast dispatched to ${res.dispatched_count} recipients via Arkesel!`);
-      setBroadcastMessage('');
+      notify(res?.message || `Successfully transferred GH₵${num.toFixed(2)} to ${withdrawPhone}!`);
+      setShowWithdrawModal(false);
+      setWithdrawAmount('');
+      loadData();
     } catch (err) {
-      notify(err?.response?.data?.detail || 'Failed to dispatch broadcast SMS', 'error');
+      notify(err?.response?.data?.detail || 'Withdrawal failed. Please check balance.', 'error');
     } finally {
-      setBroadcastSending(false);
+      setWithdrawing(false);
     }
   };
 
-  const refreshCurrentView = () => {
-    loadMetrics();
-    if (activeTab === 'users') loadUsers();
-    else if (activeTab === 'circles') loadCircles();
-    else if (activeTab === 'transactions') loadTransactions();
-  };
-
-
+  const activeFloat = metrics?.financials?.active_float_ghs || 0;
+  const totalVolume = metrics?.financials?.total_volume_ghs || 0;
+  const totalPayouts = metrics?.financials?.total_payouts_disbursed_ghs || 0;
+  const revenueBalance = treasury?.available_balance_ghs || metrics?.financials?.net_revenue_ghs || 0;
+  const activeCirclesCount = metrics?.circles?.active_count || circles.length || 0;
+  const totalSaversCount = metrics?.savers?.total_savers || users.length || 0;
 
   return (
-    <div className="space-y-6 pb-16 animate-in fade-in duration-200">
+    <div className="min-h-screen bg-slate-50 text-slate-900 pb-16">
       
-      {/* Action Notification Toast */}
+      {/* Toast Notification */}
       {actionNotice && (
-        <div className="fixed bottom-5 right-5 z-50 animate-in slide-in-from-bottom-5 duration-200">
-          <div className={`px-4 py-3 rounded-2xl shadow-xl border flex items-center gap-3 text-xs font-bold ${
+        <div className="fixed bottom-5 right-5 z-50 animate-in slide-in-from-bottom-3 duration-150">
+          <div className={`px-4 py-3 rounded-2xl shadow-xl border flex items-center gap-2.5 text-xs font-bold ${
             actionNotice.type === 'error'
               ? 'bg-red-600 text-white border-red-700'
-              : 'bg-white text-white border-slate-700'
+              : 'bg-slate-900 text-white border-slate-800'
           }`}>
-            {actionNotice.type === 'error' ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} className="text-emerald-400" />}
+            {actionNotice.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} className="text-emerald-400" />}
             <span>{actionNotice.msg}</span>
-            <button onClick={() => setActionNotice(null)} className="ml-2 hover:opacity-75 cursor-pointer">
-              <X size={14} />
-            </button>
           </div>
         </div>
       )}
 
-      {/* Header Bar */}
-      <div className="bg-white text-slate-900 rounded-3xl p-5 sm:p-7 shadow-xs border border-slate-200 relative overflow-hidden">
-        {/* Ambient Glow */}
-        
-        
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2.5">
-              <button
-                onClick={onBack}
-                className="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer border border-slate-200"
-                title="Return to Main App"
-              >
-                <ArrowLeft size={16} />
-              </button>
-              <span className="text-[10px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
-                <ShieldCheck size={12} />
-                <span>EXECUTIVE CONTROL CENTER</span>
-              </span>
-              <span className="text-[10px] font-mono text-slate-400">
-                v1.6.0 Live
-              </span>
+      {/* Top Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onBack}
+              className="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Return to Public App"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 border border-amber-300 flex items-center justify-center font-black">
+              <ShieldCheck size={20} />
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              SusuRow Platform Administration
-            </h1>
-            <p className="text-xs text-slate-600 max-w-xl font-medium">
-              Internal bank-grade command center for real-time financial reconciliation, KYC identity moderation, circle default prevention, and Arkesel SMS alerting.
-            </p>
+            <div>
+              <h1 className="text-base sm:text-lg font-black text-slate-900 tracking-tight leading-tight">
+                SusuRow Executive Management
+              </h1>
+              <p className="text-[11px] font-mono text-slate-500 font-bold">
+                Admin: {currentAdminPhone} • Verified
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-            <button
-              onClick={handleAdminPurgeData}
-              className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-              title="Purge all mock test circles & data for production launch"
-            >
-              <Database size={13} className="text-rose-600" />
-              <span>Reset/Purge Data</span>
-            </button>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setCredsModalOpen(true)}
-              className="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-              title="Change Executive Username & Password"
+              className="px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <KeyRound size={13} className="text-amber-600" />
-              <span>Credentials</span>
+              <KeyRound size={14} className="text-amber-600" />
+              <span>Change Password</span>
             </button>
+
             <button
-              onClick={refreshCurrentView}
-              className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-2 border border-slate-200 shadow-xs transition-all cursor-pointer"
+              onClick={loadData}
+              className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
               title="Refresh Data"
             >
-              <RefreshCw size={14} className={loading || usersLoading || circlesLoading || txLoading ? 'animate-spin' : ''} />
-              <span>Refresh</span>
+              <RefreshCw size={16} className={loading ? 'animate-spin text-sky-600' : ''} />
             </button>
-            <div className="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 text-xs font-bold flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Gateway Online</span>
-            </div>
+
             <button
-              onClick={onLockSession || onBack}
-              className="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Lock and Exit Administrative Session"
+              onClick={onLockSession}
+              className="px-3 py-1.5 text-xs font-bold text-red-700 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <Lock size={13} />
-              <span>Lock Session</span>
+              <Lock size={14} />
+              <span>Lock Portal</span>
             </button>
           </div>
+
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 mt-6 pt-5 border-t border-slate-100 overflow-x-auto no-scrollbar">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-1 border-t border-slate-100 overflow-x-auto py-1.5">
           {[
-            { id: 'overview', label: 'Financial Health & KPIs', icon: TrendingUp },
-            { id: 'treasury', label: 'Treasury & Withdrawals', icon: DollarSign },
-            { id: 'users', label: 'Savers & KYC Moderation', icon: Users, count: metrics?.savers?.pending_kyc },
-            { id: 'circles', label: 'Circles & Default Monitor', icon: Award, alert: metrics?.circles?.overdue_count > 0 },
-            { id: 'transactions', label: 'Financial Ledger & Disputes', icon: CreditCard },
-            { id: 'broadcast', label: 'Arkesel SMS Broadcast', icon: Send }
-          ].map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-sky-600 text-white shadow-xs font-bold'
-                    : 'bg-slate-50 text-slate-700 hover:text-slate-950 hover:bg-slate-100 border border-slate-200/80'
-                }`}
-              >
-                <Icon size={14} className={isActive ? 'text-amber-600' : ''} />
-                <span>{tab.label}</span>
-                {tab.count !== undefined && tab.count > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500 text-white font-black">
-                    {tab.count}
-                  </span>
-                )}
-                {tab.alert && (
-                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                )}
-              </button>
-            );
-          })}
+            { id: 'overview', label: 'Overview & Balance' },
+            { id: 'circles', label: 'Savings Circles' },
+            { id: 'users', label: 'Members & KYC' },
+            { id: 'transactions', label: 'Recent Payments' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === tab.id
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-      </div>
+      </header>
 
-      {/* TAB 1: FINANCIAL HEALTH & REVENUE KPIS */}
-      {activeTab === 'overview' && (
-        <div className="space-y-6">
-          {/* Top KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        {/* TAB 1: OVERVIEW */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6 animate-in fade-in duration-150">
             
-            {/* Total Volume */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-2">
-              <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                <span>Total Contributions</span>
-                <DollarSign size={16} className="text-sky-600" />
-              </div>
-              <div className="text-2xl font-black text-slate-900">
-                GH₵{metrics?.financials?.total_volume_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-              </div>
-              <p className="text-[11px] text-slate-500">Gross savings volume processed</p>
-            </div>
-
-            {/* Total Payouts */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-2">
-              <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                <span>Winner Payouts Disbursed</span>
-                <Award size={16} className="text-emerald-600" />
-              </div>
-              <div className="text-2xl font-black text-emerald-600">
-                GH₵{metrics?.financials?.total_payouts_disbursed_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-              </div>
-              <p className="text-[11px] text-slate-500">Settled via MoMo to winners</p>
-            </div>
-
-            {/* Active Float */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-2">
-              <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                <span>Active Escrow Float</span>
-                <ShieldCheck size={16} className="text-amber-500" />
-              </div>
-              <div className="text-2xl font-black text-slate-900">
-                GH₵{metrics?.financials?.active_float_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-              </div>
-              <p className="text-[11px] text-slate-500">Current liquidity held for ongoing rounds</p>
-            </div>
-
-            {/* Net Revenue */}
-            <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-amber-100 text-xs font-bold uppercase tracking-wider">
-                  <span>Net Platform Revenue</span>
-                  <Sparkles size={16} className="text-white" />
+            {/* Financial Overview Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Active Escrow Float */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-2">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
+                  <span>Current Escrow Float</span>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <DollarSign size={16} />
+                  </div>
                 </div>
-                <div className="text-2xl font-black text-white">
-                  GH₵{metrics?.financials?.net_revenue_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
+                <div className="text-2xl font-black text-slate-900">
+                  GH₵ {Number(activeFloat).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
-                <p className="text-[11px] text-amber-100">Cumulative revenue across transparent fees</p>
-              </div>
-              <button
-                onClick={() => {
-                  setActiveTab('treasury');
-                  setWithdrawModalOpen(true);
-                }}
-                className="w-full py-2 px-3 rounded-xl bg-white hover:bg-amber-50 text-amber-900 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
-              >
-                <Wallet size={14} />
-                <span>Withdraw Revenue</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Transparent Fee Breakdown & Model Card */}
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Transparent Revenue & Fee Structure Breakdown
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Exact itemized revenue model according to official SusuRow specifications.
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Held safely in escrow until circle rounds complete
                 </p>
               </div>
-              <span className="text-xs font-bold text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
-                Combined Fee: 4.15%
-              </span>
+
+              {/* Total Contributions */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-2">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
+                  <span>Total Contributions</span>
+                  <div className="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                    <CreditCard size={16} />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-slate-900">
+                  GH₵ {Number(totalVolume).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Total Mobile Money collected from savers
+                </p>
+              </div>
+
+              {/* Total Payouts */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-2">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
+                  <span>Total Payouts Disbursed</span>
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <ArrowDownRight size={16} />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-slate-900">
+                  GH₵ {Number(totalPayouts).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Lump sums disbursed to round winners
+                </p>
+              </div>
+
+              {/* Treasury Revenue & Withdraw Button */}
+              <div className="bg-white rounded-2xl p-5 border border-amber-300 shadow-xs space-y-2 bg-gradient-to-br from-amber-50/50 to-white">
+                <div className="flex items-center justify-between text-amber-900 text-xs font-bold">
+                  <span>Treasury Revenue</span>
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                    <Wallet size={16} />
+                  </div>
+                </div>
+                <div className="text-2xl font-black text-amber-900">
+                  GH₵ {Number(revenueBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <button
+                  onClick={() => setShowWithdrawModal(true)}
+                  className="w-full mt-1 py-2 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Send size={13} />
+                  <span>Withdraw Revenue</span>
+                </button>
+              </div>
+
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700">Gateway Processing</span>
-                  <span className="text-xs font-black text-sky-600">1.95%</span>
-                </div>
-                <div className="text-xl font-bold text-slate-900">
-                  GH₵{metrics?.financials?.gateway_fees_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-                </div>
-                <p className="text-[11px] text-slate-500">Ghana MoMo settlement & API routing costs</p>
-              </div>
-
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700">Circle Commission</span>
-                  <span className="text-xs font-black text-emerald-600">1.00%</span>
-                </div>
-                <div className="text-xl font-bold text-slate-900">
-                  GH₵{metrics?.financials?.commission_fees_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-                </div>
-                <p className="text-[11px] text-slate-500">Turn rotation maintenance & escrow underwriting</p>
-              </div>
-
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-700">Platform Infrastructure</span>
-                  <span className="text-xs font-black text-amber-600">1.20%</span>
-                </div>
-                <div className="text-xl font-bold text-slate-900">
-                  GH₵{metrics?.financials?.platform_fees_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-                </div>
-                <p className="text-[11px] text-slate-500">Arkesel SMS alerting & cloud high-availability</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Operational Health & Funnels */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Savers & KYC Funnel */}
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Users size={16} className="text-sky-600" />
-                  <span>Savers & KYC Verification Funnel</span>
-                </h3>
-                <span className="text-xs font-mono font-bold text-slate-500">
-                  {metrics?.savers?.total_savers || 0} Savers Total
-                </span>
-              </div>
-
-              <div className="space-y-3">
+            {/* Platform Quick Counts */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 flex items-center justify-between">
                 <div>
-                  <div className="flex justify-between text-xs font-bold mb-1">
-                    <span className="text-emerald-600 flex items-center gap-1.5">
-                      <CheckCircle2 size={13} />
-                      <span>Verified Savers (Ghana Card Approved)</span>
-                    </span>
-                    <span className="text-slate-900">
-                      {metrics?.savers?.verified_savers || 0} ({metrics?.savers?.kyc_completion_rate || 0}%)
-                    </span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-500 rounded-full"
-                      style={{ width: `${Math.min(100, metrics?.savers?.kyc_completion_rate || 0)}%` }}
-                    />
-                  </div>
+                  <h3 className="text-sm font-bold text-slate-900">Savings Groups Active</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Circles currently running rotations</p>
                 </div>
+                <div className="text-3xl font-black text-sky-700 font-mono">
+                  {activeCirclesCount}
+                </div>
+              </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                    <div className="text-[11px] font-bold text-amber-800">Pending Review</div>
-                    <div className="text-lg font-black text-amber-900">
-                      {metrics?.savers?.pending_kyc || 0}
-                    </div>
-                    <button
-                      onClick={() => {
-                        setKycFilter('PENDING');
-                        setActiveTab('users');
-                      }}
-                      className="text-[10px] font-bold text-amber-700 hover:underline mt-1 cursor-pointer"
-                    >
-                      Moderate Queue &rarr;
-                    </button>
-                  </div>
-
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                    <div className="text-[11px] font-bold text-slate-600">Unverified / New</div>
-                    <div className="text-lg font-black text-slate-800">
-                      {metrics?.savers?.unverified_savers || 0}
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1">Pending Ghana Card</p>
-                  </div>
+              <div className="bg-white rounded-2xl p-5 border border-slate-200 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Registered Savers</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Users registered on Mobile Money</p>
+                </div>
+                <div className="text-3xl font-black text-emerald-700 font-mono">
+                  {totalSaversCount}
                 </div>
               </div>
             </div>
 
-            {/* Circles Operations & Default Risks */}
-            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Award size={16} className="text-amber-500" />
-                  <span>Circle Operations & Default Risk Monitor</span>
-                </h3>
-                <span className="text-xs font-mono font-bold text-slate-500">
-                  {metrics?.circles?.active_count || 0} Active Groups
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 space-y-1">
-                  <div className="text-xs font-bold text-emerald-800">Active Rotations</div>
-                  <div className="text-2xl font-black text-emerald-900">
-                    {metrics?.circles?.active_count || 0}
-                  </div>
-                  <p className="text-[10px] text-emerald-700">Currently executing rounds</p>
-                </div>
-
-                <div className="bg-sky-50 border border-sky-200 rounded-xl p-3.5 space-y-1">
-                  <div className="text-xs font-bold text-sky-800">Recruiting Circles</div>
-                  <div className="text-2xl font-black text-sky-900">
-                    {metrics?.circles?.recruiting_count || 0}
-                  </div>
-                  <p className="text-[10px] text-sky-700">Awaiting member slots</p>
-                </div>
-
-                <div className={`rounded-xl p-3.5 space-y-1 border ${
-                  (metrics?.circles?.overdue_count || 0) > 0
-                    ? 'bg-rose-50  border-rose-300  text-rose-900 '
-                    : 'bg-slate-50  border-slate-200  text-slate-700 '
-                }`}>
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span>Overdue Default Risks</span>
-                    {(metrics?.circles?.overdue_count || 0) > 0 && <AlertTriangle size={14} className="text-rose-600" />}
-                  </div>
-                  <div className="text-2xl font-black">
-                    {metrics?.circles?.overdue_count || 0}
-                  </div>
-                  <button
-                    onClick={() => {
-                      setCircleFilter('OVERDUE');
-                      setActiveTab('circles');
-                    }}
-                    className="text-[10px] font-bold underline cursor-pointer"
-                  >
-                    Inspect Delinquent Circles &rarr;
-                  </button>
-                </div>
-
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
-                  <div className="text-xs font-bold text-slate-700">Completed Rotations</div>
-                  <div className="text-2xl font-black text-slate-900">
-                    {metrics?.circles?.completed_count || 0}
-                  </div>
-                  <p className="text-[10px] text-slate-500">100% disbursed cycles</p>
-                </div>
-              </div>
+            {/* Simple Management Advice */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-2">
+              <h3 className="text-sm font-bold text-slate-900">Executive Quick Guide</h3>
+              <ul className="text-xs text-slate-600 space-y-1.5 list-disc pl-4 leading-relaxed">
+                <li><strong>Savings Circles tab</strong>: View all running groups or delete any test/inappropriate groups.</li>
+                <li><strong>Members tab</strong>: Review savers, approve Ghana Card KYC, or deactivate accounts if needed.</li>
+                <li><strong>Recent Payments tab</strong>: Monitor incoming Mobile Money transactions in real time.</li>
+                <li><strong>Change Password</strong>: Update your executive login credentials directly into the database.</li>
+              </ul>
             </div>
 
           </div>
-        </div>
-      )}
+        )}
 
-      {/* TAB: CORATECH TREASURY & REVENUE WITHDRAWALS */}
-      {activeTab === 'treasury' && (
-        <div className="space-y-6">
-          {/* Header banner */}
-          <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-800 text-white rounded-3xl p-6 sm:p-7 shadow-xs border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider">
-                <DollarSign size={15} />
-                <span>Coratech Global Enterprise Treasury</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white">Revenue & Corporate Payout Management</h2>
-              <p className="text-xs text-slate-300 max-w-xl">
-                Withdraw accumulated platform commissions (1.0%) and service maintenance fees (1.2%) directly to Coratech's corporate MoMo merchant wallet or bank accounts. Saver escrow funds remain strictly ringfenced.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setWithdrawModalOpen(true)}
-              className="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95 shrink-0"
-            >
-              <Wallet size={16} />
-              <span>Withdraw Revenue</span>
-            </button>
-          </div>
-
-          {/* Financial Position Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Available Balance */}
-            <div className="bg-white rounded-2xl p-5 border-2 border-emerald-500/40 shadow-xs space-y-2 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-bl-3xl flex items-start justify-end p-2.5">
-                <Wallet size={20} className="text-emerald-600" />
-              </div>
-              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">
-                Available to Withdraw
-              </span>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-600">
-                GH₵{treasury?.available_balance_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Ready for instant disbursement to Coratech accounts
-              </p>
-            </div>
-
-            {/* Coratech Gross Revenue */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-2">
-              <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                <span>Gross Revenue Earned</span>
-                <TrendingUp size={16} className="text-sky-600" />
-              </div>
-              <div className="text-2xl font-black text-slate-900">
-                GH₵{treasury?.coratech_gross_revenue_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium">
-                2.20% earned across all member contributions
-              </p>
-            </div>
-
-            {/* Total Withdrawn */}
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-2">
-              <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
-                <span>Total Withdrawn to Date</span>
-                <ArrowDownRight size={16} className="text-indigo-600" />
-              </div>
-              <div className="text-2xl font-black text-slate-900">
-                GH₵{treasury?.total_withdrawn_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Disbursed to Coratech bank/MoMo wallets
-              </p>
-            </div>
-
-            {/* Escrow Float (Protected) */}
-            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 shadow-xs space-y-2">
-              <div className="flex items-center justify-between text-slate-600 text-xs font-bold uppercase tracking-wider">
-                <span>Member Escrow Float</span>
-                <ShieldCheck size={16} className="text-amber-600" />
-              </div>
-              <div className="text-2xl font-black text-slate-900">
-                GH₵{treasury?.escrow_float_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-              </div>
-              <p className="text-[11px] text-amber-700 font-bold flex items-center gap-1">
-                <Lock size={11} /> 100% Protected Saver Funds
-              </p>
-            </div>
-          </div>
-
-          {/* Past Withdrawals Ledger */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">Executive Revenue Withdrawal Ledger</h3>
-                <p className="text-xs text-slate-500">Permanent audit trail of all corporate revenue disbursements.</p>
+        {/* TAB 2: CIRCLES */}
+        {activeTab === 'circles' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search circles by name or invite code..."
+                  value={circleSearch}
+                  onChange={(e) => setCircleSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20"
+                />
               </div>
               <button
-                onClick={loadTreasury}
-                className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-                title="Refresh Treasury Ledger"
+                onClick={loadCircles}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
-                <RefreshCw size={15} className={treasuryLoading ? 'animate-spin' : ''} />
+                <RefreshCw size={14} className={circlesLoading ? 'animate-spin' : ''} />
+                <span>Refresh</span>
               </button>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-100">
-                    <th className="py-3 px-4">Date & Time</th>
-                    <th className="py-3 px-4">Reference</th>
-                    <th className="py-3 px-4">Method & Destination</th>
-                    <th className="py-3 px-4">Account Number / Name</th>
-                    <th className="py-3 px-4 text-right">Amount Disbursed</th>
-                    <th className="py-3 px-4 text-center">Status</th>
-                    <th className="py-3 px-4 text-right">Receipt</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-xs">
-                  {!treasury?.withdrawals || treasury.withdrawals.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400">
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <Receipt size={28} className="text-slate-300" />
-                          <p className="font-bold text-slate-600">No Revenue Withdrawals Yet</p>
-                          <p className="text-[11px] text-slate-400 max-w-sm">
-                            As savers contribute to Susu circles, Coratech's 2.2% earnings accumulate here and can be withdrawn at any time.
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    treasury.withdrawals.map((w) => (
-                      <tr key={w.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
-                          {w.created_at ? new Date(w.created_at).toLocaleString() : 'N/A'}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900 text-[11px]">
-                          {w.reference}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-bold text-slate-800">{w.destination}</span>
-                          <span className="block text-[10px] text-slate-400 uppercase font-mono">{w.method}</span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-bold font-mono text-slate-900">{w.account_number}</span>
-                          <span className="block text-[11px] text-slate-500 truncate max-w-xs">{w.account_name}</span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-600 text-sm">
-                          GH₵{w.amount.toFixed(2)}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            ✓ {w.status}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <button
-                            onClick={() => setActiveReceipt(w)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-colors cursor-pointer"
-                          >
-                            Receipt
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: SAVERS & KYC MODERATION QUEUE */}
-      {activeTab === 'users' && (
-        <div className="space-y-4">
-          
-          {/* Filters & Search */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="relative w-full sm:w-80">
-              <Search size={15} className="absolute left-3 top-3 text-slate-400" />
-              <input
-                type="text"
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                placeholder="Search name, phone, or Ghana Card..."
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
-
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-              {['ALL', 'PENDING', 'VERIFIED', 'UNVERIFIED'].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setKycFilter(status)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    kycFilter === status
-                      ? 'bg-white text-white   shadow-xs'
-                      : 'bg-slate-100  text-slate-600  hover:bg-slate-200'
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Users Table */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="py-3 px-4">Saver</th>
-                    <th className="py-3 px-4">Ghana Card</th>
-                    <th className="py-3 px-4">KYC Status</th>
-                    <th className="py-3 px-4">Trust Score</th>
-                    <th className="py-3 px-4">MoMo Provider</th>
-                    <th className="py-3 px-4">Active Groups</th>
-                    <th className="py-3 px-4 text-right">Moderation Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {usersLoading ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400">
-                        <RefreshCw size={24} className="animate-spin mx-auto mb-2 text-sky-600" />
-                        <span>Loading savers directory...</span>
-                      </td>
-                    </tr>
-                  ) : users.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
-                        No savers matched your filter criteria.
-                      </td>
-                    </tr>
-                  ) : (
-                    users.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
-                        
-                        {/* Saver Info */}
-                        <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                            <span>{u.full_name}</span>
-                            {u.is_admin && (
-                              <span className="text-[9px] font-black uppercase bg-amber-500 text-white px-1.5 py-0.2 rounded-md">
-                                ADMIN
-                              </span>
-                            )}
-                          </div>
-                          <div className="font-mono text-[11px] text-slate-500">
-                            {u.phone_number}
-                          </div>
-                        </td>
-
-                        {/* Ghana Card */}
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-700">
-                          {u.ghana_card_number || <span className="text-slate-400 italic">Not Provided</span>}
-                        </td>
-
-                        {/* KYC Badge */}
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] uppercase tracking-wider inline-flex items-center gap-1 ${
-                            u.kyc_status === 'VERIFIED'
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                              : u.kyc_status === 'PENDING'
-                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {u.kyc_status === 'VERIFIED' ? <Check size={10} /> : <Clock size={10} />}
-                            <span>{u.kyc_status}</span>
-                          </span>
-                        </td>
-
-                        {/* Trust Score */}
-                        <td className="py-3.5 px-4">
-                          <div className="font-black text-slate-800">
-                            {u.trust_score}/100
-                          </div>
-                          <div className="text-[10px] text-slate-400 uppercase font-semibold">
-                            {u.tier} Tier
-                          </div>
-                        </td>
-
-                        {/* MoMo Provider */}
-                        <td className="py-3.5 px-4">
-                          <span className="font-bold text-slate-700">
-                            {u.momo_provider || 'MTN'}
-                          </span>
-                          {u.momo_account_name && (
-                            <div className="text-[10px] text-emerald-600 truncate max-w-[120px]">
-                              {u.momo_account_name}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Active Groups */}
-                        <td className="py-3.5 px-4 font-bold text-slate-700">
-                          {u.active_circles_count || 0} circles
-                        </td>
-
-                        {/* Actions */}
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            
-                            {/* View Full KYC Details */}
-                            <button
-                              onClick={() => setSelectedUserForModal(u)}
-                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-                              title="Inspect Saver Profile"
-                            >
-                              <Eye size={14} />
-                            </button>
-
-                            {/* One-click Approve */}
-                            {u.kyc_status !== 'VERIFIED' && (
-                              <button
-                                onClick={() => handleUpdateKYC(u.id, 'VERIFIED')}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] shadow-xs transition-all cursor-pointer flex items-center gap-1"
-                                title="Approve Identity"
-                              >
-                                <Check size={12} />
-                                <span>Approve</span>
-                              </button>
-                            )}
-
-                            {/* Freeze/Unfreeze Risk Intervention */}
-                            <button
-                              onClick={() => handleToggleFreeze(u.id)}
-                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                                u.is_active
-                                  ? 'bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-600'
-                                  : 'bg-rose-600 text-white hover:bg-rose-500'
-                              }`}
-                              title={u.is_active ? 'Freeze Account (Default Risk)' : 'Unfreeze Account'}
-                            >
-                              {u.is_active ? <Lock size={14} /> : <Unlock size={14} />}
-                            </button>
-
-                            {/* Toggle Admin */}
-                            <button
-                              onClick={() => handleToggleAdmin(u.id)}
-                              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-colors cursor-pointer border ${
-                                u.is_admin
-                                  ? 'bg-amber-100 border-amber-300 text-amber-900 hover:bg-amber-200'
-                                  : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
-                              }`}
-                              title="Promote or Revoke Admin"
-                            >
-                              {u.is_admin ? 'Demote' : 'Make Admin'}
-                            </button>
-
-                          </div>
-                        </td>
-
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="bg-slate-50 px-4 py-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-medium">
-              <span>Showing up to 50 records</span>
-              <span>Total Savers: {totalUsers}</span>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* TAB 3: CIRCLES & DEFAULT MONITOR */}
-      {activeTab === 'circles' && (
-        <div className="space-y-4">
-          
-          {/* Filters & Search */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="relative w-full sm:w-80">
-              <Search size={15} className="absolute left-3 top-3 text-slate-400" />
-              <input
-                type="text"
-                value={circleSearch}
-                onChange={(e) => setCircleSearch(e.target.value)}
-                placeholder="Search circle name or invite code..."
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
-              />
-            </div>
-
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-              {['ALL', 'ACTIVE', 'RECRUITING', 'COMPLETED', 'OVERDUE'].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setCircleFilter(status)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    circleFilter === status
-                      ? 'bg-white text-white   shadow-xs'
-                      : 'bg-slate-100  text-slate-600  hover:bg-slate-200'
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Circles Grid / List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {circlesLoading ? (
-              <div className="col-span-full py-12 text-center text-slate-400">
-                <RefreshCw size={24} className="animate-spin mx-auto mb-2 text-sky-600" />
-                <span>Loading rotational circles...</span>
+              <div className="bg-white rounded-2xl p-12 text-center text-slate-400 text-xs font-bold">
+                Loading circles...
               </div>
             ) : circles.length === 0 ? (
-              <div className="col-span-full py-12 text-center text-slate-400 font-medium">
-                No circles match your current filter.
+              <div className="bg-white rounded-2xl p-12 text-center text-slate-400 text-xs font-bold">
+                No savings circles found matching your search.
               </div>
             ) : (
-              circles.map((c) => (
-                <div
-                  key={c.id}
-                  className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    
-                    {/* Circle Header & Health Badge */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {circles.map(c => (
+                  <div key={c.id} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="text-[10px] font-mono text-slate-400">CODE: {c.join_code}</span>
-                        <h4 className="text-base font-bold text-slate-900 leading-snug">
-                          {c.name}
-                        </h4>
+                        <h4 className="text-sm font-bold text-slate-900">{c.name}</h4>
+                        <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                          Code: {c.invite_code || c.id.substring(0, 6)}
+                        </span>
                       </div>
-
-                      <span className={`px-2.5 py-1 rounded-full font-black text-[10px] uppercase tracking-wider shrink-0 ${
-                        c.health === 'OVERDUE'
-                          ? 'bg-rose-100 text-rose-800 border border-rose-300 animate-pulse'
-                          : c.health === 'PAYMENTS_DUE'
-                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                          : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        c.status === 'ACTIVE' 
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                          : 'bg-amber-50 text-amber-800 border-amber-200'
                       }`}>
-                        {c.health}
+                        {c.status || 'ACTIVE'}
                       </span>
                     </div>
 
-                    {/* Pot & Contribution Info */}
-                    <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100 grid grid-cols-2 gap-2 text-xs">
+                    <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 p-2.5 rounded-xl text-xs font-bold text-slate-700">
                       <div>
-                        <span className="text-slate-500 font-medium text-[11px]">Total Payout</span>
-                        <div className="font-black text-slate-900 text-base">
-                          GH₵{c.total_pot?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </div>
+                        <span className="text-[10px] text-slate-400 block font-normal">Amount</span>
+                        GH₵ {c.contribution_amount}
                       </div>
                       <div>
-                        <span className="text-slate-500 font-medium text-[11px]">Per Member Share</span>
-                        <div className="font-bold text-slate-700">
-                          GH₵{c.contribution_amount?.toFixed(2)} ({c.frequency})
-                        </div>
+                        <span className="text-[10px] text-slate-400 block font-normal">Frequency</span>
+                        {c.frequency}
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-normal">Members</span>
+                        {c.enrolled_count || 0} / {c.members_count}
                       </div>
                     </div>
 
-                    {/* Current Round & Recipient */}
-                    <div className="space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between font-medium">
-                        <span className="text-slate-500">Active Turn:</span>
-                        <span className="font-bold text-slate-900">
-                          Round {c.current_round} of {c.total_rounds}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between font-medium">
-                        <span className="text-slate-500">Paid this Round:</span>
-                        <span className="font-bold text-slate-900">
-                          {c.paid_members_count} / {c.current_members_count} members
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between font-medium">
-                        <span className="text-slate-500">Current Recipient:</span>
-                        <span className="font-bold text-emerald-600 truncate max-w-[140px]">
-                          {c.recipient_name}
-                        </span>
-                      </div>
-                    </div>
-
-                  </div>
-
-                  {/* Actions */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
-                    <button
-                      onClick={() => handleOpenCircleAudit(c)}
-                      className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <Eye size={14} />
-                      <span>Audit Turn</span>
-                    </button>
-
-                    {c.status === 'ACTIVE' && (
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-[11px] text-slate-500">
+                        Rotation: <strong>{c.rotation_type || 'Sequential'}</strong>
+                      </span>
                       <button
-                        onClick={() => handleOverridePayout(c.id)}
-                        className="py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
-                        title="Emergency Payout Disburse"
+                        onClick={() => handleDeleteCircle(c)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        title="Permanently Delete Circle"
                       >
-                        <DollarSign size={14} />
-                        <span>Disburse Payout</span>
+                        <Trash2 size={16} />
                       </button>
-                    )}
-
-                    <button
-                      onClick={() => handleAdminDeleteCircle(c)}
-                      className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors cursor-pointer flex items-center gap-1 border border-rose-200 shadow-2xs"
-                      title="Administratively delete/purge this circle upon customer support request"
-                    >
-                      <Trash2 size={14} />
-                      <span>Delete</span>
-                    </button>
+                    </div>
                   </div>
-
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
+        )}
 
-        </div>
-      )}
-
-      {/* TAB 4: FINANCIAL LEDGER & RECONCILIATION */}
-      {activeTab === 'transactions' && (
-        <div className="space-y-4">
-          
-          {/* Filter & Search */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="relative w-full sm:w-80">
-              <Search size={15} className="absolute left-3 top-3 text-slate-400" />
-              <input
-                type="text"
-                value={txSearch}
-                onChange={(e) => setTxSearch(e.target.value)}
-                placeholder="Search transaction reference or group..."
-                className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
-              />
+        {/* TAB 3: USERS */}
+        {activeTab === 'users' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search members by phone number or name..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20"
+                />
+              </div>
+              <button
+                onClick={loadUsers}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <RefreshCw size={14} className={usersLoading ? 'animate-spin' : ''} />
+                <span>Refresh</span>
+              </button>
             </div>
 
-            <div className="flex items-center gap-1.5">
-              {['ALL', 'CONTRIBUTION', 'PAYOUT'].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTxFilter(t)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    txFilter === t
-                      ? 'bg-white text-white   shadow-xs'
-                      : 'bg-slate-100  text-slate-600  hover:bg-slate-200'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Transactions Table */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <th className="py-3 px-4">Type</th>
-                    <th className="py-3 px-4">Reference</th>
-                    <th className="py-3 px-4">Group</th>
-                    <th className="py-3 px-4">Amount</th>
-                    <th className="py-3 px-4">Provider</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Timestamp</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {txLoading ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
-                        <RefreshCw size={24} className="animate-spin mx-auto mb-2 text-sky-600" />
-                        <span>Loading transactions ledger...</span>
-                      </td>
-                    </tr>
-                  ) : transactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
-                        No transactions recorded.
-                      </td>
-                    </tr>
-                  ) : (
-                    transactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-slate-50/50 transition-colors">
-                        
-                        {/* Type */}
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
-                            tx.type === 'CONTRIBUTION'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {tx.type}
-                          </span>
-                        </td>
-
-                        {/* Reference */}
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-700 truncate max-w-[140px]">
-                          {tx.reference}
-                        </td>
-
-                        {/* Group */}
-                        <td className="py-3.5 px-4 font-bold text-slate-800">
-                          {tx.group_name}
-                        </td>
-
-                        {/* Amount */}
-                        <td className="py-3.5 px-4 font-black text-slate-900">
-                          GH₵{tx.amount?.toFixed(2)}
-                        </td>
-
-                        {/* Provider */}
-                        <td className="py-3.5 px-4 font-bold text-slate-600">
-                          {tx.provider || 'MTN'}
-                        </td>
-
-                        {/* Status */}
-                        <td className="py-3.5 px-4">
-                          <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                            tx.status === 'SUCCESS'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : tx.status === 'PENDING'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}>
-                            {tx.status}
-                          </span>
-                        </td>
-
-                        {/* Timestamp */}
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-400">
-                          {tx.created_at ? new Date(tx.created_at).toLocaleString() : 'N/A'}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="py-3.5 px-4 text-right">
-                          {tx.status !== 'SUCCESS' && (
-                            <button
-                              onClick={() => handleReconcile(tx.id)}
-                              className="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] transition-colors cursor-pointer"
-                            >
-                              Reconcile
-                            </button>
-                          )}
-                        </td>
-
+            {usersLoading ? (
+              <div className="bg-white rounded-2xl p-12 text-center text-slate-400 text-xs font-bold">
+                Loading members...
+              </div>
+            ) : users.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center text-slate-400 text-xs font-bold">
+                No members found.
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                      <tr>
+                        <th className="p-3.5">Name</th>
+                        <th className="p-3.5">Phone Number</th>
+                        <th className="p-3.5">Provider</th>
+                        <th className="p-3.5">KYC Status</th>
+                        <th className="p-3.5 text-right">Actions</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {users.map(u => (
+                        <tr key={u.id} className="hover:bg-slate-50/60">
+                          <td className="p-3.5 font-bold text-slate-900">
+                            {u.full_name || 'Member'}
+                          </td>
+                          <td className="p-3.5 font-mono">
+                            {u.phone_number || u.email || '—'}
+                          </td>
+                          <td className="p-3.5">
+                            <span className="bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-md border border-slate-200 text-[10px]">
+                              {u.momo_provider || 'MTN'}
+                            </span>
+                          </td>
+                          <td className="p-3.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              u.kyc_status === 'VERIFIED'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                            }`}>
+                              {u.kyc_status || 'UNVERIFIED'}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-right space-x-1">
+                            {u.kyc_status !== 'VERIFIED' && (
+                              <button
+                                onClick={() => handleVerifyKyc(u)}
+                                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[11px] font-bold cursor-pointer"
+                              >
+                                Approve KYC
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleToggleFreeze(u)}
+                              className={`px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${
+                                u.is_active === false
+                                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                  : 'bg-red-50 text-red-700 hover:bg-red-100'
+                              }`}
+                            >
+                              {u.is_active === false ? 'Unfreeze' : 'Freeze'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
+        )}
 
-        </div>
-      )}
-
-      {/* TAB 5: ARKESEL SMS BROADCAST */}
-      {activeTab === 'broadcast' && (
-        <div className="max-w-2xl mx-auto space-y-6">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 flex items-center justify-center shadow-xs">
-                <Send size={20} />
+        {/* TAB 4: TRANSACTIONS */}
+        {activeTab === 'transactions' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search payments by phone or reference..."
+                  value={txSearch}
+                  onChange={(e) => setTxSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20"
+                />
               </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Targeted SMS Alert Broadcast (Arkesel Ghana)
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Deliver instant SMS notifications directly to registered savers across MTN, Telecel, and AT networks.
-                </p>
-              </div>
+              <button
+                onClick={loadTransactions}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <RefreshCw size={14} className={txLoading ? 'animate-spin' : ''} />
+                <span>Refresh</span>
+              </button>
             </div>
 
-            <form onSubmit={handleSendBroadcast} className="space-y-4">
-              {/* Target Audience */}
+            {txLoading ? (
+              <div className="bg-white rounded-2xl p-12 text-center text-slate-400 text-xs font-bold">
+                Loading payments...
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center text-slate-400 text-xs font-bold">
+                No transactions recorded yet.
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
+                      <tr>
+                        <th className="p-3.5">Saver Phone</th>
+                        <th className="p-3.5">Circle</th>
+                        <th className="p-3.5">Amount</th>
+                        <th className="p-3.5">Reference</th>
+                        <th className="p-3.5">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {transactions.map(t => (
+                        <tr key={t.id || t.reference} className="hover:bg-slate-50/60">
+                          <td className="p-3.5 font-mono font-bold text-slate-900">
+                            {t.sender_phone || t.phone_number || 'Saver'}
+                          </td>
+                          <td className="p-3.5">
+                            {t.group_name || 'Circle'}
+                          </td>
+                          <td className="p-3.5 font-bold text-slate-900 font-mono">
+                            GH₵ {Number(t.amount || 0).toFixed(2)}
+                          </td>
+                          <td className="p-3.5 font-mono text-[11px] text-slate-500">
+                            {t.reference || t.id}
+                          </td>
+                          <td className="p-3.5">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              {t.status || 'SUCCESS'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+      </main>
+
+      {/* MODAL: Withdraw Revenue */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-2xl max-w-sm w-full space-y-4">
+            <h3 className="text-base font-bold text-slate-900">Withdraw Platform Revenue</h3>
+            <p className="text-xs text-slate-500">
+              Available revenue to disburse: <strong>GH₵ {Number(revenueBalance).toFixed(2)}</strong>
+            </p>
+
+            <form onSubmit={handleWithdrawSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Target Audience
-                </label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Amount (GH₵)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  placeholder="e.g. 100.00"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">MoMo Provider</label>
                 <select
-                  value={broadcastTarget}
-                  onChange={(e) => setBroadcastTarget(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
+                  value={withdrawProvider}
+                  onChange={(e) => setWithdrawProvider(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900"
                 >
-                  <option value="ALL_USERS">All Registered Savers ({metrics?.savers?.total_savers || 0} users)</option>
-                  <option value="OVERDUE_MEMBERS">Delinquent Savers (Unpaid members in active circles)</option>
-                  <option value="CIRCLE_MEMBERS">Specific Susu Group Participants</option>
+                  <option value="MTN">MTN MoMo</option>
+                  <option value="TELECEL">Telecel Cash</option>
+                  <option value="AT">AT Money</option>
                 </select>
               </div>
 
-              {/* Group ID if circle members */}
-              {broadcastTarget === 'CIRCLE_MEMBERS' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Select Susu Group
-                  </label>
-                  <select
-                    value={broadcastGroupId}
-                    onChange={(e) => setBroadcastGroupId(e.target.value)}
-                    required
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
-                  >
-                    <option value="">-- Choose Circle --</option>
-                    {circles.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.join_code}) - {c.current_members_count} members
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Message Content */}
               <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="text-xs font-bold text-slate-700">
-                    SMS Message Text
-                  </label>
-                  <span className="text-[11px] font-mono text-slate-400">
-                    {broadcastMessage.length} / 160 characters (1 SMS segment)
-                  </span>
-                </div>
-                <textarea
-                  rows={4}
-                  value={broadcastMessage}
-                  onChange={(e) => setBroadcastMessage(e.target.value)}
-                  placeholder="Example: SusuRow Reminder: Round 2 contribution of GH₵100 is due today. Please authorize the prompt or tap Pay in your dashboard."
-                  className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500"
-                  required
-                />
-              </div>
-
-              {/* Quick Template Buttons */}
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  Quick Templates:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setBroadcastMessage("SusuRow Alert: Payment is due for your active savings circle. Please ensure your MoMo wallet has sufficient funds to avoid trust score penalties.")}
-                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] text-slate-700 font-medium cursor-pointer"
-                  >
-                    Payment Reminder
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBroadcastMessage("SusuRow Update: Please complete your Ghana Card verification on app to unlock seamless automatic payouts. Thank you for saving with us.")}
-                    className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] text-slate-700 font-medium cursor-pointer"
-                  >
-                    KYC Nudge
-                  </button>
-                </div>
-              </div>
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={broadcastSending}
-                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
-              >
-                <Send size={15} className={broadcastSending ? 'animate-pulse' : ''} />
-                <span>{broadcastSending ? 'Dispatching SMS via Arkesel...' : 'Dispatch Broadcast SMS'}</span>
-              </button>
-            </form>
-
-            {broadcastResult && (
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold space-y-1">
-                <div>SMS Broadcast Dispatched Successfully!</div>
-                <div className="font-normal text-[11px]">
-                  Delivered to {broadcastResult.dispatched_count} recipients via Arkesel Gateway.
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* SAVER FULL KYC MODAL */}
-      {selectedUserForModal && (
-        <div className="fixed inset-0 bg-white/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center font-black overflow-hidden shrink-0 border border-slate-200">
-                  {selectedUserForModal.avatar_url || selectedUserForModal.profile_image_url || selectedUserForModal.picture ? (
-                    <img
-                      src={selectedUserForModal.avatar_url || selectedUserForModal.profile_image_url || selectedUserForModal.picture}
-                      alt={selectedUserForModal.full_name || 'User'}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    selectedUserForModal.full_name?.charAt(0) || 'S'
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    {selectedUserForModal.full_name}
-                  </h3>
-                  <p className="text-xs font-mono text-slate-500">{selectedUserForModal.phone_number}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedUserForModal(null)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Ghana Card Number:</span>
-                  <span className="font-mono font-bold text-slate-900">
-                    {selectedUserForModal.ghana_card_number || 'Not Provided'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">KYC Status:</span>
-                  <span className="font-bold text-emerald-600">{selectedUserForModal.kyc_status}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Registered MoMo Name:</span>
-                  <span className="font-bold text-slate-900">
-                    {selectedUserForModal.momo_account_name || 'Not Resolved'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Next of Kin:</span>
-                  <span className="font-bold text-slate-900">
-                    {selectedUserForModal.next_of_kin_name || 'None'} ({selectedUserForModal.next_of_kin_phone || 'N/A'})
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Trust Score:</span>
-                  <span className="font-bold text-slate-900">
-                    {selectedUserForModal.trust_score}/100 ({selectedUserForModal.tier})
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              {selectedUserForModal.kyc_status !== 'VERIFIED' ? (
-                <button
-                  onClick={() => handleUpdateKYC(selectedUserForModal.id, 'VERIFIED')}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <Check size={14} />
-                  <span>Verify Ghana Card</span>
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleUpdateKYC(selectedUserForModal.id, 'UNVERIFIED')}
-                  className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <X size={14} />
-                  <span>Revoke Verification</span>
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CIRCLE MEMBERS AUDIT DRAWER / MODAL */}
-      {selectedCircleForAudit && (
-        <div className="fixed inset-0 bg-white/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-mono text-slate-400">CIRCLE AUDIT: {selectedCircleForAudit.join_code}</span>
-                <h3 className="text-base font-bold text-slate-900">
-                  {selectedCircleForAudit.name}
-                </h3>
-              </div>
-              <button
-                onClick={() => {
-                  setSelectedCircleForAudit(null);
-                  setCircleAuditData(null);
-                }}
-                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="bg-slate-50 p-3 rounded-2xl flex items-center justify-between text-xs font-bold">
-              <span>Active Round: {selectedCircleForAudit.current_round} of {selectedCircleForAudit.total_rounds}</span>
-              <span className="text-emerald-600">Total Payout: GH₵{selectedCircleForAudit.total_pot?.toFixed(2)}</span>
-            </div>
-
-            <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
-              {auditLoading ? (
-                <div className="py-8 text-center text-slate-400">
-                  <RefreshCw size={20} className="animate-spin mx-auto mb-2 text-sky-600" />
-                  <span>Auditing member payments...</span>
-                </div>
-              ) : circleAuditData?.members?.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 font-medium">
-                  No members joined yet.
-                </div>
-              ) : (
-                circleAuditData?.members?.map((m) => (
-                  <div
-                    key={m.member_id}
-                    className="p-3 rounded-2xl bg-white border border-slate-100 flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-xl bg-slate-100 font-bold text-slate-700 flex items-center justify-center text-[11px]">
-                        #{m.turn_order}
-                      </div>
-                      <div>
-                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                          <span>{m.name}</span>
-                          {m.is_current_recipient && (
-                            <span className="text-[9px] font-black uppercase bg-emerald-500 text-white px-1.5 py-0.2 rounded-md">
-                              WINNER (ROUND {selectedCircleForAudit.current_round})
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] font-mono text-slate-400">
-                          {m.phone_number} ({m.momo_provider})
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                        m.paid_current_round
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}>
-                        {m.paid_current_round ? 'PAID' : 'PENDING'}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 flex justify-end">
-              <button
-                onClick={() => handleOverridePayout(selectedCircleForAudit.id)}
-                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <DollarSign size={14} />
-                <span>Emergency Payout Disbursement</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Executive Revenue Withdrawal Modal */}
-      {withdrawModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shadow-xs">
-                  <Wallet size={20} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Withdraw Coratech Revenue</h3>
-                  <p className="text-xs text-slate-500">Official Organization Disbursement</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setWithdrawModalOpen(false)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleAdminWithdraw} className="space-y-4">
-              {/* Available Balance Callout */}
-              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-emerald-800 block">Available Revenue</span>
-                  <span className="text-xs text-emerald-600 font-medium">Excludes member escrow</span>
-                </div>
-                <span className="text-xl font-black text-emerald-700 font-mono">
-                  GH₵{treasury?.available_balance_ghs?.toFixed(2) || '0.00'}
-                </span>
-              </div>
-
-              {/* Method Toggle: MoMo vs Bank */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Withdrawal Destination Method</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWithdrawMethod('MOMO');
-                      setWithdrawDestination('MTN Mobile Money');
-                    }}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                      withdrawMethod === 'MOMO'
-                        ? 'border-sky-500 bg-sky-50 text-sky-700 ring-2 ring-sky-500/20'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Phone size={14} />
-                    <span>Mobile Money</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWithdrawMethod('BANK');
-                      setWithdrawDestination('GCB Bank');
-                    }}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                      withdrawMethod === 'BANK'
-                        ? 'border-sky-500 bg-sky-50 text-sky-700 ring-2 ring-sky-500/20'
-                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Building2 size={14} />
-                    <span>Corporate Bank</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Destination Provider / Bank Select */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  {withdrawMethod === 'MOMO' ? 'MoMo Network' : 'Ghana Bank Name'}
-                </label>
-                {withdrawMethod === 'MOMO' ? (
-                  <select
-                    value={withdrawDestination}
-                    onChange={(e) => setWithdrawDestination(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
-                  >
-                    <option value="MTN Mobile Money">MTN Mobile Money (Ghana)</option>
-                    <option value="Telecel Cash">Telecel Cash (formerly Vodafone Cash)</option>
-                    <option value="AT Money">AT Money (AirtelTigo)</option>
-                  </select>
-                ) : (
-                  <select
-                    value={withdrawDestination}
-                    onChange={(e) => setWithdrawDestination(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
-                  >
-                    <option value="GCB Bank">GCB Bank</option>
-                    <option value="Stanbic Bank Ghana">Stanbic Bank Ghana</option>
-                    <option value="Ecobank Ghana">Ecobank Ghana</option>
-                    <option value="Absa Bank Ghana">Absa Bank Ghana</option>
-                    <option value="Fidelity Bank Ghana">Fidelity Bank Ghana</option>
-                    <option value="CalBank">CalBank</option>
-                    <option value="Zenith Bank Ghana">Zenith Bank Ghana</option>
-                    <option value="Access Bank Ghana">Access Bank Ghana</option>
-                  </select>
-                )}
-              </div>
-
-              {/* Wallet / Account Number */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {withdrawMethod === 'MOMO' ? 'Merchant / Phone Number' : 'Bank Account Number'}
-                </label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Recipient MoMo Phone</label>
                 <input
                   type="text"
                   required
-                  placeholder={withdrawMethod === 'MOMO' ? '0599360626' : '102030405060'}
-                  value={withdrawAccountNumber}
-                  onChange={(e) => setWithdrawAccountNumber(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
+                  value={withdrawPhone}
+                  onChange={(e) => setWithdrawPhone(e.target.value)}
+                  placeholder="e.g. 0599360626"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900"
                 />
               </div>
 
-              {/* Account Name */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Account Holder / Entity Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Coratech Global Enterprise"
-                  value={withdrawAccountName}
-                  onChange={(e) => setWithdrawAccountName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
-                />
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWithdrawModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={withdrawing}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs rounded-xl shadow-xs cursor-pointer"
+                >
+                  {withdrawing ? 'Transferring...' : 'Confirm Withdrawal'}
+                </button>
               </div>
-
-              {/* Bank Branch (if bank) */}
-              {withdrawMethod === 'BANK' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Bank Branch (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. High Street Accra"
-                    value={withdrawBranch}
-                    onChange={(e) => setWithdrawBranch(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
-                  />
-                </div>
-              )}
-
-              {/* Amount to Withdraw */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-700">Withdrawal Amount (GH₵)</label>
-                  <span className="text-[11px] text-slate-400 font-mono">Max: GH₵{treasury?.available_balance_ghs?.toFixed(2) || '0.00'}</span>
-                </div>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-bold text-slate-500 pointer-events-none">
-                    GH₵
-                  </span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    max={treasury?.available_balance_ghs || 0}
-                    required
-                    placeholder="0.00"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    className="w-full pl-12 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-mono font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
-                  />
-                </div>
-
-                {/* Quick Percentage Chips */}
-                <div className="flex items-center gap-2 mt-2">
-                  {[0.25, 0.5, 0.75, 1.0].map((pct) => {
-                    const val = ((treasury?.available_balance_ghs || 0) * pct).toFixed(2);
-                    return (
-                      <button
-                        key={pct}
-                        type="button"
-                        onClick={() => setWithdrawAmount(val)}
-                        className="flex-1 py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[10px] font-bold text-slate-700 transition-colors cursor-pointer"
-                      >
-                        {pct === 1.0 ? 'Max' : `${pct * 100}%`}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={withdrawSubmitting || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
-                className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer active:scale-95"
-              >
-                {withdrawSubmitting ? (
-                  <RefreshCw size={15} className="animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle2 size={16} />
-                    <span>Confirm & Disburse Revenue</span>
-                  </>
-                )}
-              </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* Official Receipt Modal */}
-      {activeReceipt && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shadow-xs">
-                  <Receipt size={20} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Disbursement Receipt</h3>
-                  <p className="text-xs text-slate-500">Coratech Global Enterprise Treasury</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setActiveReceipt(null)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2.5 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Reference:</span>
-                <span className="font-mono font-bold text-slate-900">{activeReceipt.reference}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Disbursed Amount:</span>
-                <span className="font-mono font-black text-emerald-600 text-sm">GH₵{Number(activeReceipt.amount).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Method:</span>
-                <span className="font-bold text-slate-800">{activeReceipt.method} ({activeReceipt.destination})</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Beneficiary:</span>
-                <span className="font-bold text-slate-900">{activeReceipt.account_name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Account / Phone:</span>
-                <span className="font-mono font-bold text-slate-900">{activeReceipt.account_number}</span>
-              </div>
-              {activeReceipt.branch && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Branch:</span>
-                  <span className="font-bold text-slate-900">{activeReceipt.branch}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-slate-500">Status:</span>
-                <span className="font-bold text-emerald-600">✓ {activeReceipt.status || 'COMPLETED'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Timestamp:</span>
-                <span className="font-mono text-slate-600">
-                  {activeReceipt.timestamp || activeReceipt.created_at ? new Date(activeReceipt.timestamp || activeReceipt.created_at).toLocaleString() : 'Just now'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setActiveReceipt(null)}
-              className="w-full py-2.5 px-4 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Change Executive Credentials Modal */}
+      {/* Change Credentials Modal */}
       <ChangeAdminCredentialsModal
         isOpen={credsModalOpen}
         onClose={() => setCredsModalOpen(false)}
-        onUpdated={(newUsername) => notify(`Executive username successfully changed to: ${newUsername}`)}
+        onUpdated={(phone) => {
+          setCurrentAdminPhone(phone);
+          setWithdrawPhone(phone);
+        }}
       />
 
     </div>

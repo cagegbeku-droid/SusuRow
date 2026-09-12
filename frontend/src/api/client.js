@@ -310,5 +310,15 @@ export const adminWithdrawRevenue = async (payload) => {
   return res.data;
 };
 
+export const adminLogin = async (payload) => {
+  const res = await api.post('/admin/login', payload);
+  return res.data;
+};
+
+export const adminChangeCredentials = async (payload) => {
+  const res = await api.post('/admin/change-credentials', payload);
+  return res.data;
+};
+
 export default api;
 

@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Eye, EyeOff, ArrowLeft, KeyRound, AlertCircle } from 'lucide-react';
-import { useUser } from '../context/UserContext';
-import { loginUser } from '../api/client';
+import { ShieldCheck, Eye, EyeOff, ArrowLeft, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { adminLogin } from '../api/client';
 import AdminDashboardPage from '../pages/AdminDashboardPage';
 
 export const AdminLoginGate = ({ onBack }) => {
-  const { user } = useUser();
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    return sessionStorage.getItem('susurow_admin_auth') === 'true';
+    return sessionStorage.getItem('susurow_admin_auth') === 'true' && Boolean(localStorage.getItem('susurow_auth_token'));
   });
 
   const [adminUsername, setAdminUsername] = useState(() => {
@@ -18,7 +16,7 @@ export const AdminLoginGate = ({ onBack }) => {
         if (parsed.username) return parsed.username;
       }
     } catch (e) {}
-    return user?.phone_number || '0248355112';
+    return '0599360626';
   });
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,77 +29,26 @@ export const AdminLoginGate = ({ onBack }) => {
     setLoading(true);
 
     try {
-      // 1. Check custom configured credentials first
-      try {
-        const custom = localStorage.getItem('susurow_custom_admin_creds');
-        if (custom) {
-          const parsed = JSON.parse(custom);
-          if (
-            adminUsername.trim().toLowerCase() === parsed.username.toLowerCase() &&
-            adminPassword === parsed.password
-          ) {
-            sessionStorage.setItem('susurow_admin_auth', 'true');
-            setIsAdminAuthenticated(true);
-            return;
-          }
+      const res = await adminLogin({
+        username: adminUsername.trim(),
+        password: adminPassword
+      });
+
+      if (res && res.access_token) {
+        // Save auth token to localStorage so all admin APIs are fully authorized
+        localStorage.setItem('susurow_auth_token', res.access_token);
+        if (res.user) {
+          localStorage.setItem('susurow_auth_user', JSON.stringify(res.user));
         }
-      } catch (e) {}
-
-      // 2. Executive credentials verification (0599360626 / admin)
-      const normalizedUser = adminUsername.trim().toLowerCase();
-      const isAdminIdentifier = [
-        '0599360626',
-        '233599360626',
-        '+233599360626',
-        'admin',
-        'coratech_admin',
-        '0248355112'
-      ].includes(normalizedUser);
-
-      const isExecutivePassword = [
-        'admin123',
-        'susurowadmin2026!',
-        'susurowadmin2026',
-        'admin'
-      ].includes(adminPassword.toLowerCase());
-
-      if (isAdminIdentifier && isExecutivePassword) {
         sessionStorage.setItem('susurow_admin_auth', 'true');
         setIsAdminAuthenticated(true);
-        return;
-      }
-
-      // 3. Check if current user is logged in with admin privileges
-      if (user?.is_admin && adminPassword.length >= 4) {
-        sessionStorage.setItem('susurow_admin_auth', 'true');
-        setIsAdminAuthenticated(true);
-        return;
-      }
-
-      // 4. Authenticate via backend login endpoint
-      try {
-        const loginRes = await loginUser({
-          phone_number: adminUsername.trim(),
-          password: adminPassword
-        });
-
-        if (loginRes?.user?.is_admin || isAdminIdentifier) {
-          sessionStorage.setItem('susurow_admin_auth', 'true');
-          setIsAdminAuthenticated(true);
-          return;
-        } else {
-          setError('Account verified, but lacks Executive Administrator privileges.');
-        }
-      } catch (authErr) {
-        if (isAdminIdentifier && isExecutivePassword) {
-          sessionStorage.setItem('susurow_admin_auth', 'true');
-          setIsAdminAuthenticated(true);
-          return;
-        }
-        setError(authErr?.response?.data?.detail || 'Invalid administrator username or password.');
+      } else {
+        throw new Error('No authentication token received.');
       }
     } catch (err) {
-      setError('Authentication failed. Please check your credentials.');
+      console.error('Admin login error:', err);
+      const msg = err.response?.data?.detail || err.message || 'Incorrect administrator phone/ID or password.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -123,20 +70,20 @@ export const AdminLoginGate = ({ onBack }) => {
   }
 
   return (
-    <div className="min-h-[75vh] flex items-center justify-center px-4 py-8">
+    <div className="min-h-[75vh] flex items-center justify-center px-4 py-8 bg-slate-50">
       <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Badge */}
-        <div className="bg-slate-50 border-b border-slate-100 p-6 text-center">
+        <div className="bg-white border-b border-slate-100 p-6 text-center">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shadow-xs mb-3">
             <ShieldCheck size={28} />
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full">
-            Restricted Executive Portal
+          <span className="text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full border border-amber-200">
+            Executive Management Portal
           </span>
-          <h2 className="text-xl font-black text-slate-900 mt-2">Executive Admin Sign In</h2>
+          <h2 className="text-xl font-bold text-slate-900 mt-2">Executive Admin Sign In</h2>
           <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
-            Authorized management credentials required to access system controls and financial float.
+            Sign in with your administrator phone or ID to manage circles, members, and escrow float.
           </p>
         </div>
 
@@ -151,23 +98,21 @@ export const AdminLoginGate = ({ onBack }) => {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Administrator ID / Phone Number
+              Administrator Phone / ID
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                required
-                value={adminUsername}
-                onChange={(e) => setAdminUsername(e.target.value)}
-                placeholder="e.g. 0599360626 or admin"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
-              />
-            </div>
+            <input
+              type="text"
+              required
+              value={adminUsername}
+              onChange={(e) => setAdminUsername(e.target.value)}
+              placeholder="e.g. 0599360626"
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all font-mono"
+            />
           </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Executive Access Password
+              Executive Password
             </label>
             <div className="relative">
               <input
@@ -175,7 +120,7 @@ export const AdminLoginGate = ({ onBack }) => {
                 required
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
-                placeholder="Enter executive password"
+                placeholder="Enter password"
                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all pr-10"
               />
               <button
@@ -194,7 +139,7 @@ export const AdminLoginGate = ({ onBack }) => {
             className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 active:scale-[0.99] text-amber-400 font-bold text-xs rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
           >
             <KeyRound size={16} />
-            <span>{loading ? 'Verifying Credentials...' : 'Authenticate & Enter Portal'}</span>
+            <span>{loading ? 'Signing in...' : 'Sign In as Executive'}</span>
           </button>
 
           <button
@@ -203,13 +148,13 @@ export const AdminLoginGate = ({ onBack }) => {
             className="w-full py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <ArrowLeft size={14} />
-            <span>Return to SusuRow Application</span>
+            <span>Return to Public App</span>
           </button>
         </form>
 
         <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
           <span className="text-[10px] text-slate-400 font-medium">
-            SusuRow Security • All Administrative Access Is Audited & Logged
+            SusuRow Security • Dedicated Executive Management
           </span>
         </div>
 
@@ -217,3 +162,5 @@ export const AdminLoginGate = ({ onBack }) => {
     </div>
   );
 };
+
+export default AdminLoginGate;
