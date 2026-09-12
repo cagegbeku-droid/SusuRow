@@ -154,6 +154,19 @@ export const MoMoPaymentModal = ({
               if (verifyRes.status === 'SUCCESS' || verifyRes.status === 'success' || verifyRes.paid) {
                 setPaymentStatus('SUCCESS');
                 setStatusMessage('Payment verified and recorded successfully!');
+                try {
+                  window.dispatchEvent(new CustomEvent('susurow_new_notification', {
+                    detail: {
+                      id: `pay-${response.reference || Date.now()}`,
+                      type: 'PAYMENT',
+                      title: `Contribution Paid: GH₵${totalCharged.toFixed(2)}`,
+                      message: `Your Round ${group.current_round} contribution for "${group.name}" was successfully received and secured in escrow.`,
+                      category: 'Escrow',
+                      time: 'Just now',
+                      sender: 'SusuRow Escrow'
+                    }
+                  }));
+                } catch (e) {}
                 setTimeout(() => {
                   if (onPaymentSuccess) onPaymentSuccess();
                   onClose();
@@ -213,6 +226,19 @@ export const MoMoPaymentModal = ({
       if (res.status === 'SUCCESS' || res.status === 'success' || res.paid) {
         setPaymentStatus('SUCCESS');
         setStatusMessage('Payment verified successfully on Mobile Money!');
+        try {
+          window.dispatchEvent(new CustomEvent('susurow_new_notification', {
+            detail: {
+              id: `pay-${txRef || Date.now()}`,
+              type: 'PAYMENT',
+              title: `Contribution Paid: GH₵${totalCharged.toFixed(2)}`,
+              message: `Your Round ${group.current_round} contribution for "${group.name}" was successfully received and secured in escrow.`,
+              category: 'Escrow',
+              time: 'Just now',
+              sender: 'SusuRow Escrow'
+            }
+          }));
+        } catch (e) {}
         setTimeout(() => {
           if (onPaymentSuccess) onPaymentSuccess();
           onClose();

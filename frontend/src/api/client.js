@@ -300,5 +300,15 @@ export const adminPurgeTestData = async () => {
   return res.data;
 };
 
+export const getAdminTreasury = async () => {
+  const res = await api.get('/admin/treasury');
+  return res.data;
+};
+
+export const adminWithdrawRevenue = async (payload) => {
+  const res = await api.post('/admin/treasury/withdraw', payload);
+  return res.data;
+};
+
 export default api;
 

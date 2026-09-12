@@ -27,7 +27,12 @@ import {
   Award,
   KeyRound,
   Trash2,
-  Database
+  Database,
+  Building2,
+  Wallet,
+  Receipt,
+  ArrowDownRight,
+  ShieldAlert
 } from 'lucide-react';
 import {
   getAdminMetrics,
@@ -42,12 +47,14 @@ import {
   reconcileTransaction,
   broadcastAdminSMS,
   adminDeleteCircle,
-  adminPurgeTestData
+  adminPurgeTestData,
+  getAdminTreasury,
+  adminWithdrawRevenue
 } from '../api/client';
 import { ChangeAdminCredentialsModal } from '../components/ChangeAdminCredentialsModal';
 
 export default function AdminDashboardPage({ onBack, onLockSession }) {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'users' | 'circles' | 'transactions' | 'broadcast'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'treasury' | 'users' | 'circles' | 'transactions' | 'broadcast'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionNotice, setActionNotice] = useState(null);
@@ -57,6 +64,20 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
 
   // Metrics State
   const [metrics, setMetrics] = useState(null);
+
+  // Treasury & Withdrawal State
+  const [treasury, setTreasury] = useState(null);
+  const [treasuryLoading, setTreasuryLoading] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [withdrawMethod, setWithdrawMethod] = useState('MOMO'); // 'MOMO' | 'BANK'
+  const [withdrawDestination, setWithdrawDestination] = useState('MTN Mobile Money');
+  const [withdrawAccountNumber, setWithdrawAccountNumber] = useState('0599360626');
+  const [withdrawAccountName, setWithdrawAccountName] = useState('Coratech Global Enterprise');
+  const [withdrawBranch, setWithdrawBranch] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawNote, setWithdrawNote] = useState('');
+  const [withdrawSubmitting, setWithdrawSubmitting] = useState(false);
+  const [activeReceipt, setActiveReceipt] = useState(null);
 
   // Users Tab State
   const [users, setUsers] = useState([]);
@@ -190,15 +211,75 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
     }
   }, [txFilter, txSearch]);
 
+  const loadTreasury = useCallback(async () => {
+    try {
+      setTreasuryLoading(true);
+      const data = await getAdminTreasury();
+      setTreasury(data);
+    } catch (err) {
+      console.warn('Failed to load treasury data:', err);
+    } finally {
+      setTreasuryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadMetrics();
-  }, [loadMetrics]);
+    loadTreasury();
+  }, [loadMetrics, loadTreasury]);
 
   useEffect(() => {
     if (activeTab === 'users') loadUsers();
     else if (activeTab === 'circles') loadCircles();
     else if (activeTab === 'transactions') loadTransactions();
-  }, [activeTab, loadUsers, loadCircles, loadTransactions]);
+    else if (activeTab === 'treasury' || activeTab === 'overview') loadTreasury();
+  }, [activeTab, loadUsers, loadCircles, loadTransactions, loadTreasury]);
+
+  // Executive Revenue Withdrawal Handler
+  const handleAdminWithdraw = async (e) => {
+    e?.preventDefault();
+    const num = parseFloat(withdrawAmount);
+    if (isNaN(num) || num <= 0) {
+      notify('Please enter a valid withdrawal amount.', 'error');
+      return;
+    }
+    const avail = treasury?.available_balance_ghs ?? 0;
+    if (num > avail) {
+      notify(`Withdrawal amount (GH₵${num.toFixed(2)}) cannot exceed available revenue of GH₵${avail.toFixed(2)}. Member escrow savings are protected.`, 'error');
+      return;
+    }
+    if (!withdrawAccountNumber.trim()) {
+      notify('Please provide the beneficiary wallet/account number.', 'error');
+      return;
+    }
+    if (!withdrawAccountName.trim()) {
+      notify('Please provide the beneficiary account name.', 'error');
+      return;
+    }
+
+    try {
+      setWithdrawSubmitting(true);
+      const res = await adminWithdrawRevenue({
+        amount: num,
+        method: withdrawMethod,
+        destination: withdrawDestination,
+        account_number: withdrawAccountNumber.trim(),
+        account_name: withdrawAccountName.trim(),
+        branch: withdrawBranch.trim() || undefined,
+        note: withdrawNote.trim() || undefined
+      });
+      notify(`Revenue withdrawal of GH₵${num.toFixed(2)} disbursed to ${withdrawDestination} successfully!`);
+      setActiveReceipt(res.receipt);
+      setWithdrawAmount('');
+      setWithdrawModalOpen(false);
+      loadTreasury();
+      loadMetrics();
+    } catch (err) {
+      notify(err?.response?.data?.detail || 'Failed to process revenue withdrawal.', 'error');
+    } finally {
+      setWithdrawSubmitting(false);
+    }
+  };
 
   // User Actions
   const handleUpdateKYC = async (userId, newStatus) => {
@@ -441,6 +522,7 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
         <div className="flex items-center gap-2 mt-6 pt-5 border-t border-slate-100 overflow-x-auto no-scrollbar">
           {[
             { id: 'overview', label: 'Financial Health & KPIs', icon: TrendingUp },
+            { id: 'treasury', label: 'Treasury & Withdrawals', icon: DollarSign },
             { id: 'users', label: 'Savers & KYC Moderation', icon: Users, count: metrics?.savers?.pending_kyc },
             { id: 'circles', label: 'Circles & Default Monitor', icon: Award, alert: metrics?.circles?.overdue_count > 0 },
             { id: 'transactions', label: 'Financial Ledger & Disputes', icon: CreditCard },
@@ -517,15 +599,27 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
             </div>
 
             {/* Net Revenue */}
-            <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl p-4 sm:p-5 shadow-xs space-y-2">
-              <div className="flex items-center justify-between text-amber-100 text-xs font-bold uppercase tracking-wider">
-                <span>Net Platform Revenue</span>
-                <Sparkles size={16} className="text-white" />
+            <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl p-4 sm:p-5 shadow-xs space-y-3 flex flex-col justify-between">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-amber-100 text-xs font-bold uppercase tracking-wider">
+                  <span>Net Platform Revenue</span>
+                  <Sparkles size={16} className="text-white" />
+                </div>
+                <div className="text-2xl font-black text-white">
+                  GH₵{metrics?.financials?.net_revenue_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
+                </div>
+                <p className="text-[11px] text-amber-100">Cumulative revenue across transparent fees</p>
               </div>
-              <div className="text-2xl font-black text-white">
-                GH₵{metrics?.financials?.net_revenue_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
-              </div>
-              <p className="text-[11px] text-amber-100">Cumulative revenue across transparent fees</p>
+              <button
+                onClick={() => {
+                  setActiveTab('treasury');
+                  setWithdrawModalOpen(true);
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-white hover:bg-amber-50 text-amber-900 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              >
+                <Wallet size={14} />
+                <span>Withdraw Revenue</span>
+              </button>
             </div>
           </div>
 
@@ -705,6 +799,177 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* TAB: CORATECH TREASURY & REVENUE WITHDRAWALS */}
+      {activeTab === 'treasury' && (
+        <div className="space-y-6">
+          {/* Header banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-800 text-white rounded-3xl p-6 sm:p-7 shadow-xs border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider">
+                <DollarSign size={15} />
+                <span>Coratech Global Enterprise Treasury</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white">Revenue & Corporate Payout Management</h2>
+              <p className="text-xs text-slate-300 max-w-xl">
+                Withdraw accumulated platform commissions (1.0%) and service maintenance fees (1.2%) directly to Coratech's corporate MoMo merchant wallet or bank accounts. Saver escrow funds remain strictly ringfenced.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setWithdrawModalOpen(true)}
+              className="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs flex items-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95 shrink-0"
+            >
+              <Wallet size={16} />
+              <span>Withdraw Revenue</span>
+            </button>
+          </div>
+
+          {/* Financial Position Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Available Balance */}
+            <div className="bg-white rounded-2xl p-5 border-2 border-emerald-500/40 shadow-xs space-y-2 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-bl-3xl flex items-start justify-end p-2.5">
+                <Wallet size={20} className="text-emerald-600" />
+              </div>
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block">
+                Available to Withdraw
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-600">
+                GH₵{treasury?.available_balance_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Ready for instant disbursement to Coratech accounts
+              </p>
+            </div>
+
+            {/* Coratech Gross Revenue */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+                <span>Gross Revenue Earned</span>
+                <TrendingUp size={16} className="text-sky-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900">
+                GH₵{treasury?.coratech_gross_revenue_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">
+                2.20% earned across all member contributions
+              </p>
+            </div>
+
+            {/* Total Withdrawn */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+                <span>Total Withdrawn to Date</span>
+                <ArrowDownRight size={16} className="text-indigo-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900">
+                GH₵{treasury?.total_withdrawn_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Disbursed to Coratech bank/MoMo wallets
+              </p>
+            </div>
+
+            {/* Escrow Float (Protected) */}
+            <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between text-slate-600 text-xs font-bold uppercase tracking-wider">
+                <span>Member Escrow Float</span>
+                <ShieldCheck size={16} className="text-amber-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900">
+                GH₵{treasury?.escrow_float_ghs?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
+              </div>
+              <p className="text-[11px] text-amber-700 font-bold flex items-center gap-1">
+                <Lock size={11} /> 100% Protected Saver Funds
+              </p>
+            </div>
+          </div>
+
+          {/* Past Withdrawals Ledger */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Executive Revenue Withdrawal Ledger</h3>
+                <p className="text-xs text-slate-500">Permanent audit trail of all corporate revenue disbursements.</p>
+              </div>
+              <button
+                onClick={loadTreasury}
+                className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Refresh Treasury Ledger"
+              >
+                <RefreshCw size={15} className={treasuryLoading ? 'animate-spin' : ''} />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-100">
+                    <th className="py-3 px-4">Date & Time</th>
+                    <th className="py-3 px-4">Reference</th>
+                    <th className="py-3 px-4">Method & Destination</th>
+                    <th className="py-3 px-4">Account Number / Name</th>
+                    <th className="py-3 px-4 text-right">Amount Disbursed</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Receipt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {!treasury?.withdrawals || treasury.withdrawals.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Receipt size={28} className="text-slate-300" />
+                          <p className="font-bold text-slate-600">No Revenue Withdrawals Yet</p>
+                          <p className="text-[11px] text-slate-400 max-w-sm">
+                            As savers contribute to Susu circles, Coratech's 2.2% earnings accumulate here and can be withdrawn at any time.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    treasury.withdrawals.map((w) => (
+                      <tr key={w.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
+                          {w.created_at ? new Date(w.created_at).toLocaleString() : 'N/A'}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900 text-[11px]">
+                          {w.reference}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="font-bold text-slate-800">{w.destination}</span>
+                          <span className="block text-[10px] text-slate-400 uppercase font-mono">{w.method}</span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="font-bold font-mono text-slate-900">{w.account_number}</span>
+                          <span className="block text-[11px] text-slate-500 truncate max-w-xs">{w.account_name}</span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-black text-emerald-600 text-sm">
+                          GH₵{w.amount.toFixed(2)}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            ✓ {w.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            onClick={() => setActiveReceipt(w)}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] transition-colors cursor-pointer"
+                          >
+                            Receipt
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -1498,6 +1763,287 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                 <span>Emergency Payout Disbursement</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Executive Revenue Withdrawal Modal */}
+      {withdrawModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shadow-xs">
+                  <Wallet size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Withdraw Coratech Revenue</h3>
+                  <p className="text-xs text-slate-500">Official Organization Disbursement</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setWithdrawModalOpen(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAdminWithdraw} className="space-y-4">
+              {/* Available Balance Callout */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-emerald-800 block">Available Revenue</span>
+                  <span className="text-xs text-emerald-600 font-medium">Excludes member escrow</span>
+                </div>
+                <span className="text-xl font-black text-emerald-700 font-mono">
+                  GH₵{treasury?.available_balance_ghs?.toFixed(2) || '0.00'}
+                </span>
+              </div>
+
+              {/* Method Toggle: MoMo vs Bank */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Withdrawal Destination Method</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWithdrawMethod('MOMO');
+                      setWithdrawDestination('MTN Mobile Money');
+                    }}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      withdrawMethod === 'MOMO'
+                        ? 'border-sky-500 bg-sky-50 text-sky-700 ring-2 ring-sky-500/20'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Phone size={14} />
+                    <span>Mobile Money</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWithdrawMethod('BANK');
+                      setWithdrawDestination('GCB Bank');
+                    }}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                      withdrawMethod === 'BANK'
+                        ? 'border-sky-500 bg-sky-50 text-sky-700 ring-2 ring-sky-500/20'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Building2 size={14} />
+                    <span>Corporate Bank</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Destination Provider / Bank Select */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  {withdrawMethod === 'MOMO' ? 'MoMo Network' : 'Ghana Bank Name'}
+                </label>
+                {withdrawMethod === 'MOMO' ? (
+                  <select
+                    value={withdrawDestination}
+                    onChange={(e) => setWithdrawDestination(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="MTN Mobile Money">MTN Mobile Money (Ghana)</option>
+                    <option value="Telecel Cash">Telecel Cash (formerly Vodafone Cash)</option>
+                    <option value="AT Money">AT Money (AirtelTigo)</option>
+                  </select>
+                ) : (
+                  <select
+                    value={withdrawDestination}
+                    onChange={(e) => setWithdrawDestination(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="GCB Bank">GCB Bank</option>
+                    <option value="Stanbic Bank Ghana">Stanbic Bank Ghana</option>
+                    <option value="Ecobank Ghana">Ecobank Ghana</option>
+                    <option value="Absa Bank Ghana">Absa Bank Ghana</option>
+                    <option value="Fidelity Bank Ghana">Fidelity Bank Ghana</option>
+                    <option value="CalBank">CalBank</option>
+                    <option value="Zenith Bank Ghana">Zenith Bank Ghana</option>
+                    <option value="Access Bank Ghana">Access Bank Ghana</option>
+                  </select>
+                )}
+              </div>
+
+              {/* Wallet / Account Number */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {withdrawMethod === 'MOMO' ? 'Merchant / Phone Number' : 'Bank Account Number'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={withdrawMethod === 'MOMO' ? '0599360626' : '102030405060'}
+                  value={withdrawAccountNumber}
+                  onChange={(e) => setWithdrawAccountNumber(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              {/* Account Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Account Holder / Entity Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Coratech Global Enterprise"
+                  value={withdrawAccountName}
+                  onChange={(e) => setWithdrawAccountName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              {/* Bank Branch (if bank) */}
+              {withdrawMethod === 'BANK' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Bank Branch (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. High Street Accra"
+                    value={withdrawBranch}
+                    onChange={(e) => setWithdrawBranch(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+              )}
+
+              {/* Amount to Withdraw */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700">Withdrawal Amount (GH₵)</label>
+                  <span className="text-[11px] text-slate-400 font-mono">Max: GH₵{treasury?.available_balance_ghs?.toFixed(2) || '0.00'}</span>
+                </div>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-xs font-bold text-slate-500 pointer-events-none">
+                    GH₵
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max={treasury?.available_balance_ghs || 0}
+                    required
+                    placeholder="0.00"
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    className="w-full pl-12 pr-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-mono font-bold text-slate-900 focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+
+                {/* Quick Percentage Chips */}
+                <div className="flex items-center gap-2 mt-2">
+                  {[0.25, 0.5, 0.75, 1.0].map((pct) => {
+                    const val = ((treasury?.available_balance_ghs || 0) * pct).toFixed(2);
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        onClick={() => setWithdrawAmount(val)}
+                        className="flex-1 py-1 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[10px] font-bold text-slate-700 transition-colors cursor-pointer"
+                      >
+                        {pct === 1.0 ? 'Max' : `${pct * 100}%`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={withdrawSubmitting || !withdrawAmount || parseFloat(withdrawAmount) <= 0}
+                className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer active:scale-95"
+              >
+                {withdrawSubmitting ? (
+                  <RefreshCw size={15} className="animate-spin" />
+                ) : (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Confirm & Disburse Revenue</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Official Receipt Modal */}
+      {activeReceipt && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shadow-xs">
+                  <Receipt size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Disbursement Receipt</h3>
+                  <p className="text-xs text-slate-500">Coratech Global Enterprise Treasury</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveReceipt(null)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Reference:</span>
+                <span className="font-mono font-bold text-slate-900">{activeReceipt.reference}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Disbursed Amount:</span>
+                <span className="font-mono font-black text-emerald-600 text-sm">GH₵{Number(activeReceipt.amount).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Method:</span>
+                <span className="font-bold text-slate-800">{activeReceipt.method} ({activeReceipt.destination})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Beneficiary:</span>
+                <span className="font-bold text-slate-900">{activeReceipt.account_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Account / Phone:</span>
+                <span className="font-mono font-bold text-slate-900">{activeReceipt.account_number}</span>
+              </div>
+              {activeReceipt.branch && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Branch:</span>
+                  <span className="font-bold text-slate-900">{activeReceipt.branch}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-slate-500">Status:</span>
+                <span className="font-bold text-emerald-600">✓ {activeReceipt.status || 'COMPLETED'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Timestamp:</span>
+                <span className="font-mono text-slate-600">
+                  {activeReceipt.timestamp || activeReceipt.created_at ? new Date(activeReceipt.timestamp || activeReceipt.created_at).toLocaleString() : 'Just now'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setActiveReceipt(null)}
+              className="w-full py-2.5 px-4 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}

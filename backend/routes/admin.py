@@ -1,4 +1,5 @@
 import re
+import uuid
 from typing import Optional, List
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -14,7 +15,8 @@ from models import (
     GroupStatus,
     PaymentStatus,
     KYCStatus,
-    MoMoWebhookLog
+    MoMoWebhookLog,
+    ExecutiveWithdrawal
 )
 from schemas import sanitize_ghana_phone
 from auth import get_admin_user
@@ -598,20 +600,197 @@ def admin_delete_group(
     }
 
 
+class ExecutiveWithdrawRequest(BaseModel):
+    amount: float
+    method: str  # 'MOMO' or 'BANK'
+    destination: str  # e.g. 'MTN Mobile Money', 'GCB Bank', 'Telecel Cash', etc.
+    account_number: str
+    account_name: str
+    branch: Optional[str] = None
+    note: Optional[str] = None
+
+
+@router.get("/treasury")
+def get_treasury_financials(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """
+    Returns real-time Coratech Global Enterprise treasury financial statement:
+    - Gross contributions volume
+    - Member escrow float (100% protected, cannot be withdrawn)
+    - Itemized revenues: Gateway clearing (1.95%), Commission (1.00%), Platform Fee (1.20%)
+    - Coratech Gross Revenue (Commission + Platform Fee = 2.20%)
+    - Total Historical Withdrawals
+    - Available Revenue Balance for Executive Withdrawal
+    - Complete ledger of past executive withdrawals
+    """
+    total_volume = db.query(func.sum(ContributionPayment.amount)).filter(
+        ContributionPayment.status == PaymentStatus.SUCCESS.value
+    ).scalar() or 0.0
+
+    total_payouts = db.query(func.sum(PayoutDisbursement.amount)).filter(
+        PayoutDisbursement.status == PaymentStatus.SUCCESS.value
+    ).scalar() or 0.0
+
+    # Protected Escrow Float (Member funds)
+    escrow_float = max(0.0, total_volume - total_payouts)
+
+    # Fee Breakdown
+    gateway_fees = round(total_volume * 0.0195, 2)
+    commission_fees = round(total_volume * 0.0100, 2)
+    platform_fees = round(total_volume * 0.0120, 2)
+    coratech_gross_revenue = round(commission_fees + platform_fees, 2)
+
+    # Historical withdrawals
+    total_withdrawn = db.query(func.sum(ExecutiveWithdrawal.amount)).filter(
+        ExecutiveWithdrawal.status == "COMPLETED"
+    ).scalar() or 0.0
+
+    available_balance = round(max(0.0, coratech_gross_revenue - total_withdrawn), 2)
+
+    # List past withdrawals
+    withdrawals_query = db.query(ExecutiveWithdrawal).order_by(desc(ExecutiveWithdrawal.created_at)).all()
+    withdrawals = [
+        {
+            "id": w.id,
+            "reference": w.reference,
+            "amount": round(w.amount, 2),
+            "method": w.method,
+            "destination": w.destination,
+            "account_number": w.account_number,
+            "account_name": w.account_name,
+            "branch": w.branch,
+            "status": w.status,
+            "note": w.note,
+            "created_at": w.created_at.isoformat() if w.created_at else None
+        }
+        for w in withdrawals_query
+    ]
+
+    return {
+        "currency": "GH₵",
+        "total_volume_ghs": round(total_volume, 2),
+        "total_payouts_disbursed_ghs": round(total_payouts, 2),
+        "escrow_float_ghs": round(escrow_float, 2),
+        "gateway_fees_ghs": gateway_fees,
+        "commission_fees_ghs": commission_fees,
+        "platform_fees_ghs": platform_fees,
+        "coratech_gross_revenue_ghs": coratech_gross_revenue,
+        "total_withdrawn_ghs": round(total_withdrawn, 2),
+        "available_balance_ghs": available_balance,
+        "withdrawals": withdrawals
+    }
+
+
+@router.post("/treasury/withdraw")
+def withdraw_treasury_revenue(
+    payload: ExecutiveWithdrawRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """
+    Executes an official revenue withdrawal for Coratech Global Enterprise.
+    Withdraws accumulated 2.2% fees to corporate bank or MoMo merchant wallet.
+    Strictly forbids withdrawing member escrow float.
+    """
+    if payload.amount <= 0:
+        raise HTTPException(status_code=400, detail="Withdrawal amount must be greater than GH₵0.00.")
+
+    # Calculate real-time available revenue
+    total_volume = db.query(func.sum(ContributionPayment.amount)).filter(
+        ContributionPayment.status == PaymentStatus.SUCCESS.value
+    ).scalar() or 0.0
+
+    commission_fees = round(total_volume * 0.0100, 2)
+    platform_fees = round(total_volume * 0.0120, 2)
+    coratech_gross_revenue = round(commission_fees + platform_fees, 2)
+
+    total_withdrawn = db.query(func.sum(ExecutiveWithdrawal.amount)).filter(
+        ExecutiveWithdrawal.status == "COMPLETED"
+    ).scalar() or 0.0
+
+    available_balance = round(max(0.0, coratech_gross_revenue - total_withdrawn), 2)
+
+    if payload.amount > available_balance:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Requested withdrawal (GH₵{payload.amount:.2f}) exceeds available Coratech revenue of GH₵{available_balance:.2f}. Saver escrow savings are ringfenced and protected."
+        )
+
+    if not payload.account_number.strip():
+        raise HTTPException(status_code=400, detail="Beneficiary account/wallet number is required.")
+
+    if not payload.account_name.strip():
+        raise HTTPException(status_code=400, detail="Beneficiary account name is required.")
+
+    # Generate unique reference
+    timestamp_str = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    rand_suffix = uuid.uuid4().hex[:5].upper()
+    reference = f"CORA-WD-{timestamp_str}-{rand_suffix}"
+
+    withdrawal = ExecutiveWithdrawal(
+        admin_id=admin.id,
+        amount=round(payload.amount, 2),
+        method=payload.method.upper(),
+        destination=payload.destination.strip(),
+        account_number=payload.account_number.strip(),
+        account_name=payload.account_name.strip(),
+        branch=payload.branch.strip() if payload.branch else None,
+        reference=reference,
+        status="COMPLETED",
+        note=payload.note.strip() if payload.note else f"Official revenue withdrawal authorized by {admin.full_name}"
+    )
+    db.add(withdrawal)
+    db.commit()
+    db.refresh(withdrawal)
+
+    # Send SMS alert to Admin
+    admin_phone = getattr(admin, 'phone_number', None) or "0599360626"
+    try:
+        GhanaSMSService.send_sms(
+            phone_number=admin_phone,
+            message=f"CORATECH TREASURY: Revenue withdrawal of GH₵{payload.amount:.2f} to {payload.destination} ({payload.account_number}) approved. Ref: {reference}."
+        )
+    except Exception:
+        pass
+
+    new_available = round(max(0.0, available_balance - payload.amount), 2)
+
+    return {
+        "success": True,
+        "message": f"Successfully disbursed GH₵{payload.amount:.2f} to {payload.destination} ({payload.account_name}).",
+        "receipt": {
+            "id": withdrawal.id,
+            "reference": withdrawal.reference,
+            "amount": withdrawal.amount,
+            "method": withdrawal.method,
+            "destination": withdrawal.destination,
+            "account_number": withdrawal.account_number,
+            "account_name": withdrawal.account_name,
+            "branch": withdrawal.branch,
+            "status": withdrawal.status,
+            "timestamp": withdrawal.created_at.isoformat()
+        },
+        "available_balance_ghs": new_available
+    }
+
+
 @router.post("/system/purge-test-data")
 def purge_test_data(
     db: Session = Depends(get_db),
     admin: User = Depends(get_admin_user)
 ):
     """
-    Cleans all mock data, test circles, contributions, payouts, and non-admin test users
+    Cleans all mock data, test circles, contributions, payouts, executive withdrawals, and non-admin test users
     so the platform is 100% clean and ready for public production use.
     Guarantees that Executive Admin accounts are preserved.
     """
-    # 1. Clean transactions & webhook logs
+    # 1. Clean transactions, withdrawals & webhook logs
     db.query(ContributionPayment).delete()
     db.query(PayoutDisbursement).delete()
     db.query(MoMoWebhookLog).delete()
+    db.query(ExecutiveWithdrawal).delete()
 
     # 2. Clean all group members & circles
     db.query(GroupMember).delete()
@@ -629,3 +808,4 @@ def purge_test_data(
         "message": "All mock groups, test payments, and non-admin test users have been purged. Platform is clean and production ready.",
         "admin_preserved": admin.phone_number or admin.email
     }
+

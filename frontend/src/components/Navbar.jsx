@@ -16,45 +16,6 @@ import { useUser } from '../context/UserContext';
 import { NotificationsDropdown } from './NotificationsDropdown';
 import { SupportChatModal } from './SupportChatModal';
 
-const DEFAULT_NOTIFICATIONS = [
-  {
-    id: 'notif-1',
-    type: 'VERIFIED',
-    title: 'Account Officially Verified',
-    message: 'Your Ghana Card Tier-1 verification is active. You have full access to Susu circles and automated Mobile Money payouts.',
-    category: 'Compliance',
-    time: 'Just now',
-    sender: 'SusuRow Compliance'
-  },
-  {
-    id: 'notif-2',
-    type: 'PAYOUT',
-    title: 'Automated Payout Turn Scheduled',
-    message: 'When it is your turn to receive the cycle pot, payouts disburse directly to your registered Mobile Money wallet.',
-    category: 'Rotation',
-    time: '1 hour ago',
-    sender: 'SusuRow Rotation Engine'
-  },
-  {
-    id: 'notif-3',
-    type: 'PAYMENT',
-    title: 'Round Contribution Protection',
-    message: 'All circle deposits are 100% safeguarded under automated Bank of Ghana tiered escrow underwriting.',
-    category: 'Escrow',
-    time: 'Today',
-    sender: 'SusuRow Escrow'
-  },
-  {
-    id: 'notif-4',
-    type: 'UPDATE',
-    title: 'Platform Update: Instant Settlements',
-    message: 'SusuRow upgraded to full-width segmented navigation with instant MoMo prompt settlements.',
-    category: 'Update',
-    time: 'Yesterday',
-    sender: 'SusuRow Organization'
-  }
-];
-
 export default function Navbar({
   activeView,
   setActiveView,
@@ -74,16 +35,80 @@ export default function Navbar({
     setAvatarError(false);
   }, [user?.avatar_url, user?.profile_image_url, user?.picture]);
 
-  // Notifications State
-  const [notifications, setNotifications] = useState(DEFAULT_NOTIFICATIONS);
+  // Notifications State: Clean production default is empty array (zero mock data)
+  const [notifications, setNotifications] = useState([]);
   const [readNotifIds, setReadNotifIds] = useState(() => {
     try {
+      // Clean out any legacy mock notification IDs
       const saved = localStorage.getItem('susurow_read_notifs');
-      return saved ? JSON.parse(saved) : ['notif-4'];
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed.filter(id => !id.startsWith('notif-')) : [];
+      }
+      return [];
     } catch (e) {
-      return ['notif-4'];
+      return [];
     }
   });
+
+  // Sync real user alerts if user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      setNotifications([]);
+      return;
+    }
+
+    // Load persisted real notifications for this user
+    let userNotifs = [];
+    try {
+      const saved = localStorage.getItem(`susurow_user_notifications_${user.id}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Exclude any legacy mock items
+          userNotifs = parsed.filter(n => !n.id?.startsWith('notif-'));
+        }
+      }
+    } catch (e) {}
+
+    // If user is verified, add a real compliance confirmation alert if not already logged
+    if (user.kyc_status === 'VERIFIED') {
+      const verifiedId = `kyc-verified-${user.id}`;
+      if (!userNotifs.some(n => n.id === verifiedId)) {
+        userNotifs.unshift({
+          id: verifiedId,
+          type: 'VERIFIED',
+          title: 'Ghana Card Officially Verified',
+          message: `Hello ${user.full_name?.trim() || 'Saver'}, your Ghana Card Tier-1 verification is confirmed active. You have full access to Susu circles and automated Mobile Money payouts.`,
+          category: 'Compliance',
+          time: 'Active',
+          sender: 'SusuRow Compliance'
+        });
+      }
+    }
+
+    setNotifications(userNotifs);
+  }, [user?.id, user?.kyc_status, user?.full_name, isAuthenticated]);
+
+  // Real-time listener for app events (payment verified, payout scheduled, circle joined)
+  useEffect(() => {
+    const handleNewNotif = (event) => {
+      if (!event.detail) return;
+      const notif = event.detail;
+      setNotifications(prev => {
+        const updated = [notif, ...prev.filter(n => n.id !== notif.id)];
+        if (user?.id) {
+          try {
+            localStorage.setItem(`susurow_user_notifications_${user.id}`, JSON.stringify(updated));
+          } catch (e) {}
+        }
+        return updated;
+      });
+    };
+
+    window.addEventListener('susurow_new_notification', handleNewNotif);
+    return () => window.removeEventListener('susurow_new_notification', handleNewNotif);
+  }, [user?.id]);
 
   const unreadCount = notifications.filter(n => !readNotifIds.includes(n.id)).length;
 
@@ -107,7 +132,15 @@ export default function Navbar({
   };
 
   const handleDismissNotif = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications(prev => {
+      const updated = prev.filter(n => n.id !== id);
+      if (user?.id) {
+        try {
+          localStorage.setItem(`susurow_user_notifications_${user.id}`, JSON.stringify(updated));
+        } catch (e) {}
+      }
+      return updated;
+    });
   };
 
   useEffect(() => {

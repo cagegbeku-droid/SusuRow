@@ -18,7 +18,8 @@ from models import (
     GroupMember,
     ContributionPayment,
     PayoutDisbursement,
-    MoMoWebhookLog
+    MoMoWebhookLog,
+    ExecutiveWithdrawal
 )
 from main import auto_migrate_schema
 
@@ -31,13 +32,15 @@ def clean_data():
     print("=" * 60)
 
     try:
-        # 1. Purge financial transactions
+        # 1. Purge financial transactions & executive withdrawals
         p_count = db.query(ContributionPayment).delete()
         d_count = db.query(PayoutDisbursement).delete()
         w_count = db.query(MoMoWebhookLog).delete()
+        ew_count = db.query(ExecutiveWithdrawal).delete()
         print(f"[OK] Removed {p_count} contribution payment records.")
         print(f"[OK] Removed {d_count} payout disbursement records.")
         print(f"[OK] Removed {w_count} webhook log entries.")
+        print(f"[OK] Removed {ew_count} executive withdrawal records.")
 
         # 2. Purge circles and memberships
         m_count = db.query(GroupMember).delete()
@@ -46,13 +49,35 @@ def clean_data():
         print(f"[OK] Removed {g_count} test savings circles.")
 
         # 3. Clean test users while preserving Executive Admins
-        admins = db.query(User).filter(User.is_admin == True).all()
-        admin_names = [f"{a.full_name} ({a.phone_number or a.email})" for a in admins]
-        print(f"[PRESERVED] {len(admins)} Executive Administrator account(s): {', '.join(admin_names) if admin_names else 'None'}")
+        ADMIN_PHONES = {"0599360626", "233599360626", "+233599360626"}
+        
+        # Ensure any existing user matching admin phone is flagged as admin
+        db.query(User).filter(User.phone_number.in_(ADMIN_PHONES)).update({"is_admin": True, "kyc_status": "VERIFIED"}, synchronize_session=False)
+        db.commit()
 
-        u_count = db.query(User).filter(
-            or_(User.is_admin == False, User.is_admin == None)
-        ).delete()
+        admins = db.query(User).filter(User.is_admin == True).all()
+        if not admins:
+            # Seed the primary Executive Admin account so the executive is always active
+            from auth import hash_password
+            default_admin = User(
+                full_name="Coratech Global Executive",
+                phone_number="0599360626",
+                username="coratech_admin",
+                email="admin@coratechglobal.com",
+                is_admin=True,
+                kyc_status="VERIFIED",
+                hashed_password=hash_password("SusuRowAdmin2026!"),
+                momo_provider="MTN"
+            )
+            db.add(default_admin)
+            db.commit()
+            admins = [default_admin]
+
+        admin_names = [f"{a.full_name} ({a.phone_number or a.email})" for a in admins]
+        print(f"[PRESERVED] {len(admins)} Executive Administrator account(s): {', '.join(admin_names)}")
+
+        admin_ids = [a.id for a in admins]
+        u_count = db.query(User).filter(~User.id.in_(admin_ids)).delete(synchronize_session=False)
         print(f"[OK] Removed {u_count} test saver accounts.")
 
         db.commit()

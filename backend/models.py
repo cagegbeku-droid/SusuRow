@@ -234,3 +234,27 @@ class MoMoWebhookLog(Base):
             return json.loads(self.payload_json)
         except Exception:
             return {}
+
+
+class ExecutiveWithdrawal(Base):
+    """
+    Tracks official revenue withdrawals made by Coratech Global Enterprise executives.
+    Disburses accumulated platform profits (1.0% commission + 1.2% platform fees)
+    to Coratech's corporate Mobile Money merchant wallet or corporate bank account.
+    Strictly safeguards saver escrow float from being withdrawn.
+    """
+    __tablename__ = "executive_withdrawals"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    admin_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    amount = Column(Float, nullable=False)
+    method = Column(String(30), nullable=False)  # 'MOMO' or 'BANK'
+    destination = Column(String(100), nullable=False)  # e.g. 'MTN Mobile Money', 'GCB Bank', etc.
+    account_number = Column(String(50), nullable=False)
+    account_name = Column(String(120), nullable=False)
+    branch = Column(String(100), nullable=True)
+    reference = Column(String(60), unique=True, index=True, nullable=False)
+    status = Column(String(20), default="COMPLETED", nullable=False)  # 'COMPLETED', 'PENDING'
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
