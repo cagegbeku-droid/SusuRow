@@ -53,7 +53,7 @@ export const SplashScreen = ({ minDisplayTime = 1800, onFinished }) => {
 
         {/* Subtitle / Tagline */}
         <p className="mt-2 text-xs sm:text-sm font-semibold tracking-wide text-emerald-200/90 uppercase">
-          Automated Rotational Savings • Ghana
+          Automated Mobile Money Savings • Ghana
         </p>
 
         {/* Loading Spinner & Trust Tag */}

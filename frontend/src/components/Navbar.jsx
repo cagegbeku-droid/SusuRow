@@ -181,9 +181,11 @@ export default function Navbar({
             <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
               {isAuthenticated ? `Hi, ${getFirstName()}` : 'Welcome to SusuRow'}
             </h1>
-            <div className="text-xs text-slate-500 font-medium">
-              {isAuthenticated ? (user?.phone_number || 'Rotational Savings Member') : 'Rotational Savings Platform'}
-            </div>
+            {isAuthenticated && (
+              <div className="text-xs text-slate-500 font-medium">
+                {user?.phone_number || 'Ghana Saver'}
+              </div>
+            )}
           </div>
         </div>
 
