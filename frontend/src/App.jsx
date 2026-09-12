@@ -75,6 +75,12 @@ function AppContent() {
 
   // Centralized Navigation with browser/device history synchronization
   const navigateTo = (tab, options = {}) => {
+    // Enforce authentication for private views: My Circles, Profile, Settings
+    if ((tab === 'my-circles' || tab === 'profile' || tab === 'settings') && !isAuthenticated) {
+      openAuthModal();
+      return;
+    }
+
     const nextGroupId = options.groupId !== undefined ? options.groupId : null;
     const nextSubpage = options.subpage !== undefined ? options.subpage : null;
 
@@ -125,9 +131,14 @@ function AppContent() {
     const handlePopState = (event) => {
       const state = event.state;
       if (state && state.tab) {
-        setCurrentTab(state.tab);
-        setSelectedGroupId(state.groupId || null);
-        setProfileSubpage(state.subpage || null);
+        if ((state.tab === 'my-circles' || state.tab === 'profile' || state.tab === 'settings') && !isAuthenticated) {
+          setCurrentTab('marketplace');
+          openAuthModal();
+        } else {
+          setCurrentTab(state.tab);
+          setSelectedGroupId(state.groupId || null);
+          setProfileSubpage(state.subpage || null);
+        }
       } else {
         setCurrentTab('marketplace');
         setSelectedGroupId(null);
@@ -370,16 +381,38 @@ function AppContent() {
           )}
 
           {currentTab === 'settings' && (
-            <SettingsPage
-              onBack={handleBack}
-              onNavigate={navigateTo}
-              onOpenFAQModal={() => setIsFAQModalOpen(true)}
-              onOpenSupportChat={() => setIsSupportChatOpen(true)}
-              onOpenTermsModal={() => setIsTermsModalOpen(true)}
-              onOpenInstallModal={() => setIsInstallModalOpen(true)}
-              onOpenReferralModal={handleOpenReferralModal}
-              onOpenCalculator={() => setIsCalculatorModalOpen(true)}
-            />
+            isAuthenticated ? (
+              <SettingsPage
+                onBack={handleBack}
+                onNavigate={navigateTo}
+                onOpenFAQModal={() => setIsFAQModalOpen(true)}
+                onOpenSupportChat={() => setIsSupportChatOpen(true)}
+                onOpenTermsModal={() => setIsTermsModalOpen(true)}
+                onOpenInstallModal={() => setIsInstallModalOpen(true)}
+                onOpenReferralModal={handleOpenReferralModal}
+                onOpenCalculator={() => setIsCalculatorModalOpen(true)}
+              />
+            ) : (
+              <div className="max-w-md mx-auto my-16 px-4">
+                <div className="bg-white rounded-3xl p-8 text-center border border-slate-200 shadow-sm space-y-4">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100">
+                    <ShieldCheck size={28} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-slate-900">Sign In to Access Settings</h2>
+                    <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">
+                      Your preferences, payout wallet, MoMo networks, and account security tools require an active saver session.
+                    </p>
+                  </div>
+                  <button
+                    onClick={openAuthModal}
+                    className="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
+                  >
+                    Sign In with Phone or Google
+                  </button>
+                </div>
+              </div>
+            )
           )}
         </main>
 

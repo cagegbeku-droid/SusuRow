@@ -40,6 +40,16 @@ class KYCStatusUpdateRequest(BaseModel):
     status: str # 'VERIFIED', 'PENDING', 'UNVERIFIED'
     note: Optional[str] = None
 
+class AdminUserSupportUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    momo_provider: Optional[str] = None
+    ghana_card_number: Optional[str] = None
+    kyc_status: Optional[str] = None
+    trust_score: Optional[int] = None
+    is_active: Optional[bool] = None
+    new_password: Optional[str] = None
+
 class BroadcastSMSRequest(BaseModel):
     message: str
     target: str # 'ALL_USERS', 'OVERDUE_MEMBERS', 'CIRCLE_MEMBERS'
@@ -390,6 +400,71 @@ def toggle_user_admin(
         "success": True,
         "message": f"User admin status changed to {target_user.is_admin}",
         "is_admin": target_user.is_admin
+    }
+
+
+@router.post("/users/{user_id}/manage-support")
+def admin_manage_user_support(
+    user_id: str,
+    payload: AdminUserSupportUpdateRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """Allows executive admins to assist users facing difficulties or resolve account restrictions."""
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    old_phone = target_user.phone_number
+
+    if payload.full_name is not None and payload.full_name.strip():
+        target_user.full_name = payload.full_name.strip()
+
+    if payload.phone_number is not None and payload.phone_number.strip():
+        clean_phone = sanitize_ghana_phone(payload.phone_number.strip())
+        target_user.phone_number = clean_phone
+        # Update any circle memberships registered under previous phone
+        if old_phone and old_phone != clean_phone:
+            db.query(GroupMember).filter(GroupMember.phone_number == old_phone).update(
+                {"phone_number": clean_phone, "user_id": target_user.id}
+            )
+
+    if payload.momo_provider is not None:
+        target_user.momo_provider = payload.momo_provider
+        target_user.primary_wallet_provider = payload.momo_provider
+
+    if payload.ghana_card_number is not None:
+        target_user.ghana_card_number = payload.ghana_card_number.strip().upper()
+
+    if payload.kyc_status is not None:
+        target_user.kyc_status = payload.kyc_status
+        target_user.is_verified = (payload.kyc_status == KYCStatus.VERIFIED.value)
+
+    if payload.trust_score is not None:
+        target_user.trust_score = max(0, min(100, payload.trust_score))
+
+    if payload.is_active is not None:
+        target_user.is_active = payload.is_active
+
+    if payload.new_password is not None and len(payload.new_password.strip()) >= 4:
+        target_user.hashed_password = hash_password(payload.new_password.strip())
+
+    db.commit()
+    db.refresh(target_user)
+
+    return {
+        "success": True,
+        "message": f"Saver details for {target_user.full_name} updated successfully.",
+        "user": {
+            "id": target_user.id,
+            "full_name": target_user.full_name,
+            "phone_number": target_user.phone_number,
+            "momo_provider": target_user.momo_provider,
+            "ghana_card_number": target_user.ghana_card_number,
+            "kyc_status": target_user.kyc_status,
+            "is_active": target_user.is_active,
+            "trust_score": target_user.trust_score
+        }
     }
 
 

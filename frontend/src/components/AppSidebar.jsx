@@ -317,8 +317,12 @@ export default function AppSidebar({
             {/* Settings & Support */}
             <button
               onClick={() => {
-                setActiveView('settings');
                 onClose();
+                if (!isAuthenticated) {
+                  openAuthModal();
+                } else {
+                  setActiveView('settings');
+                }
               }}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
                 activeView === 'settings'

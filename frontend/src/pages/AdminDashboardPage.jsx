@@ -15,7 +15,8 @@ import {
   AlertCircle,
   ArrowDownRight,
   Send,
-  Lock
+  Lock,
+  UserCheck
 } from 'lucide-react';
 import {
   getAdminMetrics,
@@ -29,6 +30,7 @@ import {
   adminWithdrawRevenue
 } from '../api/client';
 import { ChangeAdminCredentialsModal } from '../components/ChangeAdminCredentialsModal';
+import { AdminUserSupportModal } from '../components/AdminUserSupportModal';
 
 export default function AdminDashboardPage({ onBack, onLockSession }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'circles' | 'users' | 'transactions'
@@ -68,6 +70,8 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
   const [users, setUsers] = useState([]);
   const [userSearch, setUserSearch] = useState('');
   const [usersLoading, setUsersLoading] = useState(false);
+  const [supportUser, setSupportUser] = useState(null);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
 
   const [transactions, setTransactions] = useState([]);
   const [txSearch, setTxSearch] = useState('');
@@ -555,7 +559,9 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                         <th className="p-3.5">Phone Number</th>
                         <th className="p-3.5">Provider</th>
                         <th className="p-3.5">KYC Status</th>
-                        <th className="p-3.5 text-right">Actions</th>
+                        <th className="p-3.5">Account Health</th>
+                        <th className="p-3.5">Trust</th>
+                        <th className="p-3.5 text-right">Executive Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -581,18 +587,43 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                               {u.kyc_status || 'UNVERIFIED'}
                             </span>
                           </td>
-                          <td className="p-3.5 text-right space-x-1">
+                          <td className="p-3.5">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              u.is_active === false
+                                ? 'bg-red-50 text-red-800 border-red-200'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            }`}>
+                              {u.is_active === false ? 'Restricted / Frozen' : 'Active'}
+                            </span>
+                          </td>
+                          <td className="p-3.5 font-mono font-bold text-sky-700">
+                            {u.trust_score ?? 100}
+                          </td>
+                          <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                            <button
+                              onClick={() => {
+                                setSupportUser(u);
+                                setSupportModalOpen(true);
+                              }}
+                              className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-[11px] font-bold cursor-pointer inline-flex items-center gap-1 shadow-xs transition-colors"
+                              title="Assist with difficulties, update details, or unrestrict"
+                            >
+                              <UserCheck size={12} />
+                              <span>Assist Saver</span>
+                            </button>
+
                             {u.kyc_status !== 'VERIFIED' && (
                               <button
                                 onClick={() => handleVerifyKyc(u)}
-                                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[11px] font-bold cursor-pointer"
+                                className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-[11px] font-bold cursor-pointer transition-colors"
                               >
-                                Approve KYC
+                                Verify KYC
                               </button>
                             )}
+
                             <button
                               onClick={() => handleToggleFreeze(u)}
-                              className={`px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer ${
+                              className={`px-2 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-colors ${
                                 u.is_active === false
                                   ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                                   : 'bg-red-50 text-red-700 hover:bg-red-100'
@@ -763,6 +794,20 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
         onUpdated={(phone) => {
           setCurrentAdminPhone(phone);
           setWithdrawPhone(phone);
+        }}
+      />
+
+      {/* Member Executive Support Modal */}
+      <AdminUserSupportModal
+        isOpen={supportModalOpen}
+        user={supportUser}
+        onClose={() => {
+          setSupportModalOpen(false);
+          setSupportUser(null);
+        }}
+        onUserUpdated={(updatedUser) => {
+          setUsers(prev => prev.map(u => u.id === updatedUser.id ? { ...u, ...updatedUser } : u));
+          notify('Saver account updated and synced successfully.');
         }}
       />
 

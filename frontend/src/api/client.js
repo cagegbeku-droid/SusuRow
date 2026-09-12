@@ -330,5 +330,10 @@ export const adminChangeCredentials = async (payload) => {
   return res.data;
 };
 
+export const adminManageUser = async (userId, payload) => {
+  const res = await api.post(`/admin/users/${userId}/manage-support`, payload);
+  return res.data;
+};
+
 export default api;
 

@@ -229,7 +229,13 @@ export default function Navbar({
 
           {/* Settings & Support Gear Button (⚙️) */}
           <button
-            onClick={() => setActiveView('settings')}
+            onClick={() => {
+              if (!isAuthenticated) {
+                openAuthModal();
+              } else {
+                setActiveView('settings');
+              }
+            }}
             className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer border ${
               activeView === 'settings'
                 ? 'bg-sky-50 border-sky-300 text-sky-600'

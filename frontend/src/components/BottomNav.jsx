@@ -12,7 +12,7 @@ export const BottomNav = ({ activeView, setActiveView, onOpenCreateModal }) => {
   const { isAuthenticated, openAuthModal } = useUser();
 
   const handleNav = (targetView) => {
-    if ((targetView === 'my-circles' || targetView === 'profile') && !isAuthenticated) {
+    if ((targetView === 'my-circles' || targetView === 'profile' || targetView === 'settings') && !isAuthenticated) {
       openAuthModal();
       return;
     }
