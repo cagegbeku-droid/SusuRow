@@ -280,8 +280,32 @@ export const getAdminCircleMembers = async (groupId) => {
   return res.data;
 };
 
+export const adminToggleCircleStatus = async (groupId, targetStatus = null) => {
+  const res = await api.post(`/admin/circles/${groupId}/toggle-status`, null, {
+    params: targetStatus ? { target_status: targetStatus } : {}
+  });
+  return res.data;
+};
+
+export const adminToggleMemberPaid = async (groupId, memberId) => {
+  const res = await api.post(`/admin/circles/${groupId}/members/${memberId}/toggle-paid`);
+  return res.data;
+};
+
+export const adminRemoveCircleMember = async (groupId, memberId) => {
+  const res = await api.delete(`/admin/circles/${groupId}/members/${memberId}`);
+  return res.data;
+};
+
 export const overrideCirclePayout = async (groupId) => {
   const res = await api.post(`/admin/circles/${groupId}/payout-override`);
+  return res.data;
+};
+
+export const adminMarkTransactionStatus = async (txId, newStatus) => {
+  const res = await api.post(`/admin/transactions/${txId}/mark-status`, null, {
+    params: { new_status: newStatus }
+  });
   return res.data;
 };
 

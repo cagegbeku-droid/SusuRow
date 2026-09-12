@@ -196,11 +196,18 @@ def get_admin_metrics(
     platform_fees = round(total_volume * 0.0120, 2)
     net_revenue = round(gateway_fees + commission_fees + platform_fees, 2)
 
-    # 3. User Demographics & KYC Funnel
-    total_savers = db.query(User).count()
-    verified_savers = db.query(User).filter(User.kyc_status == KYCStatus.VERIFIED.value).count()
-    pending_kyc = db.query(User).filter(User.kyc_status == KYCStatus.PENDING.value).count()
+    # 3. User Demographics & KYC Funnel (Strictly excluding executive accounts)
+    saver_filter = (
+        (User.is_admin == False) & 
+        (User.phone_number != "0599360626") & 
+        (~User.email.ilike("%coratech%")) & 
+        (~User.email.ilike("%executive%"))
+    )
+    total_savers = db.query(User).filter(saver_filter).count()
+    verified_savers = db.query(User).filter(saver_filter, User.kyc_status == KYCStatus.VERIFIED.value).count()
+    pending_kyc = db.query(User).filter(saver_filter, User.kyc_status == KYCStatus.PENDING.value).count()
     unverified_savers = db.query(User).filter(
+        saver_filter,
         or_(User.kyc_status == KYCStatus.UNVERIFIED.value, User.kyc_status == None)
     ).count()
 
@@ -259,8 +266,13 @@ def list_admin_users(
     db: Session = Depends(get_db),
     admin: User = Depends(get_admin_user)
 ):
-    """Returns paginated, searchable savers list for KYC moderation and risk intervention."""
-    q = db.query(User)
+    """Returns paginated, searchable savers list for KYC moderation and risk intervention (strictly excludes executive accounts)."""
+    q = db.query(User).filter(
+        User.is_admin == False,
+        User.phone_number != "0599360626",
+        ~User.email.ilike("%coratech%"),
+        ~User.email.ilike("%executive%")
+    )
 
     if kyc_status and kyc_status != "ALL":
         q = q.filter(User.kyc_status == kyc_status)
@@ -637,10 +649,88 @@ def override_circle_payout(
     }
 
 
+@router.post("/circles/{group_id}/toggle-status")
+def toggle_circle_status(
+    group_id: str,
+    target_status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """Toggles or sets the operational status of a savings circle (e.g. ACTIVE <-> PAUSED)."""
+    group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Circle not found.")
+
+    if target_status:
+        group.status = target_status.upper()
+    else:
+        group.status = "PAUSED" if group.status == "ACTIVE" else "ACTIVE"
+
+    db.commit()
+    return {
+        "success": True,
+        "status": group.status,
+        "message": f"Circle '{group.name}' status set to {group.status}."
+    }
+
+
+@router.post("/circles/{group_id}/members/{member_id}/toggle-paid")
+def toggle_circle_member_paid(
+    group_id: str,
+    member_id: str,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """Admin override to toggle whether a member has paid for the current rotation round."""
+    member = db.query(GroupMember).filter(
+        GroupMember.id == member_id,
+        GroupMember.group_id == group_id
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found in circle.")
+
+    member.has_paid_current_round = not member.has_paid_current_round
+    db.commit()
+    return {
+        "success": True,
+        "has_paid_current_round": member.has_paid_current_round,
+        "message": f"Member {member.full_name} payment status updated to {'PAID' if member.has_paid_current_round else 'UNPAID'}."
+    }
+
+
+@router.delete("/circles/{group_id}/members/{member_id}")
+def remove_circle_member(
+    group_id: str,
+    member_id: str,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """Removes a defaulting or test member from a savings circle."""
+    group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Circle not found.")
+
+    member = db.query(GroupMember).filter(
+        GroupMember.id == member_id,
+        GroupMember.group_id == group_id
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found in circle.")
+
+    member_name = member.full_name
+    db.delete(member)
+    db.commit()
+    return {
+        "success": True,
+        "message": f"Member {member_name} removed from circle '{group.name}'."
+    }
+
+
 @router.get("/transactions")
 def list_admin_transactions(
     query: Optional[str] = None,
     tx_type: Optional[str] = "ALL",
+    status_filter: Optional[str] = "ALL",
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
@@ -651,11 +741,14 @@ def list_admin_transactions(
 
     if tx_type in ["ALL", "CONTRIBUTION"]:
         cp_q = db.query(ContributionPayment).join(SusuGroup, ContributionPayment.group_id == SusuGroup.id)
+        if status_filter and status_filter != "ALL":
+            cp_q = cp_q.filter(ContributionPayment.status == status_filter.upper())
         if query:
             clean = query.strip()
             cp_q = cp_q.filter(
                 or_(
                     ContributionPayment.transaction_reference.ilike(f"%{clean}%"),
+                    ContributionPayment.sender_phone.ilike(f"%{clean}%"),
                     SusuGroup.name.ilike(f"%{clean}%")
                 )
             )
@@ -667,13 +760,16 @@ def list_admin_transactions(
                 "group_name": cp.group.name if cp.group else "Group",
                 "group_id": cp.group_id,
                 "amount": cp.amount,
-                "provider": cp.momo_provider,
-                "status": cp.status,
+                "provider": cp.momo_provider or "MTN",
+                "sender_phone": cp.sender_phone or (cp.member.phone_number if cp.member else "Saver"),
+                "status": cp.status or "SUCCESS",
                 "created_at": cp.paid_at.isoformat() if cp.paid_at else None
             })
 
     if tx_type in ["ALL", "PAYOUT"]:
         pd_q = db.query(PayoutDisbursement).join(SusuGroup, PayoutDisbursement.group_id == SusuGroup.id)
+        if status_filter and status_filter != "ALL":
+            pd_q = pd_q.filter(PayoutDisbursement.status == status_filter.upper())
         if query:
             clean = query.strip()
             pd_q = pd_q.filter(
@@ -691,9 +787,10 @@ def list_admin_transactions(
                 "group_name": pd.group.name if pd.group else "Group",
                 "group_id": pd.group_id,
                 "amount": pd.amount,
-                "provider": pd.momo_provider,
+                "provider": pd.momo_provider or "MTN",
+                "sender_phone": pd.recipient_phone,
                 "recipient_phone": pd.recipient_phone,
-                "status": pd.status,
+                "status": pd.status or "SUCCESS",
                 "created_at": pd.disbursed_at.isoformat() if pd.disbursed_at else None
             })
 
@@ -709,20 +806,53 @@ def reconcile_transaction(
     db: Session = Depends(get_db),
     admin: User = Depends(get_admin_user)
 ):
-    """Manually marks a disputed or delayed MoMo transaction as SUCCESS."""
+    """Manually marks a disputed or delayed MoMo transaction as SUCCESS and syncs member round payment."""
     cp = db.query(ContributionPayment).filter(ContributionPayment.id == tx_id).first()
     if cp:
         cp.status = PaymentStatus.SUCCESS.value
+        if cp.member:
+            cp.member.has_paid_current_round = True
         db.commit()
-        return {"success": True, "message": f"Payment {cp.transaction_reference} reconciled as SUCCESS."}
+        return {"success": True, "message": f"Payment {cp.transaction_reference} confirmed as SUCCESS."}
 
     pd = db.query(PayoutDisbursement).filter(PayoutDisbursement.id == tx_id).first()
     if pd:
         pd.status = PaymentStatus.SUCCESS.value
+        if pd.member:
+            pd.member.has_received_payout = True
         db.commit()
-        return {"success": True, "message": f"Payout {pd.transaction_reference} reconciled as SUCCESS."}
+        return {"success": True, "message": f"Payout {pd.transaction_reference} confirmed as SUCCESS."}
 
-    raise HTTPException(status_code=404, detail="Transaction not found.")
+    raise HTTPException(status_code=404, detail="Transaction record not found.")
+
+
+@router.post("/transactions/{tx_id}/mark-status")
+def mark_transaction_status(
+    tx_id: str,
+    new_status: str = Query(..., regex="^(SUCCESS|PENDING|FAILED|CANCELLED)$"),
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """Directly sets transaction status (SUCCESS, PENDING, FAILED, CANCELLED) with ledger reconciliation."""
+    cp = db.query(ContributionPayment).filter(ContributionPayment.id == tx_id).first()
+    if cp:
+        cp.status = new_status
+        if cp.member and new_status == "SUCCESS":
+            cp.member.has_paid_current_round = True
+        elif cp.member and new_status in ["FAILED", "CANCELLED"]:
+            cp.member.has_paid_current_round = False
+        db.commit()
+        return {"success": True, "message": f"Payment status set to {new_status}."}
+
+    pd = db.query(PayoutDisbursement).filter(PayoutDisbursement.id == tx_id).first()
+    if pd:
+        pd.status = new_status
+        if pd.member and new_status == "SUCCESS":
+            pd.member.has_received_payout = True
+        db.commit()
+        return {"success": True, "message": f"Payout status set to {new_status}."}
+
+    raise HTTPException(status_code=404, detail="Transaction record not found.")
 
 
 @router.post("/broadcast-sms")

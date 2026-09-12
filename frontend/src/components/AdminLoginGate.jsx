@@ -5,7 +5,7 @@ import AdminDashboardPage from '../pages/AdminDashboardPage';
 
 export const AdminLoginGate = ({ onBack }) => {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    return sessionStorage.getItem('susurow_admin_auth') === 'true' && Boolean(sessionStorage.getItem('susurow_admin_token') || localStorage.getItem('susurow_admin_token'));
+    return sessionStorage.getItem('susurow_admin_auth') === 'true' && Boolean(sessionStorage.getItem('susurow_admin_token'));
   });
 
   const [adminUsername, setAdminUsername] = useState(() => {

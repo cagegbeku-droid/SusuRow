@@ -16,7 +16,10 @@ import {
   ArrowDownRight,
   Send,
   Lock,
-  UserCheck
+  UserCheck,
+  Pause,
+  Play,
+  Award
 } from 'lucide-react';
 import {
   getAdminMetrics,
@@ -27,10 +30,13 @@ import {
   getAdminTransactions,
   adminDeleteCircle,
   getAdminTreasury,
-  adminWithdrawRevenue
+  adminWithdrawRevenue,
+  reconcileTransaction,
+  adminMarkTransactionStatus
 } from '../api/client';
 import { ChangeAdminCredentialsModal } from '../components/ChangeAdminCredentialsModal';
 import { AdminUserSupportModal } from '../components/AdminUserSupportModal';
+import { AdminCircleManageModal } from '../components/AdminCircleManageModal';
 
 export default function AdminDashboardPage({ onBack, onLockSession }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'circles' | 'users' | 'transactions'
@@ -66,6 +72,8 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
   const [circles, setCircles] = useState([]);
   const [circleSearch, setCircleSearch] = useState('');
   const [circlesLoading, setCirclesLoading] = useState(false);
+  const [selectedCircleForManage, setSelectedCircleForManage] = useState(null);
+  const [circleManageModalOpen, setCircleManageModalOpen] = useState(false);
 
   const [users, setUsers] = useState([]);
   const [userSearch, setUserSearch] = useState('');
@@ -75,12 +83,40 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
 
   const [transactions, setTransactions] = useState([]);
   const [txSearch, setTxSearch] = useState('');
+  const [txStatusFilter, setTxStatusFilter] = useState('ALL');
   const [txLoading, setTxLoading] = useState(false);
 
   const notify = (msg, type = 'success') => {
     setActionNotice({ msg, type });
     setTimeout(() => setActionNotice(null), 4000);
   };
+
+  // Auto-lock executive portal after 15 minutes of inactivity
+  useEffect(() => {
+    let timeoutId;
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (onLockSession) {
+          onLockSession();
+        }
+      }, 15 * 60 * 1000); // 15 minutes
+    };
+
+    resetTimer();
+    window.addEventListener('mousemove', resetTimer);
+    window.addEventListener('keydown', resetTimer);
+    window.addEventListener('touchstart', resetTimer);
+    window.addEventListener('click', resetTimer);
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('keydown', resetTimer);
+      window.removeEventListener('touchstart', resetTimer);
+      window.removeEventListener('click', resetTimer);
+    };
+  }, [onLockSession]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -105,7 +141,7 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
       setCircles(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load circles:', err);
-      notify(err?.response?.data?.detail || 'Failed to load savings groups', 'error');
+      notify(err?.response?.data?.detail || 'Failed to load savings circles', 'error');
     } finally {
       setCirclesLoading(false);
     }
@@ -127,7 +163,11 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
   const loadTransactions = useCallback(async () => {
     setTxLoading(true);
     try {
-      const data = await getAdminTransactions({ query: txSearch || undefined, limit: 100 });
+      const data = await getAdminTransactions({ 
+        query: txSearch || undefined, 
+        status_filter: txStatusFilter !== 'ALL' ? txStatusFilter : undefined,
+        limit: 100 
+      });
       setTransactions(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to load transactions:', err);
@@ -135,7 +175,19 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
     } finally {
       setTxLoading(false);
     }
-  }, [txSearch]);
+  }, [txSearch, txStatusFilter]);
+
+  const handleReconcileTx = async (tx) => {
+    if (!window.confirm(`Confirm payment reference "${tx.reference}" as SUCCESS?`)) return;
+    try {
+      const res = await reconcileTransaction(tx.id);
+      notify(res?.message || 'Payment confirmed and reconciled as SUCCESS.');
+      loadTransactions();
+      loadData();
+    } catch (err) {
+      notify(err?.response?.data?.detail || 'Failed to reconcile payment.', 'error');
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -503,13 +555,26 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                       <span className="text-[11px] text-slate-500">
                         Rotation: <strong>{c.rotation_type || 'Sequential'}</strong>
                       </span>
-                      <button
-                        onClick={() => handleDeleteCircle(c)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                        title="Permanently Delete Circle"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => {
+                            setSelectedCircleForManage(c);
+                            setCircleManageModalOpen(true);
+                          }}
+                          className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-[11px] font-bold cursor-pointer inline-flex items-center gap-1 shadow-xs transition-colors"
+                          title="Manage Circle & Members"
+                        >
+                          <Users size={12} />
+                          <span>Manage Circle</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCircle(c)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          title="Permanently Delete Circle"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -650,7 +715,7 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search payments by phone or reference..."
+                  placeholder="Search payments by phone, circle name, or reference..."
                   value={txSearch}
                   onChange={(e) => setTxSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20"
@@ -663,6 +728,28 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                 <RefreshCw size={14} className={txLoading ? 'animate-spin' : ''} />
                 <span>Refresh</span>
               </button>
+            </div>
+
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              {[
+                { id: 'ALL', label: 'All Payments' },
+                { id: 'SUCCESS', label: 'Confirmed / Successful' },
+                { id: 'PENDING', label: 'Pending Approval' },
+                { id: 'FAILED', label: 'Failed / Disputed' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setTxStatusFilter(tab.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    txStatusFilter === tab.id
+                      ? 'bg-sky-600 text-white shadow-xs'
+                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
 
             {txLoading ? (
@@ -679,18 +766,29 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold">
                       <tr>
+                        <th className="p-3.5">Type</th>
                         <th className="p-3.5">Saver Phone</th>
                         <th className="p-3.5">Circle</th>
                         <th className="p-3.5">Amount</th>
                         <th className="p-3.5">Reference</th>
                         <th className="p-3.5">Status</th>
+                        <th className="p-3.5 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                       {transactions.map(t => (
                         <tr key={t.id || t.reference} className="hover:bg-slate-50/60">
+                          <td className="p-3.5">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                              t.type === 'CONTRIBUTION'
+                                ? 'bg-sky-50 text-sky-800 border-sky-200'
+                                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            }`}>
+                              {t.type || 'PAYMENT'}
+                            </span>
+                          </td>
                           <td className="p-3.5 font-mono font-bold text-slate-900">
-                            {t.sender_phone || t.phone_number || 'Saver'}
+                            {t.sender_phone || t.recipient_phone || t.phone_number || 'Saver'}
                           </td>
                           <td className="p-3.5">
                             {t.group_name || 'Circle'}
@@ -702,9 +800,26 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                             {t.reference || t.id}
                           </td>
                           <td className="p-3.5">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              t.status === 'SUCCESS'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : t.status === 'PENDING'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-red-50 text-red-800 border-red-200'
+                            }`}>
                               {t.status || 'SUCCESS'}
                             </span>
+                          </td>
+                          <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                            {t.status !== 'SUCCESS' && (
+                              <button
+                                onClick={() => handleReconcileTx(t)}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold cursor-pointer transition-colors shadow-xs"
+                                title="Manually verify and confirm this transaction as SUCCESS"
+                              >
+                                Confirm Payment
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -808,6 +923,24 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
         onUserUpdated={(updatedUser) => {
           setUsers(prev => prev.map(u => u.id === updatedUser.id ? { ...u, ...updatedUser } : u));
           notify('Saver account updated and synced successfully.');
+        }}
+      />
+
+      {/* Circle Management Modal */}
+      <AdminCircleManageModal
+        isOpen={circleManageModalOpen}
+        circle={selectedCircleForManage}
+        onClose={() => {
+          setCircleManageModalOpen(false);
+          setSelectedCircleForManage(null);
+        }}
+        onCircleUpdated={(updatedCircle) => {
+          setCircles(prev => prev.map(c => c.id === updatedCircle.id ? { ...c, ...updatedCircle } : c));
+          loadData();
+        }}
+        onCircleDeleted={(deletedId) => {
+          setCircles(prev => prev.filter(c => c.id !== deletedId));
+          loadData();
         }}
       />
 

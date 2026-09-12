@@ -49,12 +49,12 @@ export default function MobileBottomNav({
       icon: User,
       target: 'profile'
     },
-    {
+    ...(isAuthenticated ? [{
       id: 'settings',
       label: 'Settings',
       icon: Settings,
       target: 'settings'
-    }
+    }] : [])
   ];
 
   return (

@@ -266,9 +266,30 @@ function AppContent() {
 
   // Standalone Executive Management Portal (Completely separated from public shell)
   if (currentTab === 'admin') {
+    // Under no circumstance should a public saver access or see the executive page
+    if (isAuthenticated && !user?.is_admin) {
+      return (
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-slate-200 shadow-sm text-center space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
+              <AlertTriangle size={24} />
+            </div>
+            <h2 className="text-lg font-bold text-slate-900">404 - Page Not Found</h2>
+            <p className="text-xs text-slate-500 font-medium">The requested destination does not exist or you do not have permission to view it.</p>
+            <button
+              onClick={() => navigateTo('marketplace')}
+              className="w-full py-2.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer"
+            >
+              Return to Marketplace
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900">
-        <AdminLoginGate onBack={handleBack} />
+        <AdminLoginGate onBack={() => navigateTo('marketplace')} />
       </div>
     );
   }
@@ -278,7 +299,7 @@ function AppContent() {
       
       {/* App Sidebar (Drawer) */}
       <AppSidebar
-        isOpen={isSidebarOpen}
+        isOpen={isSidebarOpen && isAuthenticated}
         onClose={() => setIsSidebarOpen(false)}
         activeView={currentTab}
         setActiveView={(tab) => {
