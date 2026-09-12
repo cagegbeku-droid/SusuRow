@@ -28,7 +28,6 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
 
   // Form State
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
   const [contributionAmount, setContributionAmount] = useState('10');
   const [frequency, setFrequency] = useState('WEEKLY');
   const [membersCount, setMembersCount] = useState(5);
@@ -59,9 +58,10 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
 
     setLoading(true);
     try {
+      const autoDesc = `${frequency.charAt(0) + frequency.slice(1).toLowerCase()} Susu rotation group. Each member contributes GH₵${numAmount.toFixed(2)} per round (${rotationType.toLowerCase()} payout rotation).`;
       const res = await createGroup({
         name: name.trim(),
-        description: description.trim() || undefined,
+        description: autoDesc,
         is_private: isPrivate,
         contribution_amount: Number(numAmount.toFixed(2)),
         frequency: frequency,
@@ -135,19 +135,6 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm font-bold text-slate-900 placeholder-slate-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-900 mb-1">
-                  Group Description / Objective
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Savings goal (e.g. Personal savings, emergency fund)..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-500 text-xs font-medium text-slate-900 placeholder-slate-400"
                 />
               </div>
 

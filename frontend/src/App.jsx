@@ -18,6 +18,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { AdminLoginGate } from './components/AdminLoginGate';
 import { InstallPwaBanner } from './components/InstallPwaBanner';
 import { InstallAppModal } from './components/InstallAppModal';
+import { SplashScreen } from './components/SplashScreen';
 import { OfflineNotice } from './components/OfflineNotice';
 import { getPlatformStats, getGroupByCode } from './api/client';
 import { App as CapApp } from '@capacitor/app';
@@ -504,6 +505,9 @@ function AppContent() {
         isOpen={isInstallModalOpen} 
         onClose={() => setIsInstallModalOpen(false)} 
       />
+
+      {/* App Startup Splash Screen with Logo and SusuRow Branding */}
+      <SplashScreen />
 
     </div>
   );

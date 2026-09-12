@@ -15,17 +15,9 @@ import {
 export const InstallAppModal = ({ isOpen, onClose }) => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [deviceType, setDeviceType] = useState('android'); // 'android' | 'ios' | 'desktop'
-  const [isInstalled, setIsInstalled] = useState(false);
   const [activeTab, setActiveTab] = useState('apk'); // 'apk' | 'pwa'
 
   useEffect(() => {
-    // Check if already running in standalone PWA or Capacitor native app
-    const isCapacitor = !!window.Capacitor || window.location.hostname === 'localhost' || window.location.protocol === 'capacitor:' || window.location.protocol === 'ionic:';
-    const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
-    if (isCapacitor || isStandalone) {
-      setIsInstalled(true);
-    }
-
     // Detect Device Type
     const ua = window.navigator.userAgent.toLowerCase();
     if (/iphone|ipad|ipod/.test(ua)) {
@@ -103,72 +95,56 @@ export const InstallAppModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {isInstalled ? (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-2">
-            <CheckCircle2 size={28} className="text-emerald-600 mx-auto" />
-            <h4 className="text-sm font-bold text-emerald-900">SusuRow is Already Installed!</h4>
-            <p className="text-xs text-emerald-700">
-              You are currently viewing SusuRow inside your installed application. All automated MoMo payouts and offline savings features are active.
-            </p>
-            <button
-              onClick={onClose}
-              className="mt-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl cursor-pointer transition-all shadow-xs"
-            >
-              Continue to Application
-            </button>
-          </div>
-        ) : (
-          <>
-            {/* Tab Selection */}
-            <div className="flex items-center p-1 bg-slate-100 rounded-2xl gap-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab('apk')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  activeTab === 'apk'
-                    ? 'bg-white text-sky-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Download size={14} />
-                <span>Android APK</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('pwa')}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                  activeTab === 'pwa'
-                    ? 'bg-white text-sky-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Smartphone size={14} />
-                <span>{deviceType === 'ios' ? 'iPhone / iOS' : 'Add to Home'}</span>
-              </button>
-            </div>
+        {/* Tab Selection */}
+        <div className="flex rounded-xl bg-slate-100 p-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('apk')}
+            className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'apk'
+                ? 'bg-white text-sky-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Smartphone size={14} />
+            <span>Android APK</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('pwa')}
+            className={`flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'pwa'
+                ? 'bg-white text-sky-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Share2 size={14} />
+            <span>Web App / PWA</span>
+          </button>
+        </div>
 
-            {/* Tab 1: Direct Android APK */}
-            {activeTab === 'apk' && (
-              <div className="space-y-4 animate-in fade-in duration-150">
-                <div className="p-4 rounded-2xl bg-sky-50/60 border border-sky-200/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-sky-900">Direct Android APK (Recommended)</span>
-                    <span className="text-[10px] font-mono font-bold bg-white text-sky-800 px-2 py-0.5 rounded-md border border-sky-200">
-                      5.5 MB
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Download the official native SusuRow Android app directly to your phone. Compatible with all Android smartphones (Samsung, Tecno, Infinix, Xiaomi, etc.).
-                  </p>
-                  <a
-                    href={apkUrl}
-                    download="SusuRow.apk"
-                    className="w-full py-3 px-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer text-center block"
-                  >
-                    <Download size={16} />
-                    <span>Download SusuRow APK Now</span>
-                  </a>
-                </div>
+        {/* Tab 1: Direct Android APK */}
+        {activeTab === 'apk' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <div className="p-4 rounded-2xl bg-sky-50/60 border border-sky-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-sky-900">Direct Android APK (Recommended)</span>
+                <span className="text-[10px] font-mono font-bold bg-white text-sky-800 px-2 py-0.5 rounded-md border border-sky-200">
+                  5.5 MB
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Download the official native SusuRow Android app directly to your phone. Compatible with all Android smartphones (Samsung, Tecno, Infinix, Xiaomi, etc.).
+              </p>
+              <a
+                href={apkUrl}
+                download="SusuRow.apk"
+                className="w-full py-3 px-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-all active:scale-98 cursor-pointer text-center block"
+              >
+                <Download size={16} />
+                <span>Download SusuRow APK Now</span>
+              </a>
+            </div>
 
                 {/* 3 Step Installation Guidance */}
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2.5">
@@ -257,8 +233,6 @@ export const InstallAppModal = ({ isOpen, onClose }) => {
               <ShieldCheck size={14} className="text-emerald-600" />
               <span>100% Virus-Free • Verified by Coratech Global Enterprise</span>
             </div>
-          </>
-        )}
       </div>
     </div>
   );
