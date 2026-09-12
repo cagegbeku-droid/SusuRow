@@ -93,6 +93,46 @@ export const UserProvider = ({ children }) => {
     validateAuth();
   }, [token]);
 
+  // Handle Google OAuth 2.0 Redirect Hash callback (works in both Web and native Android WebView without gsi/transform)
+  useEffect(() => {
+    const handleOAuthHash = async () => {
+      try {
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token=')) {
+          const params = new URLSearchParams(hash.replace(/^#/, ''));
+          const accessToken = params.get('access_token');
+          if (accessToken) {
+            // Clean up the URL hash immediately
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            setLoading(true);
+
+            const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            if (userRes.ok) {
+              const userData = await userRes.json();
+              if (userData && userData.email) {
+                await handleGoogleAuth({
+                  email: userData.email,
+                  name: userData.name || userData.given_name || 'Google User',
+                  picture: userData.picture
+                });
+              }
+            }
+          }
+        } else if (hash && hash.includes('error=')) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      } catch (err) {
+        console.error('Google OAuth hash processing error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    handleOAuthHash();
+  }, []);
+
   // 1. Password Registration
   const registerWithPassword = async (payload) => {
     const res = await apiRegister(payload);

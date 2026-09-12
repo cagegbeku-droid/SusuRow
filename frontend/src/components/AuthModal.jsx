@@ -96,80 +96,21 @@ export default function AuthModal({ isOpen, onClose }) {
     }
   };
 
-  // Google OAuth 2.0 Sign In
-  // Google OAuth 2.0 Sign In
+  // Google OAuth 2.0 Sign In (Standard Universal Flow - works on Web, iOS, and Android WebViews without gsi/transform)
   const handleGoogleClick = () => {
     setError(null);
     setGoogleLoading(true);
 
-    const initClient = () => {
-      try {
-        const tokenClient = window.google.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_CLIENT_ID,
-          scope: 'email profile openid',
-          callback: async (tokenResponse) => {
-            if (tokenResponse?.error) {
-              setGoogleLoading(false);
-              setError(`Google Sign-In: ${tokenResponse.error_description || tokenResponse.error}`);
-              return;
-            }
-            if (tokenResponse && tokenResponse.access_token) {
-              try {
-                const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                });
-                if (!userRes.ok) {
-                  throw new Error('Could not retrieve Google profile.');
-                }
-                const userData = await userRes.json();
-                if (userData && userData.email) {
-                  await loginWithGoogle({
-                    email: userData.email,
-                    name: userData.name || userData.given_name || 'Google User',
-                    picture: userData.picture
-                  });
-                  onClose();
-                } else {
-                  setError('Google profile did not return an email address.');
-                }
-              } catch (err) {
-                console.error('Google Auth Error:', err);
-                const msg = err.response?.data?.detail || err.message || 'Google sign-in failed. Please try again.';
-                setError(msg);
-              } finally {
-                setGoogleLoading(false);
-              }
-            }
-          }
-        });
-        tokenClient.requestAccessToken({ prompt: 'select_account' });
-      } catch (err) {
-        console.error('OAuth Popup error:', err);
-        setGoogleLoading(false);
-        setError('Unable to open Google sign-in window. Please sign in with your phone number.');
-      }
-    };
-
-    if (window.google?.accounts?.oauth2) {
-      initClient();
-    } else {
-      const script = document.createElement('script');
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = () => {
-        if (window.google?.accounts?.oauth2) {
-          initClient();
-        } else {
-          setGoogleLoading(false);
-          setError('Google Sign-In is initializing. Please wait a moment or sign in with your phone.');
-        }
-      };
-      script.onerror = () => {
-        setGoogleLoading(false);
-        setError('Could not reach Google authentication services. Please sign in with phone.');
-      };
-      document.head.appendChild(script);
+    try {
+      const redirectUri = window.location.origin;
+      const scope = encodeURIComponent('email profile openid');
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${scope}&prompt=select_account`;
+      
+      window.location.href = authUrl;
+    } catch (err) {
+      console.error('OAuth launch error:', err);
+      setGoogleLoading(false);
+      setError('Could not open Google sign in. Please sign in with your phone number.');
     }
   };
 
