@@ -253,6 +253,15 @@ function AppContent() {
     );
   }
 
+  // Standalone Executive Management Portal (Completely separated from public shell)
+  if (currentTab === 'admin') {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900">
+        <AdminLoginGate onBack={handleBack} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-slate-900 pb-20 md:pb-0">
       
@@ -371,10 +380,6 @@ function AppContent() {
               onOpenReferralModal={handleOpenReferralModal}
               onOpenCalculator={() => setIsCalculatorModalOpen(true)}
             />
-          )}
-
-          {currentTab === 'admin' && (
-            <AdminLoginGate onBack={handleBack} />
           )}
         </main>
 

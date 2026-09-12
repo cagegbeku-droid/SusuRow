@@ -26,6 +26,16 @@ const api = axios.create({
 
 // Attach JWT Bearer token automatically if present
 api.interceptors.request.use((config) => {
+  // If request targets an admin endpoint, prioritize dedicated admin session token
+  if (config.url && config.url.includes('/admin')) {
+    const adminToken = sessionStorage.getItem('susurow_admin_token') || localStorage.getItem('susurow_admin_token');
+    if (adminToken) {
+      config.headers.Authorization = `Bearer ${adminToken}`;
+      return config;
+    }
+  }
+
+  // Public saver requests use standard auth token
   const token = localStorage.getItem('susurow_auth_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

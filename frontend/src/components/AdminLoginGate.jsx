@@ -5,7 +5,7 @@ import AdminDashboardPage from '../pages/AdminDashboardPage';
 
 export const AdminLoginGate = ({ onBack }) => {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    return sessionStorage.getItem('susurow_admin_auth') === 'true' && Boolean(localStorage.getItem('susurow_auth_token'));
+    return sessionStorage.getItem('susurow_admin_auth') === 'true' && Boolean(sessionStorage.getItem('susurow_admin_token') || localStorage.getItem('susurow_admin_token'));
   });
 
   const [adminUsername, setAdminUsername] = useState(() => {
@@ -35,12 +35,25 @@ export const AdminLoginGate = ({ onBack }) => {
       });
 
       if (res && res.access_token) {
-        // Save auth token to localStorage so all admin APIs are fully authorized
-        localStorage.setItem('susurow_auth_token', res.access_token);
-        if (res.user) {
-          localStorage.setItem('susurow_auth_user', JSON.stringify(res.user));
-        }
+        // Save to dedicated admin storage ONLY - NEVER pollute public saver token or user
+        sessionStorage.setItem('susurow_admin_token', res.access_token);
         sessionStorage.setItem('susurow_admin_auth', 'true');
+        if (res.user) {
+          sessionStorage.setItem('susurow_admin_user', JSON.stringify(res.user));
+        }
+
+        // Clean any accidental legacy admin account from public saver storage
+        try {
+          const publicUserStr = localStorage.getItem('susurow_auth_user');
+          if (publicUserStr) {
+            const parsedPublic = JSON.parse(publicUserStr);
+            if (parsedPublic.is_admin || parsedPublic.full_name?.includes('Executive')) {
+              localStorage.removeItem('susurow_auth_user');
+              localStorage.removeItem('susurow_auth_token');
+            }
+          }
+        } catch (e) {}
+
         setIsAdminAuthenticated(true);
       } else {
         throw new Error('No authentication token received.');
@@ -56,6 +69,8 @@ export const AdminLoginGate = ({ onBack }) => {
 
   const handleLockSession = () => {
     sessionStorage.removeItem('susurow_admin_auth');
+    sessionStorage.removeItem('susurow_admin_token');
+    sessionStorage.removeItem('susurow_admin_user');
     setIsAdminAuthenticated(false);
     if (onBack) onBack();
   };

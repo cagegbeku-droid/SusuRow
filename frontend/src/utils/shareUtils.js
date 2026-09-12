@@ -3,7 +3,9 @@
  * Ensures mobile app users never share 'http://localhost' to friends or family.
  */
 
-export const PUBLIC_APP_DOMAIN = 'https://susurow.onrender.com';
+export const PUBLIC_APP_DOMAIN = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APP_DOMAIN) 
+  ? import.meta.env.VITE_APP_DOMAIN 
+  : 'https://susurow.com';
 
 export const getPublicOrigin = () => {
   if (typeof window !== 'undefined') {

@@ -2006,7 +2006,7 @@ export const ProfilePage = ({
   // MAIN PROFILE MENU LIST
   // ==========================================
   return (
-    <div className="max-w-md mx-auto py-4 px-4 space-y-6 animate-in fade-in duration-150 pb-20">
+    <div className="max-w-3xl mx-auto py-4 px-4 sm:px-6 space-y-6 animate-in fade-in duration-150 pb-20">
       
       {/* Top Bar with Back Button */}
       <div className="flex items-center justify-between">

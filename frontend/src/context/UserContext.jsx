@@ -17,6 +17,12 @@ export const UserProvider = ({ children }) => {
       const saved = localStorage.getItem('susurow_auth_user');
       if (!saved) return null;
       const parsed = JSON.parse(saved);
+      // Executive management is not a public member
+      if (parsed?.is_admin || parsed?.username === '0599360626' || parsed?.full_name?.includes('Executive')) {
+        localStorage.removeItem('susurow_auth_user');
+        localStorage.removeItem('susurow_auth_token');
+        return null;
+      }
       const pic = parsed?.avatar_url || parsed?.profile_image_url || parsed?.picture;
       if (pic) {
         parsed.avatar_url = pic;
@@ -59,6 +65,13 @@ export const UserProvider = ({ children }) => {
     if (savedToken) {
       try {
         const profile = await getProfile();
+        if (profile?.is_admin || profile?.username === '0599360626' || profile?.full_name?.includes('Executive')) {
+          localStorage.removeItem('susurow_auth_user');
+          localStorage.removeItem('susurow_auth_token');
+          setUser(null);
+          setToken(null);
+          return null;
+        }
         let savedUser = null;
         try {
           const savedStr = localStorage.getItem('susurow_auth_user');
