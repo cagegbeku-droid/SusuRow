@@ -81,11 +81,43 @@ def auto_migrate_schema():
             results.append(f"Notice {table_name}.{col_name}: {str(e)}")
     return results
 
+def ensure_default_admin():
+    """Guarantees that the Executive Administrator account (0599360626) is always active in the database."""
+    try:
+        from database import SessionLocal
+        from models import User
+        from auth import hash_password
+        db = SessionLocal()
+        ADMIN_PHONES = {"0599360626", "233599360626", "+233599360626"}
+        admin = db.query(User).filter(User.phone_number.in_(ADMIN_PHONES)).first()
+        if not admin:
+            admin = User(
+                full_name="Coratech Global Executive",
+                phone_number="0599360626",
+                username="coratech_admin",
+                email="admin@coratechglobal.com",
+                is_admin=True,
+                kyc_status="VERIFIED",
+                hashed_password=hash_password("SusuRowAdmin2026!"),
+                momo_provider="MTN"
+            )
+            db.add(admin)
+            db.commit()
+            print("[Database]: Executive Administrator account (0599360626) auto-seeded.")
+        else:
+            if not admin.is_admin:
+                admin.is_admin = True
+                db.commit()
+        db.close()
+    except Exception as e:
+        print(f"[Admin Seed Notice]: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         auto_migrate_schema()
+        ensure_default_admin()
         print("[Database]: Tables and schema migrations verified successfully.")
     except Exception as e:
         print(f"[Database Startup Notice]: {e}")
