@@ -25,7 +25,8 @@ import {
   Star,
   MoreHorizontal,
   Play,
-  X
+  X,
+  UserPlus
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { 
@@ -554,6 +555,30 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
         </div>
       </div>
+
+      {/* ⏳ Amber Notice Banner (Only shown when recruiting; hidden once full or active) */}
+      {!isFull && !isCompleted && group.status === 'RECRUITING' && (
+        <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-3 sm:p-3.5 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-2xs animate-in fade-in">
+          <div className="flex items-center gap-2.5 text-amber-900 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200 shadow-2xs">
+              <Users size={16} />
+            </div>
+            <span className="font-semibold text-xs text-amber-950">
+              Recruiting: <strong>{group.enrolled_count}/{group.members_count}</strong>. Starts when it's <strong>{group.members_count}/{group.members_count}</strong>
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsShareModalOpen(true)}
+            className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ml-auto sm:ml-0"
+            title="Invite members to this group"
+          >
+            <UserPlus size={14} />
+            <span>Invite</span>
+          </button>
+        </div>
+      )}
 
       {/* ℹ️ Group Description & How It Works */}
       <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs space-y-3">
