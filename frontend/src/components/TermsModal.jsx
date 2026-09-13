@@ -169,18 +169,6 @@ export const TermsModal = ({ isOpen, onClose }) => {
                 <p className="text-[11px] text-slate-400 leading-relaxed">
                   SusuRow is developed, maintained, and operated by <strong>Coratech Global</strong>. Coratech Global delivers enterprise software engineering, FinTech infrastructure, and cloud security architecture.
                 </p>
-                <div className="pt-1 flex items-center justify-between text-[11px]">
-                  <span className="font-mono text-slate-400">coratechglobal.com</span>
-                  <a 
-                    href="https://coratechglobal.com" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sky-400 hover:underline inline-flex items-center gap-1 font-bold"
-                  >
-                    <span>Visit Website</span>
-                    <ExternalLink size={11} />
-                  </a>
-                </div>
               </div>
 
               {/* Payment Processing Partner */}

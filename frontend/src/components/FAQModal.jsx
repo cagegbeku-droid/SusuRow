@@ -167,7 +167,7 @@ export const FAQModal = ({ isOpen, onClose, onOpenLiveChat }) => {
               <span>0599360626</span>
             </a>
             <a
-              href="https://wa.me/233599360626?text=Hello%20Coratech%20Global%2C%20I%20have%20a%20question%20about%20SusuRow"
+              href="https://wa.me/233599360626?text=Hello%20SusuRow%20Support%2C%20I%20have%20a%20question%20about%20SusuRow"
               target="_blank"
               rel="noopener noreferrer"
               className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"

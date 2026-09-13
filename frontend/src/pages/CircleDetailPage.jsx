@@ -531,7 +531,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           </div>
 
           {/* Quick Metrics */}
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex items-center gap-6 shrink-0">
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 flex items-center justify-between sm:justify-start gap-4 sm:gap-6 w-full sm:w-auto">
             <div>
               <div className="text-[9px] uppercase font-bold text-slate-400">Total Payout</div>
               <div className="text-xl sm:text-2xl font-bold text-sky-600 font-mono">
@@ -568,23 +568,23 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
         <div className={group.description ? "pt-3 border-t border-slate-100" : ""}>
           <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">How This Susu Works</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <span className="font-bold text-slate-900 block">1. Equal Contribution</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-900 block">1. Contribute</span>
               <span className="text-slate-600 text-[11px] mt-0.5 block">
-                Each member contributes GH₵{group.contribution_amount} {group.frequency.toLowerCase()}.
+                GH₵{group.contribution_amount} {group.frequency.toLowerCase()} per member
               </span>
             </div>
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <span className="font-bold text-slate-900 block">2. Lump Sum Payout</span>
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-900 block">2. Payout</span>
               <span className="text-slate-600 text-[11px] mt-0.5 block">
-                Each round, 1 member receives the total payout of GH₵{group.total_pool}.
+                GH₵{group.total_pool} lump sum per round
               </span>
             </div>
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <span className="font-bold text-slate-900 block">3. Guaranteed Rotation</span>
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span className="font-bold text-slate-900 block">3. Complete</span>
               <span className="text-slate-600 text-[11px] mt-0.5 block">
-                Turns cycle until all {group.members_count} members receive their payout.
+                All {group.members_count} members receive payout
               </span>
             </div>
           </div>
@@ -593,11 +593,11 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
       {/* ⏳ Recruiting Notice */}
       {!isFull && !isCompleted && (
-        <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-3.5 text-xs flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-amber-900">
+        <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-3 text-xs flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-amber-900 min-w-0">
             <Users size={16} className="text-amber-700 shrink-0" />
-            <span>
-              Recruiting: <strong>{group.enrolled_count}/{group.members_count}</strong> members enrolled. All spots must be filled before rotation and contributions begin.
+            <span className="truncate">
+              Recruiting: <strong>{group.enrolled_count}/{group.members_count}</strong>. Starts when full.
             </span>
           </div>
           <button
@@ -629,22 +629,22 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
       {/* 🔄 Next Cycle Member Decision & Self-Determination Card */}
       {isCompleted && (
-        <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-50 rounded-3xl p-5 sm:p-6 border border-emerald-200/90 shadow-sm space-y-4 animate-in fade-in">
+        <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-50 rounded-3xl p-4 sm:p-6 border border-emerald-200/90 shadow-sm space-y-3 animate-in fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-600 text-white">
-                  <CheckCircle2 size={12} /> Cycle {group.cycle_number || 1} Completed
+                  <CheckCircle2 size={12} /> Cycle {group.cycle_number || 1} Complete
                 </span>
                 <span className="text-xs text-slate-500 font-bold">
-                  {group.members?.filter(m => m.next_cycle_opt_in === true).length} of {group.members?.length} opted in for Cycle {(group.cycle_number || 1) + 1}
+                  {group.members?.filter(m => m.next_cycle_opt_in === true).length}/{group.members?.length} opted in
                 </span>
               </div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                All members received their lump sum payout!
+              <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                All members received payouts!
               </h3>
               <p className="text-xs text-slate-600">
-                Each member decides for themselves whether to continue into the next cycle. Members who opt in retain their spots, while open seats will become available for new savers.
+                Choose whether to save in Cycle {(group.cycle_number || 1) + 1}. Open seats will be available for new savers.
               </p>
             </div>
 
@@ -653,28 +653,28 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
               <button
                 onClick={handleLaunchNextCycle}
                 disabled={actionLoading}
-                className="shrink-0 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                className="shrink-0 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
                 title={`Launch Cycle ${(group.cycle_number || 1) + 1}`}
               >
-                <RotateCw className="w-4 h-4" />
-                <span>Launch Cycle {(group.cycle_number || 1) + 1}</span>
+                <RotateCw className="w-3.5 h-3.5" />
+                <span>Launch Next Cycle</span>
               </button>
             )}
           </div>
 
           {/* Member's Personal Vote / Opt-in Decision */}
           {isEnrolled && (
-            <div className="bg-white/80 backdrop-blur-xs p-4 rounded-2xl border border-emerald-150 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="bg-white/80 backdrop-blur-xs p-3.5 rounded-2xl border border-emerald-150 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div>
                 <span className="text-xs font-bold text-slate-900 block">
-                  Do you want to participate in Cycle {(group.cycle_number || 1) + 1}?
+                  Participate in Cycle {(group.cycle_number || 1) + 1}?
                 </span>
                 <span className="text-[11px] text-slate-500">
                   {enrolledMember?.next_cycle_opt_in === true
-                    ? "✓ You confirmed: You are participating in the next cycle."
+                    ? "✓ You confirmed participation."
                     : enrolledMember?.next_cycle_opt_in === false
-                    ? "✕ You opted out: You will not join the next cycle."
-                    : "Please indicate whether you want to save again with this circle."}
+                    ? "✕ You opted out."
+                    : "Please indicate whether you want to continue."}
                 </span>
               </div>
 
@@ -682,28 +682,28 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                 <button
                   onClick={() => handleVoteNextCycle(true)}
                   disabled={actionLoading}
-                  className={`px-3.5 py-2 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-2xs ${
                     enrolledMember?.next_cycle_opt_in === true
                       ? 'bg-emerald-600 text-white ring-2 ring-emerald-400'
                       : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
                   }`}
                   title="Join Next Cycle"
                 >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>Join Cycle {(group.cycle_number || 1) + 1}</span>
+                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  <span>Join Next</span>
                 </button>
 
                 <button
                   onClick={() => handleVoteNextCycle(false)}
                   disabled={actionLoading}
-                  className={`px-3.5 py-2 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all cursor-pointer active:scale-95 shadow-2xs ${
                     enrolledMember?.next_cycle_opt_in === false
                       ? 'bg-red-600 text-white ring-2 ring-red-400'
                       : 'bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200'
                   }`}
                   title="Opt Out"
                 >
-                  <X className="w-4 h-4 stroke-[3]" />
+                  <X className="w-3.5 h-3.5 stroke-[3]" />
                   <span>Opt Out</span>
                 </button>
               </div>
@@ -713,25 +713,25 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
       )}
 
       {/* ⚡ Action Bar */}
-      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="text-xs text-slate-600 font-medium">
           {isCompleted ? (
-            <span className="font-bold text-slate-800">All cycle rounds are completed.</span>
+            <span className="font-bold text-slate-800">All cycle rounds completed.</span>
           ) : !isFull || group.status === 'RECRUITING' ? (
-            <span className="text-amber-800 font-medium flex items-center gap-2">
+            <span className="text-amber-800 font-medium flex items-center gap-1.5">
               <Users className="w-4 h-4 text-amber-600 shrink-0" />
-              Recruiting in progress ({group.enrolled_count}/{group.members_count} members). Round 1 contributions start once all seats are filled.
+              Recruiting ({group.enrolled_count}/{group.members_count}). Starts once full.
             </span>
           ) : !isEnrolled ? (
-            <span className="text-slate-700 font-medium">This group is active with {group.enrolled_count} members.</span>
+            <span className="text-slate-700 font-medium">Group active with {group.enrolled_count} members.</span>
           ) : enrolledMember?.has_paid_current_round ? (
             <span className="text-emerald-700 font-bold flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              Your contribution for Round {group.current_round} is complete.
+              Round {group.current_round} paid.
             </span>
           ) : (
             <span className="text-amber-700 font-bold">
-              Round {group.current_round} payment due: GH₵{group.contribution_amount}
+              Round {group.current_round}: GH₵{group.contribution_amount} due
             </span>
           )}
         </div>
@@ -741,7 +741,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             <button
               onClick={handleJoinCircle}
               disabled={actionLoading}
-              className="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
+              className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
             >
               <PlusCircle className="w-4 h-4 text-white" />
               <span>Join Circle</span>
@@ -752,10 +752,10 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           {group.status === 'ACTIVE' && isEnrolled && !enrolledMember?.has_paid_current_round && !isCompleted && (
             <button
               onClick={() => openMoMoModalForUser(enrolledMember, false)}
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-emerald-600/20"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-emerald-600/20"
             >
               <Smartphone className="w-4 h-4" />
-              <span>Pay GH₵{Number(group.contribution_amount).toFixed(2)}</span>
+              <span>Pay GH₵{Number(group.contribution_amount)}</span>
             </button>
           )}
         </div>
@@ -810,13 +810,151 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Responsive Mobile List View (Zero Horizontal Scrolling on phones) */}
+          <div className="block sm:hidden divide-y divide-slate-100">
+            {group.members?.length === 0 ? (
+              <div className="py-10 px-4 text-center">
+                <div className="max-w-xs mx-auto space-y-2.5">
+                  <div className="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center mx-auto border border-sky-100">
+                    <Users size={22} />
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900">No members yet</h4>
+                  <p className="text-[11px] text-slate-500">
+                    Join this circle and claim Turn #1!
+                  </p>
+                  {!isEnrolled && !isCompleted && (
+                    <button
+                      onClick={handleJoinCircle}
+                      disabled={actionLoading}
+                      className="px-4 py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs inline-flex items-center gap-1 cursor-pointer active:scale-95"
+                    >
+                      <PlusCircle size={13} />
+                      <span>Join This Circle</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (() => {
+              const activeRecipient = !isCompleted && group.status === 'ACTIVE'
+                ? [...(group.members || [])]
+                    .sort((a, b) => (a.payout_position || 999) - (b.payout_position || 999))
+                    .find(m => !m.has_received_payout)
+                : null;
+
+              return group.members?.map((member) => {
+                const isReceived = isCompleted || member.has_received_payout;
+                const isCurrentRecipient = !isCompleted && group.status === 'ACTIVE' && !isReceived && activeRecipient && member.id === activeRecipient.id;
+                const isCurrentUserRow = (
+                  (user?.id && member.user_id === user.id) ||
+                  (user?.email && member.email && member.email.toLowerCase() === user.email.toLowerCase()) ||
+                  (cleanUserPhone && member.phone_number?.replace('+233', '0').replace(/\s+/g, '') === cleanUserPhone) ||
+                  (user?.full_name && member.full_name && member.full_name.trim().toLowerCase() === user.full_name.trim().toLowerCase())
+                );
+
+                return (
+                  <div 
+                    key={member.id} 
+                    className={`p-3 flex items-center justify-between transition-colors ${
+                      isCurrentRecipient 
+                        ? 'bg-emerald-50/40' 
+                        : isCurrentUserRow 
+                        ? 'bg-sky-50/40' 
+                        : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold shrink-0 ${
+                        isReceived
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : isCurrentRecipient 
+                          ? 'bg-emerald-500 text-white font-black ring-2 ring-emerald-300 shadow-2xs' 
+                          : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {member.payout_position || '—'}
+                      </span>
+
+                      <button
+                        onClick={() => setSelectedProfileMember(member)}
+                        className="w-8 h-8 rounded-full bg-sky-100 text-sky-800 border border-sky-200 flex items-center justify-center font-black text-[11px] shrink-0 overflow-hidden cursor-pointer"
+                        title="View saver details"
+                      >
+                        {(member.avatar_url || (isCurrentUserRow && (user?.avatar_url || user?.profile_image_url || user?.picture))) ? (
+                          <img
+                            src={member.avatar_url || (isCurrentUserRow ? (user?.avatar_url || user?.profile_image_url || user?.picture) : '')}
+                            alt={member.full_name}
+                            referrerPolicy="no-referrer"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          getInitials(member.full_name)
+                        )}
+                      </button>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-xs text-slate-900 truncate max-w-[110px]">{member.full_name}</span>
+                          {isCurrentUserRow && (
+                            <span className="bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[9px] px-1 py-0.2 rounded shrink-0">
+                              YOU
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-slate-500 font-medium">
+                          {isReceived ? (
+                            <span className="text-emerald-700 font-semibold">✓ Paid Turn</span>
+                          ) : isCurrentRecipient ? (
+                            <span className="text-emerald-800 font-bold inline-flex items-center gap-1">
+                              <span className="relative flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                              </span>
+                              Receiving
+                            </span>
+                          ) : (
+                            <span>Turn #{member.payout_position || '—'}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      {group.status === 'RECRUITING' ? (
+                        <span className="text-slate-500 font-semibold bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full text-[10px]">
+                          Waiting
+                        </span>
+                      ) : member.has_paid_current_round ? (
+                        <span className="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] inline-flex items-center gap-0.5">
+                          <Check className="w-3 h-3 text-emerald-600 stroke-[2.5]" /> Paid
+                        </span>
+                      ) : (isCurrentUserRow || (enrolledMember && member.id === enrolledMember.id)) && !isCompleted ? (
+                        <button
+                          type="button"
+                          onClick={() => openMoMoModalForUser(member, false)}
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full text-[10px] shadow-xs inline-flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+                        >
+                          <Smartphone className="w-3 h-3" />
+                          <span>Pay ₵{Number(group.contribution_amount)}</span>
+                        </button>
+                      ) : (
+                        <span className="text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[10px]">
+                          Unpaid
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+
+          {/* Desktop & Tablet Table View */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4 w-12 text-center">#</th>
                   <th className="py-3 px-4">Saver</th>
-                  <th className="py-3 px-4">{group.status === 'ACTIVE' ? `Round ${group.current_round}` : 'Contribution Status'}</th>
+                  <th className="py-3 px-4">{group.status === 'ACTIVE' ? `Round ${group.current_round}` : 'Status'}</th>
                   <th className="py-3 px-4 text-right">Payout</th>
                 </tr>
               </thead>
@@ -874,7 +1012,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                         }`}
                       >
                         {/* Turn Position Number */}
-                        <td className="py-3.5 px-4 text-center font-semibold">
+                        <td className="py-3 px-4 text-center font-semibold">
                           {member.payout_position ? (
                             <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
                               isReceived
@@ -891,7 +1029,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                         </td>
 
                         {/* Saver: Profile Avatar Circle + Name */}
-                        <td className="py-3.5 px-4">
+                        <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             <button
                               onClick={() => setSelectedProfileMember(member)}
@@ -921,10 +1059,10 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                         </td>
 
                         {/* Round Contribution Status */}
-                        <td className="py-3.5 px-4">
+                        <td className="py-3 px-4">
                           {group.status === 'RECRUITING' ? (
                             <span className="text-slate-500 font-semibold bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full text-[11px] inline-flex items-center gap-1">
-                              Waiting to Start
+                              Waiting
                             </span>
                           ) : member.has_paid_current_round ? (
                             <span className="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[11px] inline-flex items-center gap-1">
@@ -934,21 +1072,21 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                             <button
                               type="button"
                               onClick={() => openMoMoModalForUser(member, false)}
-                              className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full text-[11px] shadow-xs inline-flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-emerald-600/20"
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full text-[11px] shadow-xs inline-flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-emerald-600/20"
                               title={`Tap to pay your GH₵${Number(group.contribution_amount).toFixed(2)} round contribution via Mobile Money`}
                             >
                               <Smartphone className="w-3.5 h-3.5" />
-                              <span>Pay GH₵{Number(group.contribution_amount).toFixed(2)}</span>
+                              <span>Pay ₵{Number(group.contribution_amount)}</span>
                             </button>
                           ) : (
                             <span className="text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-[11px]">
-                              Unpaid (GH₵{Number(group.contribution_amount).toFixed(2)})
+                              Unpaid
                             </span>
                           )}
                         </td>
 
-                        {/* Payout Status: Flashing light green pulsing indicator for current turn, Received when settled */}
-                        <td className="py-3.5 px-4 text-right">
+                        {/* Payout Status */}
+                        <td className="py-3 px-4 text-right">
                           {isReceived ? (
                             <span className="inline-flex items-center gap-1 text-emerald-700 font-bold text-xs bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
                               <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />

@@ -408,23 +408,23 @@ export const CreateCircleModal = ({ isOpen, onClose, onGroupCreated }) => {
               <ArrowRight size={14} />
             </button>
           ) : isCreated ? (
-            <div className="px-6 py-2.5 rounded-2xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs">
-              <CheckCircle2 size={16} className="text-white" />
-              <span>✓ Susu Group Created!</span>
+            <div className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs">
+              <CheckCircle2 size={15} className="text-white" />
+              <span>✓ Created!</span>
             </div>
           ) : (
             <button
               type="button"
               disabled={loading || !name.trim()}
               onClick={handleSubmit}
-              className="px-6 py-2.5 rounded-2xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95"
+              className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin text-white" />
               ) : (
                 <>
-                  <PlusCircle size={15} />
-                  <span>Launch Susu Group</span>
+                  <PlusCircle size={14} />
+                  <span>Create Group</span>
                 </>
               )}
             </button>

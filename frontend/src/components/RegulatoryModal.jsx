@@ -44,15 +44,6 @@ export const RegulatoryModal = ({ isOpen, onClose }) => {
             <p className="text-slate-600 leading-relaxed text-[11px]">
               SusuRow is architected and maintained by <strong>Coratech Global</strong> (Registered Software & Managed IT Engineering Enterprise, Ghana).
             </p>
-            <a
-              href="https://coratechglobal.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] text-sky-700 hover:text-sky-800 font-bold"
-            >
-              <span>Visit coratechglobal.com</span>
-              <ExternalLink size={11} />
-            </a>
           </div>
 
           {/* Bank of Ghana FinTech Framework */}

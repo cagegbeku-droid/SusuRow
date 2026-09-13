@@ -85,7 +85,7 @@ export const JoinCodeModal = ({ isOpen, onClose, onCircleFound }) => {
               <Loader2 className="w-4 h-4 animate-spin text-white" />
             ) : (
               <>
-                <span>Find & Join Group</span>
+                <span>Join Group</span>
                 <ArrowRight size={14} />
               </>
             )}

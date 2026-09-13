@@ -454,21 +454,9 @@ function AppContent() {
                   GHANA DIGITAL ROSCA
                 </span>
               </div>
-
-
-              <div className="pt-1 flex items-center gap-4 text-xs font-semibold text-slate-500">
-                <a 
-                  href="https://coratechglobal.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sky-600 hover:underline flex items-center gap-1"
-                >
-                  <Globe size={13} />
-                  <span>coratechglobal.com</span>
-                </a>
-                <span>•</span>
-                <span className="text-slate-500">@coratechglobal</span>
-              </div>
+              <p className="text-xs text-slate-500 font-medium">
+                Ghana's trusted digital rotating savings and credit platform.
+              </p>
             </div>
 
             {/* Networks */}

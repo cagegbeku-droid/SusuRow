@@ -462,24 +462,15 @@ export default function AppSidebar({
             </div>
           </div>
 
-          {/* Coratech Global Developer Info Card */}
-          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-3.5 space-y-1.5">
+          {/* Developer Entity Card */}
+          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-3.5 space-y-1">
             <div className="flex items-center gap-2">
               <Building2 size={15} className="text-sky-600" />
               <span className="text-xs font-bold text-slate-900">Coratech Global</span>
             </div>
             <p className="text-[10px] text-slate-500 leading-relaxed">
-              IT Support, Web Design, Custom Software & Digital FinTech Solutions.
+              Enterprise FinTech & Cloud Security Infrastructure.
             </p>
-            <a
-              href="https://coratechglobal.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] font-bold text-sky-600 hover:underline flex items-center justify-between pt-1"
-            >
-              <span>coratechglobal.com</span>
-              <ExternalLink size={11} />
-            </a>
           </div>
 
         </div>

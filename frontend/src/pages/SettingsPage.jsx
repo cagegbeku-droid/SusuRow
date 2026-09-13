@@ -231,15 +231,7 @@ export const SettingsPage = ({
               <Building2 size={18} className="text-sky-600" />
               <span className="text-sm font-bold text-slate-900">Coratech Global</span>
             </div>
-            <a
-              href="https://coratechglobal.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"
-            >
-              <span>Visit Website</span>
-              <ExternalLink size={12} />
-            </a>
+            <span className="text-xs font-semibold text-slate-500">Enterprise FinTech</span>
           </div>
 
         </div>

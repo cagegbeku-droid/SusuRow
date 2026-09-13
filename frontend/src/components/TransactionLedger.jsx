@@ -89,7 +89,53 @@ export const TransactionLedger = ({ payments = [], payouts = [], members = [] })
         </span>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Mobile Feed (Zero Horizontal Scrolling on phones) */}
+      <div className="block sm:hidden divide-y divide-slate-100">
+        {events.map((evt) => {
+          const isPayout = evt.type === 'POT_PAYOUT';
+          return (
+            <div key={evt.id} className="p-3 flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                  isPayout ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                }`}>
+                  {isPayout ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-xs text-slate-900 truncate max-w-[120px]">{evt.full_name}</span>
+                    {getProviderBadge(evt.momo_provider)}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                    Round #{evt.round_number} • {evt.timestamp.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                <div className={`font-black font-mono text-xs ${isPayout ? 'text-amber-800' : 'text-emerald-800'}`}>
+                  {isPayout ? '+' : '-'}GH₵{evt.amount?.toLocaleString()}
+                </div>
+                <button
+                  onClick={() => handleCopyRef(evt.transaction_reference)}
+                  className="inline-flex items-center gap-1 font-mono text-[9px] text-slate-500 hover:text-slate-800 mt-0.5"
+                  title="Copy reference"
+                >
+                  <span>{evt.transaction_reference.slice(0, 8)}...</span>
+                  {copiedRef === evt.transaction_reference ? (
+                    <Check className="w-2.5 h-2.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-2.5 h-2.5 text-slate-400" />
+                  )}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop & Tablet Table */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead className="bg-slate-50 text-slate-900 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
             <tr>

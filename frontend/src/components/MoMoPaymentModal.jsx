@@ -466,17 +466,17 @@ export const MoMoPaymentModal = ({
                 type="button"
                 onClick={handlePay}
                 disabled={loading || totalCharged <= 0}
-                className="w-full py-3.5 px-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                className="w-full py-3 px-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
               >
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Processing Payment...</span>
+                    <span>Processing...</span>
                   </>
                 ) : (
                   <>
-                    <Smartphone size={16} className="text-white" />
-                    <span>Make Payment (GH₵{totalCharged.toFixed(2)})</span>
+                    <Smartphone size={15} className="text-white" />
+                    <span>Pay GH₵{totalCharged.toFixed(2)}</span>
                   </>
                 )}
               </button>

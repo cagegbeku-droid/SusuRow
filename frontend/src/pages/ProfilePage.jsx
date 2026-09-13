@@ -1824,7 +1824,7 @@ export const ProfilePage = ({
             <div>
               <span className="font-bold text-slate-900 block text-xs">Developed by Coratech Global</span>
               <span className="text-[11px] text-slate-600 block mt-0.5">
-                Enterprise FinTech engineering & cloud security infrastructure (coratechglobal.com)
+                Enterprise FinTech engineering & cloud security infrastructure
               </span>
             </div>
           </div>
