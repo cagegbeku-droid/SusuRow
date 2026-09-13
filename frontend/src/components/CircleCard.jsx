@@ -11,6 +11,7 @@ import {
 export const CircleCard = ({ circle, onSelect }) => {
   const isCompleted = circle.status === 'COMPLETED';
   const isActive = circle.status === 'ACTIVE';
+  const isFull = (circle.enrolled_count || 0) >= (circle.members_count || 1);
   const isRecruiting = circle.status === 'RECRUITING';
 
   return (
@@ -52,9 +53,11 @@ export const CircleCard = ({ circle, onSelect }) => {
                 ? 'bg-slate-100 text-slate-600'
                 : isActive
                 ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                : isFull
+                ? 'bg-sky-50 text-sky-800 border border-sky-200 font-bold'
                 : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
             }`}>
-              {isCompleted ? 'Completed' : isActive ? `Round ${circle.current_round}` : 'Open'}
+              {isCompleted ? 'Completed' : isActive ? `Round ${circle.current_round}` : isFull ? 'Full' : 'Open'}
             </span>
 
             {/* User Specific Next Payout Indicator */}

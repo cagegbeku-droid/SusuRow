@@ -503,9 +503,11 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                   ? 'bg-slate-100 text-slate-700 border border-slate-200'
                   : group.status === 'ACTIVE'
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold'
-                  : 'bg-sky-50 text-sky-800 border border-sky-200 font-bold'
+                  : isFull
+                  ? 'bg-sky-50 text-sky-800 border border-sky-200 font-bold'
+                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
               }`}>
-                {isCompleted ? 'Completed' : group.status === 'ACTIVE' ? `Round ${group.current_round} of ${group.members_count}` : 'Open'}
+                {isCompleted ? 'Completed' : group.status === 'ACTIVE' ? `Round ${group.current_round} of ${group.members_count}` : isFull ? 'Full' : 'Open'}
               </span>
 
               <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
