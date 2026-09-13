@@ -162,6 +162,26 @@ export const submitBid = async (payload) => {
   return res.data;
 };
 
+export const voteNextCycle = async (groupId, phoneNumber, optIn) => {
+  const res = await api.post(`/groups/${groupId}/cycle-vote`, {
+    phone_number: phoneNumber,
+    opt_in: optIn
+  });
+  return res.data;
+};
+
+export const launchNextCycle = async (groupId, creatorPhone) => {
+  const res = await api.post(`/groups/${groupId}/launch-next-cycle`, {
+    creator_phone: creatorPhone
+  });
+  return res.data;
+};
+
+export const startCircleRotation = async (groupId, phoneNumber) => {
+  const res = await api.post(`/groups/${groupId}/start-rotation?phone_number=${encodeURIComponent(phoneNumber)}`);
+  return res.data;
+};
+
 // Chat & Messages Endpoints
 export const getGroupMessages = async (groupId) => {
   const res = await api.get(`/chat/${groupId}/messages`);

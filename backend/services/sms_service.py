@@ -26,6 +26,7 @@ class GhanaSMSService:
         clean_phone = phone_number.replace("+233", "0").replace(" ", "").replace("-", "").strip()
         if clean_phone.startswith("233"):
             clean_phone = "0" + clean_phone[3:]
+        intl_phone = "233" + clean_phone[1:] if clean_phone.startswith("0") else clean_phone
 
         # Ensure message is clearly branded with SusuRow
         formatted_message = message if (message.startswith("[SusuRow]") or message.startswith("SusuRow:")) else f"[SusuRow] {message}"

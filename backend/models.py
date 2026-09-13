@@ -131,6 +131,7 @@ class SusuGroup(Base):
     rotation_type = Column(String(20), default=RotationType.SEQUENTIAL.value, nullable=False)
     invite_code = Column(String(20), unique=True, index=True, nullable=False)
     current_round = Column(Integer, default=1, nullable=False)
+    cycle_number = Column(Integer, default=1, nullable=False) # Tracks Cycle 1, Cycle 2, etc.
     creator_id = Column(String(60), nullable=False) # Creator phone number
     status = Column(String(20), default=GroupStatus.RECRUITING.value, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -156,6 +157,7 @@ class GroupMember(Base):
     deposit_paid = Column(Boolean, default=False, nullable=False)
     bid_amount = Column(Float, default=0.0, nullable=False) # For bidding scheme
     trust_score = Column(Integer, default=100, nullable=False)
+    next_cycle_opt_in = Column(Boolean, nullable=True, default=None) # True = Wants to join next cycle, False = Opted out, None = Undecided
     joined_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships

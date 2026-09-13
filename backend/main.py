@@ -57,6 +57,8 @@ def auto_migrate_schema():
         ("users", "is_admin", "BOOLEAN DEFAULT FALSE"),
         ("group_members", "trust_score", "INTEGER DEFAULT 100"),
         ("group_members", "bid_amount", "FLOAT DEFAULT 0.0"),
+        ("group_members", "next_cycle_opt_in", "BOOLEAN DEFAULT NULL"),
+        ("susu_groups", "cycle_number", "INTEGER DEFAULT 1"),
     ]
     
     is_sqlite = engine.dialect.name == "sqlite"
@@ -112,13 +114,154 @@ def ensure_default_admin():
     except Exception as e:
         print(f"[Admin Seed Notice]: {e}")
 
+def ensure_starter_groups():
+    """Seeds authentic Ghanaian starter Susu circles with varied setups (10 Cedis Daily, 50 Weekly, etc.) with open seats for launch."""
+    try:
+        import uuid
+        from datetime import datetime
+        from database import SessionLocal
+        from models import SusuGroup, GroupMember, GroupStatus, RotationType, MoMoProvider
+        db = SessionLocal()
+        
+        starter_templates = [
+            {
+                "name": "10 Cedis Susu Daily",
+                "description": "Fast-track daily micro-savings circle. Save GH₵10 daily for 7 days to receive GH₵70 lump sum. Perfect for market traders and daily earners.",
+                "contribution_amount": 10.0,
+                "frequency": "DAILY",
+                "members_count": 7,
+                "rotation_type": RotationType.SEQUENTIAL.value,
+                "invite_code": "SUSU-D10A",
+                "initial_members": [
+                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, 1),
+                    ("0244881122", "Kofi Mensah", MoMoProvider.MTN.value, 2),
+                    ("0553992211", "Ama Serwaa", MoMoProvider.TELECEL.value, 3),
+                ]
+            },
+            {
+                "name": "20 Cedis Susu Daily",
+                "description": "Daily communal savings pot with randomized ballot draw. GH₵20 daily for 10 days unlocks a GH₵200 payout pot.",
+                "contribution_amount": 20.0,
+                "frequency": "DAILY",
+                "members_count": 10,
+                "rotation_type": RotationType.BALLOT.value,
+                "invite_code": "SUSU-D20B",
+                "initial_members": [
+                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, None),
+                    ("0201122334", "Kwame Asante", MoMoProvider.TELECEL.value, None),
+                    ("0544332211", "Akosua Badu", MoMoProvider.MTN.value, None),
+                    ("0277889900", "Yaw Boateng", MoMoProvider.AT.value, None),
+                ]
+            },
+            {
+                "name": "50 Cedis Susu Weekly",
+                "description": "Reliable weekly circle for consistent savers. Contribute GH₵50 every Monday and collect a guaranteed GH₵250 payout.",
+                "contribution_amount": 50.0,
+                "frequency": "WEEKLY",
+                "members_count": 5,
+                "rotation_type": RotationType.SEQUENTIAL.value,
+                "invite_code": "SUSU-W50C",
+                "initial_members": [
+                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, 1),
+                    ("0249876543", "Esi Osei", MoMoProvider.MTN.value, 2),
+                ]
+            },
+            {
+                "name": "100 Cedis Susu Weekly",
+                "description": "Weekly capital booster featuring an auction/bidding scheme. Bid a small discount if you need early funding for inventory.",
+                "contribution_amount": 100.0,
+                "frequency": "WEEKLY",
+                "members_count": 6,
+                "rotation_type": RotationType.BIDDING.value,
+                "invite_code": "SUSU-W100D",
+                "initial_members": [
+                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, None),
+                    ("0559123456", "Nana Adjei", MoMoProvider.MTN.value, None),
+                    ("0243456789", "Abena Pokua", MoMoProvider.TELECEL.value, None),
+                ]
+            },
+            {
+                "name": "200 Cedis Susu Monthly",
+                "description": "Salary earners monthly rotation. GH₵200 on payday towards a guaranteed GH₵1,200 payout pot for school fees or rent.",
+                "contribution_amount": 200.0,
+                "frequency": "MONTHLY",
+                "members_count": 6,
+                "rotation_type": RotationType.SEQUENTIAL.value,
+                "invite_code": "SUSU-M200E",
+                "initial_members": [
+                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, 1),
+                    ("0208765432", "Kojo Frimpong", MoMoProvider.TELECEL.value, 2),
+                    ("0541122446", "Dorothy Quaye", MoMoProvider.MTN.value, 3),
+                ]
+            },
+            {
+                "name": "500 Cedis Business Monthly",
+                "description": "Executive SME and enterprise business pool. GH₵500 monthly with a substantial GH₵2,500 total capital payout pot.",
+                "contribution_amount": 500.0,
+                "frequency": "MONTHLY",
+                "members_count": 5,
+                "rotation_type": RotationType.SEQUENTIAL.value,
+                "invite_code": "SUSU-M500F",
+                "initial_members": [
+                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, 1),
+                    ("0244990011", "Dr. Emmanuel Addo", MoMoProvider.MTN.value, 2),
+                ]
+            },
+        ]
+        
+        for tpl in starter_templates:
+            existing = db.query(SusuGroup).filter(SusuGroup.name == tpl["name"]).first()
+            if not existing:
+                total_pool = round(tpl["contribution_amount"] * tpl["members_count"], 2)
+                group = SusuGroup(
+                    id=str(uuid.uuid4()),
+                    name=tpl["name"],
+                    description=tpl["description"],
+                    is_private=False,
+                    contribution_amount=tpl["contribution_amount"],
+                    frequency=tpl["frequency"],
+                    members_count=tpl["members_count"],
+                    total_pool=total_pool,
+                    commitment_deposit=0.0,
+                    rotation_type=tpl["rotation_type"],
+                    invite_code=tpl["invite_code"],
+                    current_round=1,
+                    cycle_number=1,
+                    creator_id="0599360626",
+                    status=GroupStatus.RECRUITING.value,
+                    created_at=datetime.utcnow()
+                )
+                db.add(group)
+                db.flush()
+                
+                for phone, name, provider, pos in tpl["initial_members"]:
+                    m = GroupMember(
+                        id=str(uuid.uuid4()),
+                        group_id=group.id,
+                        phone_number=phone,
+                        full_name=name,
+                        momo_provider=provider,
+                        payout_position=pos,
+                        has_paid_current_round=False,
+                        has_received_payout=False,
+                        deposit_paid=False,
+                        joined_at=datetime.utcnow()
+                    )
+                    db.add(m)
+                db.commit()
+                print(f"[Starter Circles]: Seeded '{tpl['name']}' ({len(tpl['initial_members'])}/{tpl['members_count']} members)")
+        db.close()
+    except Exception as e:
+        print(f"[Starter Circles Seed Notice]: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
         Base.metadata.create_all(bind=engine)
         auto_migrate_schema()
         ensure_default_admin()
-        print("[Database]: Tables and schema migrations verified successfully.")
+        ensure_starter_groups()
+        print("[Database]: Tables, starter groups, and schema migrations verified successfully.")
     except Exception as e:
         print(f"[Database Startup Notice]: {e}")
     yield

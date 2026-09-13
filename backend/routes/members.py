@@ -4,16 +4,17 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from models import SusuGroup, GroupMember, GroupStatus, RotationType
+from models import SusuGroup, GroupMember, GroupMessage, GroupStatus, RotationType
 from schemas import MemberJoinRequest, MemberResponse, MemberBidSubmit, GroupDetailResponse
 from services.rotation_engine import RotationEngine
 from services.momo_service import GhanaMoMoService
+from services.sms_service import GhanaSMSService
 from routes.groups import _build_detail_response
 
 router = APIRouter(prefix="/api/members", tags=["Circle Members"])
 
 @router.post("/join", response_model=GroupDetailResponse)
-def join_group(payload: MemberJoinRequest, db: Session = Depends(get_db)):
+async def join_group(payload: MemberJoinRequest, db: Session = Depends(get_db)):
     """Enrolls a saver into a Susu circle by group_id or invite_code."""
     # Find group by ID or invite code
     group = None
@@ -31,7 +32,7 @@ def join_group(payload: MemberJoinRequest, db: Session = Depends(get_db)):
     # Check capacity limit
     current_members = db.query(GroupMember).filter(GroupMember.group_id == group.id).all()
     if len(current_members) >= group.members_count:
-        raise HTTPException(status_code=400, detail=f"Circle has reached maximum capacity ({group.members_count} savers).")
+        raise HTTPException(status_code=400, detail=f"Circle has reached maximum capacity ({group.members_count} savers) and is now locked.")
 
     clean_phone = payload.phone_number.replace("+233", "0").replace(" ", "").strip()
     clean_creator = group.creator_id.replace("+233", "0").replace(" ", "").strip() if group.creator_id else ""
@@ -77,11 +78,42 @@ def join_group(payload: MemberJoinRequest, db: Session = Depends(get_db)):
     db.add(member)
     db.commit()
 
-    # If circle becomes full, update status to ACTIVE
+    # If circle becomes full, lock enrollment and notify all members
     updated_members = db.query(GroupMember).filter(GroupMember.group_id == group.id).all()
     if len(updated_members) >= group.members_count:
         group.status = GroupStatus.ACTIVE.value
+        group.current_round = 1
+
+        # If ballot scheme, conduct draw
+        if group.rotation_type == RotationType.BALLOT.value:
+            RotationEngine.ballot_draw(updated_members)
+
+        # In-app chat announcement
+        announcement = GroupMessage(
+            id=str(uuid.uuid4()),
+            group_id=group.id,
+            sender_phone="SYSTEM",
+            sender_name="SusuRow System",
+            message_text=(
+                f"🎉 Circle '{group.name}' is now FULL and locked! All {group.members_count} members have joined. "
+                f"Round 1 contributions have commenced. Please make your payment of GH₵{group.contribution_amount:.2f}."
+            ),
+            is_announcement=True,
+            created_at=datetime.utcnow()
+        )
+        db.add(announcement)
         db.commit()
+
+        # Send SMS to all enrolled members
+        sms_text = (
+            f"SusuRow: Circle '{group.name}' is now FULL & locked! "
+            f"Round 1 has started. Please make your contribution of GH₵{group.contribution_amount:.2f}."
+        )
+        for m in updated_members:
+            try:
+                await GhanaSMSService.send_sms_message(m.phone_number, sms_text)
+            except Exception:
+                pass
 
     db.refresh(group)
     return _build_detail_response(group)

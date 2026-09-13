@@ -23,7 +23,9 @@ import {
   MessageSquare,
   Bell,
   Star,
-  MoreHorizontal
+  MoreHorizontal,
+  Play,
+  X
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { 
@@ -32,7 +34,10 @@ import {
   advanceRound, 
   deleteGroup,
   reopenGroup,
-  triggerDueReminders 
+  triggerDueReminders,
+  voteNextCycle,
+  launchNextCycle,
+  startCircleRotation
 } from '../api/client';
 import { RotationalTimeline } from '../components/RotationalTimeline';
 import { MoMoPaymentModal } from '../components/MoMoPaymentModal';
@@ -238,6 +243,53 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
     }
   };
 
+  const handleVoteNextCycle = async (optIn) => {
+    if (!user) {
+      openAuthModal();
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const res = await voteNextCycle(group.id, user.phone_number, optIn);
+      setGroup(res);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to submit cycle choice.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleLaunchNextCycle = async () => {
+    if (!user) return;
+    const nextCycleNum = (group.cycle_number || 1) + 1;
+    if (!window.confirm(`Launch Cycle ${nextCycleNum} for '${group.name}' with confirmed returning members?`)) return;
+    setActionLoading(true);
+    try {
+      const res = await launchNextCycle(group.id, user.phone_number);
+      setGroup(res);
+      alert(`Cycle ${res.cycle_number} has successfully launched!`);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to launch next cycle.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStartRotation = async () => {
+    if (!user) return;
+    if (!window.confirm(`Start rotational rounds for '${group.name}'? All members will be notified to begin Round 1 contributions.`)) return;
+    setActionLoading(true);
+    try {
+      const res = await startCircleRotation(group.id, user.phone_number);
+      setGroup(res);
+      alert(`Rotation started! Round 1 is now active for ${group.name}.`);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to start rotation.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const openMoMoModalForUser = (member, isEscrow = false) => {
     if (!user) {
       openAuthModal();
@@ -276,6 +328,32 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </button>
 
         <div className="flex items-center gap-2">
+          {/* Start Rotation icon button (if creator and full and recruiting) */}
+          {isCreator && isFull && group.status === 'RECRUITING' && (
+            <button
+              onClick={handleStartRotation}
+              disabled={actionLoading}
+              className="w-10 h-10 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Start Rotation (All seats full)"
+              aria-label="Start Rotation"
+            >
+              <Play className="w-4 h-4 fill-current ml-0.5" />
+            </button>
+          )}
+
+          {/* Group Chat icon */}
+          <button
+            onClick={() => setIsChatModalOpen(true)}
+            className="w-10 h-10 rounded-full bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 transition-all cursor-pointer shadow-xs active:scale-95 relative"
+            title="Group Chat"
+            aria-label="Group Chat"
+          >
+            <MessageSquare className="w-4 h-4 text-sky-600" />
+            {group.messages?.length > 0 && (
+              <span className="absolute 1.5 -top-0.5 -right-0.5 w-2.5 h-2.5 bg-sky-500 rounded-full ring-2 ring-white" />
+            )}
+          </button>
+
           {/* Share */}
           <button
             onClick={() => setIsShareModalOpen(true)}
@@ -285,6 +363,18 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           >
             <Share2 className="w-4 h-4 text-sky-600" />
           </button>
+
+          {/* Delete Circle icon (if creator and can delete) */}
+          {canDelete && (
+            <button
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              className="w-10 h-10 rounded-full bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 flex items-center justify-center text-red-500 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Delete Circle"
+              aria-label="Delete Circle"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
 
           {/* More Options (Three Horizontal Dots) */}
           <div className="relative" ref={moreMenuRef}>
@@ -534,6 +624,91 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* 🔄 Next Cycle Member Decision & Self-Determination Card */}
+      {isCompleted && (
+        <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-50 rounded-3xl p-5 sm:p-6 border border-emerald-200/90 shadow-sm space-y-4 animate-in fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-600 text-white">
+                  <CheckCircle2 size={12} /> Cycle {group.cycle_number || 1} Completed
+                </span>
+                <span className="text-xs text-slate-500 font-bold">
+                  {group.members?.filter(m => m.next_cycle_opt_in === true).length} of {group.members?.length} opted in for Cycle {(group.cycle_number || 1) + 1}
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                All members received their lump sum payout!
+              </h3>
+              <p className="text-xs text-slate-600">
+                Each member decides for themselves whether to continue into the next cycle. Members who opt in retain their spots, while open seats will become available for new savers.
+              </p>
+            </div>
+
+            {/* Creator Launch Next Cycle Button */}
+            {isCreator && (
+              <button
+                onClick={handleLaunchNextCycle}
+                disabled={actionLoading}
+                className="shrink-0 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                title={`Launch Cycle ${(group.cycle_number || 1) + 1}`}
+              >
+                <RotateCw className="w-4 h-4" />
+                <span>Launch Cycle {(group.cycle_number || 1) + 1}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Member's Personal Vote / Opt-in Decision */}
+          {isEnrolled && (
+            <div className="bg-white/80 backdrop-blur-xs p-4 rounded-2xl border border-emerald-150 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold text-slate-900 block">
+                  Do you want to participate in Cycle {(group.cycle_number || 1) + 1}?
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  {enrolledMember?.next_cycle_opt_in === true
+                    ? "✓ You confirmed: You are participating in the next cycle."
+                    : enrolledMember?.next_cycle_opt_in === false
+                    ? "✕ You opted out: You will not join the next cycle."
+                    : "Please indicate whether you want to save again with this circle."}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleVoteNextCycle(true)}
+                  disabled={actionLoading}
+                  className={`px-3.5 py-2 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                    enrolledMember?.next_cycle_opt_in === true
+                      ? 'bg-emerald-600 text-white ring-2 ring-emerald-400'
+                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  }`}
+                  title="Join Next Cycle"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Join Cycle {(group.cycle_number || 1) + 1}</span>
+                </button>
+
+                <button
+                  onClick={() => handleVoteNextCycle(false)}
+                  disabled={actionLoading}
+                  className={`px-3.5 py-2 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 shadow-2xs ${
+                    enrolledMember?.next_cycle_opt_in === false
+                      ? 'bg-red-600 text-white ring-2 ring-red-400'
+                      : 'bg-slate-100 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200'
+                  }`}
+                  title="Opt Out"
+                >
+                  <X className="w-4 h-4 stroke-[3]" />
+                  <span>Opt Out</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -263,6 +263,7 @@ class MemberResponse(BaseModel):
     deposit_paid: bool
     bid_amount: float
     trust_score: int = 100
+    next_cycle_opt_in: Optional[bool] = None
     joined_at: datetime
 
 
@@ -374,6 +375,7 @@ class GroupSummaryResponse(BaseModel):
     rotation_type: str
     invite_code: str
     current_round: int
+    cycle_number: int = 1
     creator_id: str
     status: str
     user_payout_position: Optional[int] = None
@@ -394,7 +396,16 @@ class GroupDetailResponse(GroupSummaryResponse):
     progress_percentage: float = 0.0
 
 
-# Rotation Actions
+# Rotation & Cycle Actions
+class CycleVoteRequest(BaseModel):
+    phone_number: str
+    opt_in: bool
+
+
+class LaunchNextCycleRequest(BaseModel):
+    creator_phone: str
+
+
 class BallotTriggerRequest(BaseModel):
     group_id: str
     seed: Optional[str] = None

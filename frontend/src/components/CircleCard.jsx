@@ -33,6 +33,12 @@ export const CircleCard = ({ circle, onSelect }) => {
                 {circle.name}
               </h3>
               <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
+                {circle.cycle_number > 1 && (
+                  <>
+                    <span className="font-bold text-emerald-700">Cycle {circle.cycle_number}</span>
+                    <span>•</span>
+                  </>
+                )}
                 <span>{circle.frequency}</span>
                 <span>•</span>
                 <span className="capitalize">{circle.rotation_type.toLowerCase()}</span>

@@ -6,10 +6,14 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
-from models import SusuGroup, GroupMember, ContributionPayment, PayoutDisbursement, GroupStatus, RotationType
-from schemas import GroupCreate, GroupSummaryResponse, GroupDetailResponse, MemberResponse, PaymentResponse, PayoutResponse
+from models import SusuGroup, GroupMember, ContributionPayment, PayoutDisbursement, GroupMessage, GroupStatus, RotationType
+from schemas import (
+    GroupCreate, GroupSummaryResponse, GroupDetailResponse, MemberResponse,
+    PaymentResponse, PayoutResponse, GroupMessageResponse, CycleVoteRequest, LaunchNextCycleRequest
+)
 from services.rotation_engine import RotationEngine
 from services.momo_service import GhanaMoMoService
+from services.sms_service import GhanaSMSService
 
 router = APIRouter(prefix="/api/groups", tags=["Susu Groups"])
 
@@ -61,6 +65,7 @@ def get_groups(
             rotation_type=g.rotation_type,
             invite_code=g.invite_code,
             current_round=g.current_round,
+            cycle_number=getattr(g, "cycle_number", 1) or 1,
             creator_id=g.creator_id,
             status=g.status,
             created_at=g.created_at
@@ -105,6 +110,7 @@ def get_user_groups(phone_number: str, db: Session = Depends(get_db)):
             rotation_type=g.rotation_type,
             invite_code=g.invite_code,
             current_round=g.current_round,
+            cycle_number=getattr(g, "cycle_number", 1) or 1,
             creator_id=g.creator_id,
             status=g.status,
             user_payout_position=user_member.payout_position if user_member else None,
@@ -119,32 +125,29 @@ def get_group_by_invite_code(invite_code: str, db: Session = Depends(get_db)):
     """Looks up a private or public circle via its unique code (e.g. SUSU-X9B21)."""
     group = db.query(SusuGroup).filter(SusuGroup.invite_code.ilike(invite_code.strip())).first()
     if not group:
-        raise HTTPException(status_code=404, detail=f"Circle with invite code '{invite_code}' was not found.")
+        raise HTTPException(status_code=404, detail=f"No Susu circle found matching code '{invite_code}'.")
     return _build_detail_response(group)
 
 @router.get("/{group_id}", response_model=GroupDetailResponse)
 def get_group_detail(group_id: str, db: Session = Depends(get_db)):
+    """Fetches full state of a Susu group including member positions, payments, and payouts."""
     group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Susu circle not found")
-    
-    # Seamless background automation: If all members in an active group have paid,
-    # auto-advance and disburse silently without requiring user intervention.
-    if (group.status == GroupStatus.ACTIVE.value and 
-        len(group.members) == group.members_count and 
-        len(group.members) > 0 and 
-        all(m.has_paid_current_round for m in group.members)):
-        RotationEngine.check_and_advance_round(db, group)
-        db.commit()
-        db.refresh(group)
-
     return _build_detail_response(group)
 
 def _build_detail_response(group: SusuGroup) -> GroupDetailResponse:
     enrolled = len(group.members)
     sorted_members = sorted(group.members, key=lambda m: (m.payout_position or 999, m.joined_at))
-    current_recipient = next((m for m in group.members if m.payout_position == group.current_round), None)
-    all_current_paid = len(group.members) > 0 and all(m.has_paid_current_round for m in group.members)
+
+    current_recipient = None
+    if group.status == GroupStatus.ACTIVE.value:
+        current_recipient = next((m for m in group.members if m.payout_position == group.current_round), None)
+
+    all_current_paid = False
+    if group.status == GroupStatus.ACTIVE.value and enrolled > 0:
+        all_current_paid = all(m.has_paid_current_round for m in group.members)
+
     progress = 0.0
     if group.members_count > 0:
         if group.status == GroupStatus.COMPLETED.value:
@@ -167,12 +170,14 @@ def _build_detail_response(group: SusuGroup) -> GroupDetailResponse:
         rotation_type=group.rotation_type,
         invite_code=group.invite_code,
         current_round=group.current_round,
+        cycle_number=getattr(group, "cycle_number", 1) or 1,
         creator_id=group.creator_id,
         status=group.status,
         created_at=group.created_at,
         members=[MemberResponse.model_validate(m) for m in sorted_members],
         payments=[PaymentResponse.model_validate(p) for p in group.payments],
         payouts=[PayoutResponse.model_validate(p) for p in group.payouts],
+        messages=[m for m in group.messages],
         current_recipient=MemberResponse.model_validate(current_recipient) if current_recipient else None,
         all_current_round_paid=all_current_paid,
         progress_percentage=progress
@@ -302,5 +307,171 @@ def reopen_group(
         m.has_received_payout = False
     db.commit()
     db.refresh(group)
+    return _build_detail_response(group)
+
+
+@router.post("/{group_id}/cycle-vote", response_model=GroupDetailResponse)
+def vote_next_cycle(
+    group_id: str,
+    payload: CycleVoteRequest,
+    db: Session = Depends(get_db)
+):
+    """Allows a circle member to decide (opt-in or opt-out) whether to join the next savings cycle."""
+    group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Susu circle not found")
+
+    clean_phone = payload.phone_number.replace("+233", "0").replace(" ", "").strip()
+    member = next((m for m in group.members if m.phone_number.replace("+233", "0").replace(" ", "") == clean_phone), None)
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found in this Susu circle")
+
+    member.next_cycle_opt_in = payload.opt_in
+    db.commit()
+    db.refresh(group)
+    return _build_detail_response(group)
+
+
+@router.post("/{group_id}/launch-next-cycle", response_model=GroupDetailResponse)
+async def launch_next_cycle(
+    group_id: str,
+    payload: LaunchNextCycleRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Launches the next cycle (e.g. Cycle 2) for members who opted in.
+    Members who opted out (or didn't opt-in) are excused, freeing up seats for new savers.
+    """
+    group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Susu circle not found")
+
+    clean_creator = payload.creator_phone.replace("+233", "0").replace(" ", "").strip()
+    group_creator = (group.creator_id or "").replace("+233", "0").replace(" ", "").strip()
+    ADMIN_PHONES = {"0599360626", "233599360626", "+233599360626"}
+
+    if clean_creator != group_creator and clean_creator not in ADMIN_PHONES:
+        raise HTTPException(status_code=403, detail="Only the circle creator or administrator can launch the next cycle.")
+
+    # Identify members who explicitly opted in
+    returning_members = [m for m in group.members if m.next_cycle_opt_in is True]
+
+    # If creator didn't opt in but is creator, keep creator
+    creator_member = next((m for m in group.members if m.phone_number.replace("+233", "0").replace(" ", "") == group_creator), None)
+    if creator_member and creator_member not in returning_members:
+        creator_member.next_cycle_opt_in = True
+        returning_members.insert(0, creator_member)
+
+    # Remove members who opted out or did not opt-in
+    for m in list(group.members):
+        if m not in returning_members:
+            db.delete(m)
+
+    # Reset returning members for the fresh cycle
+    for idx, m in enumerate(returning_members, 1):
+        m.has_paid_current_round = False
+        m.has_received_payout = False
+        m.bid_amount = 0.0
+        m.next_cycle_opt_in = None
+        if group.rotation_type == RotationType.SEQUENTIAL.value:
+            m.payout_position = idx
+        else:
+            m.payout_position = None
+
+    # Clear previous cycle payments and payouts
+    db.query(ContributionPayment).filter(ContributionPayment.group_id == group.id).delete()
+    db.query(PayoutDisbursement).filter(PayoutDisbursement.group_id == group.id).delete()
+
+    # Advance cycle counter and reset round
+    new_cycle = (getattr(group, "cycle_number", 1) or 1) + 1
+    group.cycle_number = new_cycle
+    group.current_round = 1
+
+    # Check capacity status
+    if len(returning_members) >= group.members_count:
+        group.status = GroupStatus.ACTIVE.value
+    else:
+        group.status = GroupStatus.RECRUITING.value
+
+    # Post system announcement
+    open_seats = max(0, group.members_count - len(returning_members))
+    announcement_text = (
+        f"🔄 Cycle {new_cycle} has officially launched! "
+        f"{len(returning_members)} returning member(s) confirmed. "
+        f"{f'{open_seats} seat(s) are now open for new savers to join!' if open_seats > 0 else 'All seats filled!'}"
+    )
+    announcement = GroupMessage(
+        id=str(uuid.uuid4()),
+        group_id=group.id,
+        sender_phone="SYSTEM",
+        sender_name="SusuRow System",
+        message_text=announcement_text,
+        is_announcement=True,
+        created_at=datetime.utcnow()
+    )
+    db.add(announcement)
+    db.commit()
+    db.refresh(group)
+
+    # Send SMS notification to returning members
+    sms_msg = f"SusuRow: Cycle {new_cycle} for '{group.name}' has launched! Check your app for round details."
+    for m in returning_members:
+        try:
+            await GhanaSMSService.send_sms_message(m.phone_number, sms_msg)
+        except Exception:
+            pass
+
+    return _build_detail_response(group)
+
+
+@router.post("/{group_id}/start-rotation", response_model=GroupDetailResponse)
+async def start_rotation(
+    group_id: str,
+    phone_number: str = Query(..., description="Phone number of the creator"),
+    db: Session = Depends(get_db)
+):
+    """Allows the circle creator or admin to kickoff rotation when the circle is full or ready."""
+    group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Susu circle not found")
+
+    clean_phone = phone_number.replace("+233", "0").replace(" ", "").strip()
+    clean_creator = (group.creator_id or "").replace("+233", "0").replace(" ", "").strip()
+    ADMIN_PHONES = {"0599360626", "233599360626", "+233599360626"}
+
+    if clean_phone != clean_creator and clean_phone not in ADMIN_PHONES:
+        raise HTTPException(status_code=403, detail="Only the circle creator or administrator can start the rotation.")
+
+    if len(group.members) < 2:
+        raise HTTPException(status_code=400, detail="Circle must have at least 2 members before rotation can begin.")
+
+    # If ballot, draw order
+    if group.rotation_type == RotationType.BALLOT.value:
+        RotationEngine.ballot_draw(group.members)
+
+    group.status = GroupStatus.ACTIVE.value
+    group.current_round = 1
+
+    announcement = GroupMessage(
+        id=str(uuid.uuid4()),
+        group_id=group.id,
+        sender_phone="SYSTEM",
+        sender_name="SusuRow System",
+        message_text=f"🚀 Rotation started! Round 1 is now active. Please deposit your contribution of GH₵{group.contribution_amount:.2f}.",
+        is_announcement=True,
+        created_at=datetime.utcnow()
+    )
+    db.add(announcement)
+    db.commit()
+    db.refresh(group)
+
+    # Dispatches SMS notification
+    sms_text = f"SusuRow: Circle '{group.name}' rotation has started! Round 1 is active. Please deposit GH₵{group.contribution_amount:.2f}."
+    for m in group.members:
+        try:
+            await GhanaSMSService.send_sms_message(m.phone_number, sms_text)
+        except Exception:
+            pass
+
     return _build_detail_response(group)
 
