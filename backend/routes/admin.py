@@ -18,10 +18,18 @@ from models import (
     MoMoWebhookLog,
     ExecutiveWithdrawal
 )
-from schemas import sanitize_ghana_phone
+import csv
+import io
+from fastapi.responses import Response
+from schemas import (
+    sanitize_ghana_phone,
+    AdminGroupCreateRequest,
+    AdminGroupUpdateRequest
+)
 from auth import get_admin_user, hash_password, verify_password, create_access_token
 from services.sms_service import GhanaSMSService
 from services.paystack_service import GhanaMoMoGateway
+from routes.groups import generate_invite_code
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/admin", tags=["Executive Admin Portal"])
@@ -724,6 +732,244 @@ def remove_circle_member(
         "success": True,
         "message": f"Member {member_name} removed from circle '{group.name}'."
     }
+
+
+@router.post("/groups")
+def admin_create_empty_group(
+    payload: AdminGroupCreateRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """
+    Creates a 100% empty Susu Group (0 members enrolled) specifically for real Ghanaian savers to join.
+    Status starts in RECRUITING.
+    """
+    invite_code = generate_invite_code()
+    while db.query(SusuGroup).filter(SusuGroup.invite_code == invite_code).first():
+        invite_code = generate_invite_code()
+
+    contribution_amount = round(float(payload.contribution_amount), 2)
+    total_pool = round(contribution_amount * payload.members_count, 2)
+    admin_phone = admin.phone_number or "0599360626"
+
+    group = SusuGroup(
+        id=str(uuid.uuid4()),
+        name=payload.name.strip(),
+        description=payload.description or f"{payload.frequency.capitalize()} Susu savings group. Each member contributes GH₵{contribution_amount:.2f}.",
+        is_private=payload.is_private or False,
+        contribution_amount=contribution_amount,
+        frequency=payload.frequency.upper(),
+        members_count=payload.members_count,
+        total_pool=total_pool,
+        commitment_deposit=payload.commitment_deposit or 0.0,
+        rotation_type=payload.rotation_type.upper(),
+        invite_code=invite_code,
+        current_round=1,
+        cycle_number=1,
+        creator_id=admin_phone,
+        status=GroupStatus.RECRUITING.value,
+        created_at=datetime.utcnow()
+    )
+    db.add(group)
+    db.commit()
+    db.refresh(group)
+
+    return {
+        "success": True,
+        "message": f"Empty group '{group.name}' created with 0 members. Real savers can now take all {group.members_count} seats.",
+        "group": {
+            "id": group.id,
+            "name": group.name,
+            "join_code": group.invite_code,
+            "contribution_amount": group.contribution_amount,
+            "total_pot": group.total_pool,
+            "frequency": group.frequency,
+            "rotation_type": group.rotation_type,
+            "members_count": group.members_count,
+            "enrolled_count": 0,
+            "status": group.status
+        }
+    }
+
+
+@router.put("/groups/{group_id}")
+def admin_update_group(
+    group_id: str,
+    payload: AdminGroupUpdateRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """
+    Allows executive administration to edit and manage any Susu Group parameters.
+    """
+    group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Susu group not found.")
+
+    if payload.name is not None and payload.name.strip():
+        group.name = payload.name.strip()
+    if payload.description is not None:
+        group.description = payload.description.strip()
+    if payload.contribution_amount is not None and payload.contribution_amount >= 1.0:
+        group.contribution_amount = round(float(payload.contribution_amount), 2)
+    if payload.frequency is not None:
+        group.frequency = payload.frequency.upper()
+    if payload.members_count is not None and payload.members_count >= 2:
+        group.members_count = payload.members_count
+    if payload.rotation_type is not None:
+        group.rotation_type = payload.rotation_type.upper()
+    if payload.status is not None:
+        group.status = payload.status.upper()
+    if payload.current_round is not None and payload.current_round >= 1:
+        group.current_round = payload.current_round
+
+    # Recompute total pool
+    group.total_pool = round(group.contribution_amount * group.members_count, 2)
+
+    db.commit()
+    db.refresh(group)
+
+    return {
+        "success": True,
+        "message": f"Group '{group.name}' updated successfully.",
+        "group": {
+            "id": group.id,
+            "name": group.name,
+            "contribution_amount": group.contribution_amount,
+            "total_pot": group.total_pool,
+            "frequency": group.frequency,
+            "rotation_type": group.rotation_type,
+            "members_count": group.members_count,
+            "status": group.status,
+            "current_round": group.current_round
+        }
+    }
+
+
+@router.delete("/groups/{group_id}")
+def admin_delete_group(
+    group_id: str,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """
+    Allows executive administration to permanently delete a Susu Group and its member records.
+    """
+    group = db.query(SusuGroup).filter(SusuGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Susu group not found.")
+
+    group_name = group.name
+    # Delete associated member records
+    db.query(GroupMember).filter(GroupMember.group_id == group_id).delete()
+    # Delete group
+    db.delete(group)
+    db.commit()
+
+    return {
+        "success": True,
+        "message": f"Group '{group_name}' permanently deleted by executive administrator."
+    }
+
+
+@router.get("/export/transactions")
+def export_transactions_csv(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """Exports all platform contributions and disbursements as a downloadable CSV for bank audits."""
+    payments = db.query(ContributionPayment).order_by(desc(ContributionPayment.paid_at)).all()
+    payouts = db.query(PayoutDisbursement).order_by(desc(PayoutDisbursement.disbursed_at)).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Transaction Type",
+        "Reference",
+        "Group ID",
+        "Member / Recipient Phone",
+        "Round Number",
+        "Amount (GHS)",
+        "Mobile Money Provider",
+        "Status",
+        "Timestamp"
+    ])
+
+    for p in payments:
+        writer.writerow([
+            "CONTRIBUTION",
+            p.transaction_reference,
+            p.group_id,
+            p.phone_number,
+            p.round_number,
+            f"{p.amount:.2f}",
+            p.momo_provider,
+            p.status,
+            p.paid_at.isoformat() if p.paid_at else ""
+        ])
+
+    for po in payouts:
+        writer.writerow([
+            "POT_PAYOUT",
+            po.transaction_reference,
+            po.group_id,
+            po.recipient_phone,
+            po.round_number,
+            f"{po.amount:.2f}",
+            po.momo_provider,
+            po.status,
+            po.disbursed_at.isoformat() if po.disbursed_at else ""
+        ])
+
+    csv_data = output.getvalue()
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=susurow_transactions_{datetime.utcnow().strftime('%Y%m%d')}.csv"}
+    )
+
+
+@router.get("/export/savers")
+def export_savers_csv(
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_admin_user)
+):
+    """Exports registered platform savers as a downloadable CSV."""
+    users = db.query(User).filter(User.is_admin == False).order_by(desc(User.created_at)).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Full Name",
+        "Phone Number",
+        "Email",
+        "MoMo Provider",
+        "Ghana Card Number",
+        "KYC Status",
+        "Trust Score",
+        "Active Status",
+        "Registered Date"
+    ])
+
+    for u in users:
+        writer.writerow([
+            u.full_name,
+            u.phone_number,
+            u.email or "",
+            u.momo_provider or "MTN",
+            u.ghana_card_number or "",
+            u.kyc_status or "UNVERIFIED",
+            u.trust_score if u.trust_score is not None else 100,
+            "ACTIVE" if u.is_active else "INACTIVE",
+            u.created_at.isoformat() if u.created_at else ""
+        ])
+
+    csv_data = output.getvalue()
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=susurow_savers_{datetime.utcnow().strftime('%Y%m%d')}.csv"}
+    )
 
 
 @router.get("/transactions")

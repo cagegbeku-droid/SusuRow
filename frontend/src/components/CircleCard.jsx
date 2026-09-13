@@ -54,7 +54,7 @@ export const CircleCard = ({ circle, onSelect }) => {
                 ? 'bg-amber-50 text-amber-700 border border-amber-200'
                 : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
             }`}>
-              {isCompleted ? 'Completed' : isActive ? `Round ${circle.current_round}` : 'Recruiting'}
+              {isCompleted ? 'Completed' : isActive ? `Round ${circle.current_round}` : 'Open'}
             </span>
 
             {/* User Specific Next Payout Indicator */}

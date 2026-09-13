@@ -77,7 +77,7 @@ export default function Navbar({
           id: verifiedId,
           type: 'VERIFIED',
           title: 'Ghana Card Officially Verified',
-          message: `Hello ${user.full_name?.trim() || 'Saver'}, your Ghana Card Tier-1 verification is confirmed active. You have full access to Susu circles and automated Mobile Money payouts.`,
+          message: `Hello ${user.full_name?.trim() || 'Saver'}, your Ghana Card Tier-1 verification is confirmed active. You have full access to Susu groups and automated Mobile Money payouts.`,
           category: 'Compliance',
           time: 'Active',
           sender: 'SusuRow Compliance'

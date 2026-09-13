@@ -344,10 +344,22 @@ export const broadcastAdminSMS = async (payload) => {
   return res.data;
 };
 
+export const adminCreateEmptyGroup = async (payload) => {
+  const res = await api.post('/admin/groups', payload);
+  return res.data;
+};
+
+export const adminUpdateGroup = async (groupId, payload) => {
+  const res = await api.put(`/admin/groups/${groupId}`, payload);
+  return res.data;
+};
+
 export const adminDeleteCircle = async (groupId) => {
   const res = await api.delete(`/admin/groups/${groupId}`);
   return res.data;
 };
+
+export const adminDeleteGroup = adminDeleteCircle;
 
 export const adminPurgeTestData = async () => {
   const res = await api.post('/admin/system/purge-test-data');
@@ -377,6 +389,30 @@ export const adminChangeCredentials = async (payload) => {
 export const adminManageUser = async (userId, payload) => {
   const res = await api.post(`/admin/users/${userId}/manage-support`, payload);
   return res.data;
+};
+
+export const downloadTransactionsCsv = async () => {
+  const res = await api.get('/admin/export/transactions', { responseType: 'blob' });
+  const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `susurow_transactions_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+export const downloadSaversCsv = async () => {
+  const res = await api.get('/admin/export/savers', { responseType: 'blob' });
+  const url = window.URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `susurow_savers_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 };
 
 export default api;

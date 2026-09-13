@@ -158,7 +158,7 @@ export const MarketplacePage = ({
             <div className="space-y-1">
               <h3 className="text-base font-bold text-slate-900">No Groups Found</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Be the first to launch a rotational savings circle for your peers or business network.
+                Be the first to launch a rotational Susu group for your peers or business network.
               </p>
             </div>
             <button

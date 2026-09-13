@@ -19,7 +19,9 @@ import {
   UserCheck,
   Pause,
   Play,
-  Award
+  Award,
+  PlusCircle,
+  FileDown
 } from 'lucide-react';
 import {
   getAdminMetrics,
@@ -29,14 +31,18 @@ import {
   getAdminCircles,
   getAdminTransactions,
   adminDeleteCircle,
+  adminDeleteGroup,
   getAdminTreasury,
   adminWithdrawRevenue,
   reconcileTransaction,
-  adminMarkTransactionStatus
+  adminMarkTransactionStatus,
+  downloadTransactionsCsv,
+  downloadSaversCsv
 } from '../api/client';
 import { ChangeAdminCredentialsModal } from '../components/ChangeAdminCredentialsModal';
 import { AdminUserSupportModal } from '../components/AdminUserSupportModal';
 import { AdminCircleManageModal } from '../components/AdminCircleManageModal';
+import { AdminCreateGroupModal } from '../components/AdminCreateGroupModal';
 
 export default function AdminDashboardPage({ onBack, onLockSession }) {
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'circles' | 'users' | 'transactions'
@@ -74,6 +80,7 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
   const [circlesLoading, setCirclesLoading] = useState(false);
   const [selectedCircleForManage, setSelectedCircleForManage] = useState(null);
   const [circleManageModalOpen, setCircleManageModalOpen] = useState(false);
+  const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
 
   const [users, setUsers] = useState([]);
   const [userSearch, setUserSearch] = useState('');
@@ -349,9 +356,9 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-1 border-t border-slate-100 overflow-x-auto py-1.5">
           {[
             { id: 'overview', label: 'Overview & Balance' },
-            { id: 'circles', label: 'Savings Circles' },
+            { id: 'circles', label: 'Savings Groups' },
             { id: 'users', label: 'Members & KYC' },
-            { id: 'transactions', label: 'Recent Payments' }
+            { id: 'transactions', label: 'Payment Ledger' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -390,7 +397,7 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                   GH₵ {Number(activeFloat).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
                 <p className="text-[11px] text-slate-500 font-medium">
-                  Held safely in escrow until circle rounds complete
+                  Held safely in escrow until group rounds complete
                 </p>
               </div>
 
@@ -453,7 +460,7 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
               <div className="bg-white rounded-2xl p-5 border border-slate-200 flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">Savings Groups Active</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Circles currently running rotations</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Groups currently running rotations</p>
                 </div>
                 <div className="text-3xl font-black text-sky-700 font-mono">
                   {activeCirclesCount}
@@ -471,13 +478,53 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
               </div>
             </div>
 
+            {/* Audit & Compliance CSV Exports */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Audit & Bank Compliance Reports</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Download real-time financial ledger and member registry in standard CSV format</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2.5 pt-1">
+                <button
+                  onClick={async () => {
+                    try {
+                      await downloadTransactionsCsv();
+                      notify('Payment ledger exported successfully.');
+                    } catch (e) {
+                      notify('Failed to export transactions.', 'error');
+                    }
+                  }}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+                >
+                  <FileDown size={14} className="text-emerald-400" />
+                  <span>Export Transactions Ledger (CSV)</span>
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await downloadSaversCsv();
+                      notify('Savers registry exported successfully.');
+                    } catch (e) {
+                      notify('Failed to export savers.', 'error');
+                    }
+                  }}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer border border-slate-200"
+                >
+                  <FileDown size={14} className="text-sky-600" />
+                  <span>Export Registered Savers (CSV)</span>
+                </button>
+              </div>
+            </div>
+
             {/* Simple Management Advice */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-2">
               <h3 className="text-sm font-bold text-slate-900">Executive Quick Guide</h3>
               <ul className="text-xs text-slate-600 space-y-1.5 list-disc pl-4 leading-relaxed">
-                <li><strong>Savings Circles tab</strong>: View all running groups or delete any test/inappropriate groups.</li>
-                <li><strong>Members tab</strong>: Review savers, approve Ghana Card KYC, or deactivate accounts if needed.</li>
-                <li><strong>Recent Payments tab</strong>: Monitor incoming Mobile Money transactions in real time.</li>
+                <li><strong>Savings Groups tab</strong>: Create pristine empty groups for real users, edit group parameters, pause/resume, or delete groups.</li>
+                <li><strong>Members tab</strong>: Review savers, approve Ghana Card KYC, or assist with phone/provider changes.</li>
+                <li><strong>Payment Ledger tab</strong>: Monitor incoming Mobile Money transactions in real time with instant reconciliation and CSV export.</li>
                 <li><strong>Change Password</strong>: Update your executive login credentials directly into the database.</li>
               </ul>
             </div>
@@ -485,7 +532,7 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
           </div>
         )}
 
-        {/* TAB 2: CIRCLES */}
+        {/* TAB 2: GROUPS */}
         {activeTab === 'circles' && (
           <div className="space-y-4 animate-in fade-in duration-150">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200">
@@ -493,28 +540,44 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search circles by name or invite code..."
+                  placeholder="Search Susu groups by name or invite code..."
                   value={circleSearch}
                   onChange={(e) => setCircleSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20"
                 />
               </div>
-              <button
-                onClick={loadCircles}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <RefreshCw size={14} className={circlesLoading ? 'animate-spin' : ''} />
-                <span>Refresh</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCreateGroupModalOpen(true)}
+                  className="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <PlusCircle size={14} />
+                  <span>+ Create Empty Group</span>
+                </button>
+                <button
+                  onClick={loadCircles}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <RefreshCw size={14} className={circlesLoading ? 'animate-spin' : ''} />
+                  <span>Refresh</span>
+                </button>
+              </div>
             </div>
 
             {circlesLoading ? (
               <div className="bg-white rounded-2xl p-12 text-center text-slate-400 text-xs font-bold">
-                Loading circles...
+                Loading Susu groups...
               </div>
             ) : circles.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center text-slate-400 text-xs font-bold">
-                No savings circles found matching your search.
+              <div className="bg-white rounded-2xl p-12 text-center text-slate-400 text-xs font-bold space-y-3">
+                <p>No Susu groups found matching your search.</p>
+                <button
+                  onClick={() => setCreateGroupModalOpen(true)}
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  <PlusCircle size={14} />
+                  <span>Create First Empty Group</span>
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -530,6 +593,8 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                         c.status === 'ACTIVE' 
                           ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                          : c.status === 'RECRUITING'
+                          ? 'bg-sky-50 text-sky-800 border-sky-200'
                           : 'bg-amber-50 text-amber-800 border-amber-200'
                       }`}>
                         {c.status || 'ACTIVE'}
@@ -562,15 +627,15 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                             setCircleManageModalOpen(true);
                           }}
                           className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-[11px] font-bold cursor-pointer inline-flex items-center gap-1 shadow-xs transition-colors"
-                          title="Manage Circle & Members"
+                          title="Manage Group, Members & Parameters"
                         >
                           <Users size={12} />
-                          <span>Manage Circle</span>
+                          <span>Manage Group</span>
                         </button>
                         <button
                           onClick={() => handleDeleteCircle(c)}
                           className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                          title="Permanently Delete Circle"
+                          title="Permanently Delete Group"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -721,13 +786,29 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
                   className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-sky-500/20"
                 />
               </div>
-              <button
-                onClick={loadTransactions}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <RefreshCw size={14} className={txLoading ? 'animate-spin' : ''} />
-                <span>Refresh</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      await downloadTransactionsCsv();
+                      notify('Payment ledger exported successfully.');
+                    } catch (e) {
+                      notify('Failed to export transactions.', 'error');
+                    }
+                  }}
+                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <FileDown size={14} className="text-emerald-400" />
+                  <span>Export CSV</span>
+                </button>
+                <button
+                  onClick={loadTransactions}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <RefreshCw size={14} className={txLoading ? 'animate-spin' : ''} />
+                  <span>Refresh</span>
+                </button>
+              </div>
             </div>
 
             {/* Status Filter Tabs */}
@@ -926,7 +1007,7 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
         }}
       />
 
-      {/* Circle Management Modal */}
+      {/* Group Management Modal */}
       <AdminCircleManageModal
         isOpen={circleManageModalOpen}
         circle={selectedCircleForManage}
@@ -940,6 +1021,17 @@ export default function AdminDashboardPage({ onBack, onLockSession }) {
         }}
         onCircleDeleted={(deletedId) => {
           setCircles(prev => prev.filter(c => c.id !== deletedId));
+          loadData();
+        }}
+      />
+
+      {/* Create Empty Group Modal */}
+      <AdminCreateGroupModal
+        isOpen={createGroupModalOpen}
+        onClose={() => setCreateGroupModalOpen(false)}
+        onGroupCreated={(newGroup) => {
+          notify(`Empty group "${newGroup.name}" created! Ready for savers to join.`);
+          loadCircles();
           loadData();
         }}
       />

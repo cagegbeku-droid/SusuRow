@@ -358,19 +358,19 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           <button
             onClick={() => setIsShareModalOpen(true)}
             className="w-10 h-10 rounded-full bg-white hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 transition-all cursor-pointer shadow-xs active:scale-95"
-            title="Share Circle"
-            aria-label="Share"
+            title="Share Group"
+            aria-label="Share Group"
           >
             <Share2 className="w-4 h-4 text-sky-600" />
           </button>
 
-          {/* Delete Circle icon (if creator and can delete) */}
+          {/* Delete Group icon (if creator and can delete) */}
           {canDelete && (
             <button
               onClick={() => setIsDeleteConfirmOpen(true)}
               className="w-10 h-10 rounded-full bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 flex items-center justify-center text-red-500 transition-all cursor-pointer shadow-xs active:scale-95"
-              title="Delete Circle"
-              aria-label="Delete Circle"
+              title="Delete Group"
+              aria-label="Delete Group"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -504,7 +504,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                   ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold'
                   : 'bg-sky-50 text-sky-800 border border-sky-200 font-bold'
               }`}>
-                {isCompleted ? 'Completed' : group.status === 'ACTIVE' ? `Round ${group.current_round} of ${group.members_count}` : 'Recruiting'}
+                {isCompleted ? 'Completed' : group.status === 'ACTIVE' ? `Round ${group.current_round} of ${group.members_count}` : 'Open'}
               </span>
 
               <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
@@ -590,25 +590,6 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           </div>
         </div>
       </div>
-
-      {/* ⏳ Recruiting Notice */}
-      {!isFull && !isCompleted && (
-        <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-3 text-xs flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-amber-900 min-w-0">
-            <Users size={16} className="text-amber-700 shrink-0" />
-            <span className="truncate">
-              Recruiting: <strong>{group.enrolled_count}/{group.members_count}</strong>. Starts when full.
-            </span>
-          </div>
-          <button
-            onClick={() => setIsShareModalOpen(true)}
-            className="shrink-0 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-            <span>Invite</span>
-          </button>
-        </div>
-      )}
 
       {/* 🔔 Group Notification Banner */}
       {groupNotification && (
@@ -718,9 +699,9 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
           {isCompleted ? (
             <span className="font-bold text-slate-800">All cycle rounds completed.</span>
           ) : !isFull || group.status === 'RECRUITING' ? (
-            <span className="text-amber-800 font-medium flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-amber-600 shrink-0" />
-              Recruiting ({group.enrolled_count}/{group.members_count}). Starts once full.
+            <span className="text-slate-700 font-medium flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-sky-600 shrink-0" />
+              {group.enrolled_count} of {group.members_count} members joined
             </span>
           ) : !isEnrolled ? (
             <span className="text-slate-700 font-medium">Group active with {group.enrolled_count} members.</span>
@@ -744,7 +725,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
               className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
             >
               <PlusCircle className="w-4 h-4 text-white" />
-              <span>Join Circle</span>
+              <span>Join Group</span>
             </button>
           )}
 

@@ -1929,7 +1929,7 @@ export const ProfilePage = ({
               <ChevronRight size={14} className="group-open:rotate-90 transition-transform text-slate-600" />
             </summary>
             <p className="text-slate-700 mt-2 leading-relaxed font-medium">
-              Circles utilize security escrow deposits and automatic SMS recovery to protect the recipient's payout.
+              Groups utilize security escrow deposits and automatic SMS recovery to protect the recipient's payout.
             </p>
           </details>
         </div>
@@ -2095,7 +2095,7 @@ export const ProfilePage = ({
               <CreditCard size={18} className="text-slate-900" />
               <div>
                 <span className="text-xs font-bold text-slate-900 block">Payment Methods</span>
-                <span className="text-[11px] text-slate-700 font-medium">How you pay into circles</span>
+                <span className="text-[11px] text-slate-700 font-medium">How you pay into groups</span>
               </div>
             </div>
             <ChevronRight size={15} className="text-slate-600" />

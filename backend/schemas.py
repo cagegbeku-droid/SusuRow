@@ -429,3 +429,27 @@ class PlatformStats(BaseModel):
     completed_circles_count: int
     total_savers_count: int
     default_rate: float
+
+
+# Executive Group Management Schemas
+class AdminGroupCreateRequest(BaseModel):
+    name: str = Field(..., min_length=3, max_length=120)
+    description: Optional[str] = None
+    contribution_amount: float = Field(..., ge=1.0)
+    frequency: str = Field("DAILY")
+    members_count: int = Field(..., ge=2, le=100)
+    rotation_type: str = Field("SEQUENTIAL")
+    commitment_deposit: Optional[float] = 0.0
+    is_private: Optional[bool] = False
+
+
+class AdminGroupUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    contribution_amount: Optional[float] = None
+    frequency: Optional[str] = None
+    members_count: Optional[int] = None
+    rotation_type: Optional[str] = None
+    status: Optional[str] = None
+    current_round: Optional[int] = None
+
