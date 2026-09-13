@@ -748,14 +748,14 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
             </button>
           )}
 
-          {/* Payments are enabled ONLY when circle is full & active and user has not paid */}
-          {isFull && group.status === 'ACTIVE' && isEnrolled && !enrolledMember?.has_paid_current_round && !isCompleted && (
+          {/* Payments are enabled whenever circle is active and user has not paid */}
+          {group.status === 'ACTIVE' && isEnrolled && !enrolledMember?.has_paid_current_round && !isCompleted && (
             <button
               onClick={() => openMoMoModalForUser(enrolledMember, false)}
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-emerald-600/20"
             >
               <Smartphone className="w-4 h-4" />
-              <span>Pay GH₵{group.contribution_amount}</span>
+              <span>Pay GH₵{Number(group.contribution_amount).toFixed(2)}</span>
             </button>
           )}
         </div>
@@ -928,21 +928,21 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                             </span>
                           ) : member.has_paid_current_round ? (
                             <span className="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[11px] inline-flex items-center gap-1">
-                              <Check className="w-3 h-3 text-emerald-600 stroke-[2.5]" /> Paid
+                              <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" /> Paid
                             </span>
                           ) : (isCurrentUserRow || (enrolledMember && member.id === enrolledMember.id)) && !isCompleted ? (
                             <button
                               type="button"
                               onClick={() => openMoMoModalForUser(member, false)}
-                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full text-[11px] shadow-xs inline-flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 animate-pulse hover:animate-none"
-                              title={`Tap to pay your GH₵${group.contribution_amount} round contribution manually via Mobile Money`}
+                              className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-full text-[11px] shadow-xs inline-flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-emerald-600/20"
+                              title={`Tap to pay your GH₵${Number(group.contribution_amount).toFixed(2)} round contribution via Mobile Money`}
                             >
-                              <Smartphone className="w-3 h-3" />
-                              <span>Pay GH₵{group.contribution_amount}</span>
+                              <Smartphone className="w-3.5 h-3.5" />
+                              <span>Pay GH₵{Number(group.contribution_amount).toFixed(2)}</span>
                             </button>
                           ) : (
                             <span className="text-amber-800 font-bold bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full text-[11px]">
-                              Due
+                              Unpaid (GH₵{Number(group.contribution_amount).toFixed(2)})
                             </span>
                           )}
                         </td>
