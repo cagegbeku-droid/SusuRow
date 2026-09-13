@@ -717,10 +717,10 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         <div className="text-xs text-slate-600 font-medium">
           {isCompleted ? (
             <span className="font-bold text-slate-800">All cycle rounds are completed.</span>
-          ) : !isFull ? (
+          ) : !isFull || group.status === 'RECRUITING' ? (
             <span className="text-amber-800 font-medium flex items-center gap-2">
               <Users className="w-4 h-4 text-amber-600 shrink-0" />
-              Waiting for group to fill ({group.enrolled_count}/{group.members_count} members). Payments and round start once all spots are filled.
+              Recruiting in progress ({group.enrolled_count}/{group.members_count} members). Round 1 contributions start once all seats are filled.
             </span>
           ) : !isEnrolled ? (
             <span className="text-slate-700 font-medium">This group is active with {group.enrolled_count} members.</span>
@@ -737,19 +737,19 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
         </div>
 
         <div className="flex items-center gap-2">
-          {!isEnrolled && !isCreator && !isFull && !isCompleted && (
+          {!isEnrolled && !isFull && !isCompleted && (
             <button
               onClick={handleJoinCircle}
               disabled={actionLoading}
               className="px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95"
             >
               <PlusCircle className="w-4 h-4 text-white" />
-              <span>Join Group</span>
+              <span>Join Circle</span>
             </button>
           )}
 
-          {/* Payments are enabled when circle is full/active and user has not paid */}
-          {(isFull || group.status === 'ACTIVE') && isEnrolled && !enrolledMember?.has_paid_current_round && !isCompleted && (
+          {/* Payments are enabled ONLY when circle is full & active and user has not paid */}
+          {isFull && group.status === 'ACTIVE' && isEnrolled && !enrolledMember?.has_paid_current_round && !isCompleted && (
             <button
               onClick={() => openMoMoModalForUser(enrolledMember, false)}
               className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
@@ -816,13 +816,37 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
                 <tr>
                   <th className="py-3 px-4 w-12 text-center">#</th>
                   <th className="py-3 px-4">Saver</th>
-                  <th className="py-3 px-4">Round {group.current_round}</th>
+                  <th className="py-3 px-4">{group.status === 'ACTIVE' ? `Round ${group.current_round}` : 'Contribution Status'}</th>
                   <th className="py-3 px-4 text-right">Payout</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {(() => {
-                  const activeRecipient = !isCompleted 
+                {group.members?.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-12 px-4 text-center">
+                      <div className="max-w-xs mx-auto space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center mx-auto border border-sky-100">
+                          <Users size={24} />
+                        </div>
+                        <h4 className="text-sm font-bold text-slate-900">No members have joined yet</h4>
+                        <p className="text-xs text-slate-500">
+                          Be the first saver to join this circle and claim Turn #1!
+                        </p>
+                        {!isEnrolled && !isCompleted && (
+                          <button
+                            onClick={handleJoinCircle}
+                            disabled={actionLoading}
+                            className="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5 cursor-pointer active:scale-95"
+                          >
+                            <PlusCircle size={15} />
+                            <span>Join This Circle</span>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (() => {
+                  const activeRecipient = !isCompleted && group.status === 'ACTIVE'
                     ? [...(group.members || [])]
                         .sort((a, b) => (a.payout_position || 999) - (b.payout_position || 999))
                         .find(m => !m.has_received_payout)
@@ -830,7 +854,7 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
                   return group.members?.map((member) => {
                     const isReceived = isCompleted || member.has_received_payout;
-                    const isCurrentRecipient = !isCompleted && !isReceived && activeRecipient && member.id === activeRecipient.id;
+                    const isCurrentRecipient = !isCompleted && group.status === 'ACTIVE' && !isReceived && activeRecipient && member.id === activeRecipient.id;
                     const isCurrentUserRow = (
                       (user?.id && member.user_id === user.id) ||
                       (user?.email && member.email && member.email.toLowerCase() === user.email.toLowerCase()) ||
@@ -898,7 +922,11 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
 
                         {/* Round Contribution Status */}
                         <td className="py-3.5 px-4">
-                          {member.has_paid_current_round ? (
+                          {group.status === 'RECRUITING' ? (
+                            <span className="text-slate-500 font-semibold bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full text-[11px] inline-flex items-center gap-1">
+                              Waiting to Start
+                            </span>
+                          ) : member.has_paid_current_round ? (
                             <span className="text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[11px] inline-flex items-center gap-1">
                               <Check className="w-3 h-3 text-emerald-600 stroke-[2.5]" /> Paid
                             </span>
@@ -1035,11 +1063,13 @@ export const CircleDetailPage = ({ groupId, onBack }) => {
               <div className="bg-slate-50 p-3 rounded-2xl border border-slate-150 flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-600">Current Round Status</span>
                 <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                  selectedProfileMember.has_paid_current_round
+                  group.status === 'RECRUITING'
+                    ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                    : selectedProfileMember.has_paid_current_round
                     ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                     : 'bg-amber-50 text-amber-800 border border-amber-200'
                 }`}>
-                  {selectedProfileMember.has_paid_current_round ? 'Paid' : 'Due'}
+                  {group.status === 'RECRUITING' ? 'Waiting to Start' : selectedProfileMember.has_paid_current_round ? 'Paid' : 'Due'}
                 </span>
               </div>
             </div>

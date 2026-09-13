@@ -115,12 +115,12 @@ def ensure_default_admin():
         print(f"[Admin Seed Notice]: {e}")
 
 def ensure_starter_groups():
-    """Seeds authentic Ghanaian starter Susu circles with varied setups (10 Cedis Daily, 50 Weekly, etc.) with open seats for launch."""
+    """Seeds clean, empty starter Susu circles with varied setups (10 Cedis Daily, 50 Weekly, etc.) with 0 mock users, ready for real savers to join."""
     try:
         import uuid
         from datetime import datetime
         from database import SessionLocal
-        from models import SusuGroup, GroupMember, GroupStatus, RotationType, MoMoProvider
+        from models import SusuGroup, GroupMember, GroupStatus, RotationType, MoMoProvider, ContributionPayment, PayoutDisbursement
         db = SessionLocal()
         
         starter_templates = [
@@ -131,12 +131,7 @@ def ensure_starter_groups():
                 "frequency": "DAILY",
                 "members_count": 7,
                 "rotation_type": RotationType.SEQUENTIAL.value,
-                "invite_code": "SUSU-D10A",
-                "initial_members": [
-                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, 1),
-                    ("0244881122", "Kofi Mensah", MoMoProvider.MTN.value, 2),
-                    ("0553992211", "Ama Serwaa", MoMoProvider.TELECEL.value, 3),
-                ]
+                "invite_code": "SUSU-D10A"
             },
             {
                 "name": "20 Cedis Susu Daily",
@@ -145,13 +140,7 @@ def ensure_starter_groups():
                 "frequency": "DAILY",
                 "members_count": 10,
                 "rotation_type": RotationType.BALLOT.value,
-                "invite_code": "SUSU-D20B",
-                "initial_members": [
-                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, None),
-                    ("0201122334", "Kwame Asante", MoMoProvider.TELECEL.value, None),
-                    ("0544332211", "Akosua Badu", MoMoProvider.MTN.value, None),
-                    ("0277889900", "Yaw Boateng", MoMoProvider.AT.value, None),
-                ]
+                "invite_code": "SUSU-D20B"
             },
             {
                 "name": "50 Cedis Susu Weekly",
@@ -160,11 +149,7 @@ def ensure_starter_groups():
                 "frequency": "WEEKLY",
                 "members_count": 5,
                 "rotation_type": RotationType.SEQUENTIAL.value,
-                "invite_code": "SUSU-W50C",
-                "initial_members": [
-                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, 1),
-                    ("0249876543", "Esi Osei", MoMoProvider.MTN.value, 2),
-                ]
+                "invite_code": "SUSU-W50C"
             },
             {
                 "name": "100 Cedis Susu Weekly",
@@ -173,12 +158,7 @@ def ensure_starter_groups():
                 "frequency": "WEEKLY",
                 "members_count": 6,
                 "rotation_type": RotationType.BIDDING.value,
-                "invite_code": "SUSU-W100D",
-                "initial_members": [
-                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, None),
-                    ("0559123456", "Nana Adjei", MoMoProvider.MTN.value, None),
-                    ("0243456789", "Abena Pokua", MoMoProvider.TELECEL.value, None),
-                ]
+                "invite_code": "SUSU-W100D"
             },
             {
                 "name": "200 Cedis Susu Monthly",
@@ -187,12 +167,7 @@ def ensure_starter_groups():
                 "frequency": "MONTHLY",
                 "members_count": 6,
                 "rotation_type": RotationType.SEQUENTIAL.value,
-                "invite_code": "SUSU-M200E",
-                "initial_members": [
-                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, 1),
-                    ("0208765432", "Kojo Frimpong", MoMoProvider.TELECEL.value, 2),
-                    ("0541122446", "Dorothy Quaye", MoMoProvider.MTN.value, 3),
-                ]
+                "invite_code": "SUSU-M200E"
             },
             {
                 "name": "500 Cedis Business Monthly",
@@ -201,18 +176,32 @@ def ensure_starter_groups():
                 "frequency": "MONTHLY",
                 "members_count": 5,
                 "rotation_type": RotationType.SEQUENTIAL.value,
-                "invite_code": "SUSU-M500F",
-                "initial_members": [
-                    ("0599360626", "Coratech Executive", MoMoProvider.MTN.value, 1),
-                    ("0244990011", "Dr. Emmanuel Addo", MoMoProvider.MTN.value, 2),
-                ]
+                "invite_code": "SUSU-M500F"
             },
         ]
+
+        # Clean out any old mock-populated groups or stale names
+        starter_names = [t["name"] for t in starter_templates]
+        legacy_names = [
+            "10 Cedis Daily Susu", "20 Cedis Daily Susu", "50 Cedis Weekly Susu", 
+            "100 Cedis Weekly Susu", "200 Cedis Monthly Susu", "500 Cedis Monthly Susu"
+        ]
         
+        # Remove legacy duplicates
+        for leg_name in legacy_names:
+            leg_grp = db.query(SusuGroup).filter(SusuGroup.name == leg_name).first()
+            if leg_grp:
+                db.query(ContributionPayment).filter(ContributionPayment.group_id == leg_grp.id).delete()
+                db.query(PayoutDisbursement).filter(PayoutDisbursement.group_id == leg_grp.id).delete()
+                db.query(GroupMember).filter(GroupMember.group_id == leg_grp.id).delete()
+                db.delete(leg_grp)
+        db.commit()
+
+        # Seed or sanitize authentic starter groups (ensuring 0 mock members)
         for tpl in starter_templates:
-            existing = db.query(SusuGroup).filter(SusuGroup.name == tpl["name"]).first()
-            if not existing:
-                total_pool = round(tpl["contribution_amount"] * tpl["members_count"], 2)
+            group = db.query(SusuGroup).filter(SusuGroup.name == tpl["name"]).first()
+            total_pool = round(tpl["contribution_amount"] * tpl["members_count"], 2)
+            if not group:
                 group = SusuGroup(
                     id=str(uuid.uuid4()),
                     name=tpl["name"],
@@ -232,24 +221,20 @@ def ensure_starter_groups():
                     created_at=datetime.utcnow()
                 )
                 db.add(group)
-                db.flush()
-                
-                for phone, name, provider, pos in tpl["initial_members"]:
-                    m = GroupMember(
-                        id=str(uuid.uuid4()),
-                        group_id=group.id,
-                        phone_number=phone,
-                        full_name=name,
-                        momo_provider=provider,
-                        payout_position=pos,
-                        has_paid_current_round=False,
-                        has_received_payout=False,
-                        deposit_paid=False,
-                        joined_at=datetime.utcnow()
-                    )
-                    db.add(m)
                 db.commit()
-                print(f"[Starter Circles]: Seeded '{tpl['name']}' ({len(tpl['initial_members'])}/{tpl['members_count']} members)")
+                print(f"[Starter Circles]: Created empty group '{tpl['name']}' (0/{tpl['members_count']} members - RECRUITING)")
+            else:
+                # Remove mock members if any were attached
+                db.query(ContributionPayment).filter(ContributionPayment.group_id == group.id).delete()
+                db.query(PayoutDisbursement).filter(PayoutDisbursement.group_id == group.id).delete()
+                db.query(GroupMember).filter(GroupMember.group_id == group.id).delete()
+                group.status = GroupStatus.RECRUITING.value
+                group.current_round = 1
+                group.cycle_number = 1
+                group.members_count = tpl["members_count"]
+                group.total_pool = total_pool
+                db.commit()
+                print(f"[Starter Circles]: Cleared mock users from '{tpl['name']}' (0/{tpl['members_count']} members - RECRUITING)")
         db.close()
     except Exception as e:
         print(f"[Starter Circles Seed Notice]: {e}")

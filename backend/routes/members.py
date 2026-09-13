@@ -35,15 +35,6 @@ async def join_group(payload: MemberJoinRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=f"Circle has reached maximum capacity ({group.members_count} savers) and is now locked.")
 
     clean_phone = payload.phone_number.replace("+233", "0").replace(" ", "").strip()
-    clean_creator = group.creator_id.replace("+233", "0").replace(" ", "").strip() if group.creator_id else ""
-
-    # Check if user is the creator (creators are automatically enrolled on creation)
-    if clean_phone == clean_creator or payload.phone_number.strip() == group.creator_id:
-        raise HTTPException(
-            status_code=400, 
-            detail="You created this Susu group and are already enrolled as the Circle Leader."
-        )
-
     # Check if already enrolled in this circle
     existing = db.query(GroupMember).filter(
         GroupMember.group_id == group.id,
